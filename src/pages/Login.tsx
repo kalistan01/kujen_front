@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/card";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import baseUrl from "@/api/baseUrl";
 const API_URL = import.meta.env.VITE_API_URL;
 const Login = () => {
   const [email, setEmail] = useState("");

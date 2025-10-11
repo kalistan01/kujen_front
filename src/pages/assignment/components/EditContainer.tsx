@@ -44,11 +44,9 @@ interface Container {
 function EditContainer({
   setIsDialogOpen,
   editingAssignment,
-  setEditingAssignment,
 }: {
   setIsDialogOpen: (isOpen: boolean) => void;
   editingAssignment?: Container;
-  setEditingAssignment: (assignment: Container | null) => void;
 }) {
   const { toast } = useToast();
   const { id } = useParams();

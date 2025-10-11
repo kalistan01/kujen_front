@@ -19,14 +19,7 @@ interface Destination {
   createdAt: string;
 }
 
-const mockDestinations: Destination[] = [
-  {
-    id: "1",
-    type: "Air",
-    location: "Mumbai",
-    createdAt: "2023-10-01",
-  },
-];
+
 interface DropDistination {
   id: string;
   type: string;

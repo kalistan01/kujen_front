@@ -23,7 +23,6 @@ import {
   Calendar,
   Weight,
   User,
-  Plus,
   Edit,
 } from "lucide-react";
 import baseUrl from "@/api/baseUrl";
@@ -300,7 +299,6 @@ function Containers({
               <EditContainer
                 setIsDialogOpen={setIsDialogOpen}
                 editingAssignment={editingAssignment}
-                setEditingAssignment={seteditingAssignment}
               />
             </DialogContent>
           </Dialog>

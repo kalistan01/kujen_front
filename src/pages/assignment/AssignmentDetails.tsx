@@ -10,15 +10,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Package, Edit, Printer, Trash2, Plus } from "lucide-react";
+
+import { Package,  Printer, Trash2, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import baseUrl from "@/api/baseUrl";
 import Containers from "./components/Containers";
@@ -45,25 +38,7 @@ interface Container {
   return: number;
 }
 
-interface Assignment {
-  id: string;
-  blNo: string;
-  cusdecDate: string;
-  cusdecNo: string;
-  regNo: string;
-  item: string;
-  exporter: string;
-  importer: string;
-  containers: Container[];
-  ot: { containerNo: string }[];
-  status: "pending" | "in-progress" | "completed";
-  createdAt: string;
-  createdBy: string;
-  updatedBy: string;
-  updatedAt: string;
-}
 
-// Mock data - replace with actual data fetching
 
 const AssignmentDetails = () => {
   const { id } = useParams();
