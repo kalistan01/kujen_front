@@ -8,31 +8,47 @@ import {
   CardDescription,
   CardHeader,
 } from "@/components/ui/card";
-import {  Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import baseUrl from "@/api/baseUrl";
+const API_URL = import.meta.env.VITE_API_URL;
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    localStorage.clear();
-    setIsLoading(true);
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setIsLoading(true);
+  try {
+    const response = await fetch(`${API_URL}/user/user-login`, {
+      method: "POST",
+      credentials: "include", // 👈 Required for HTTP-only cookies
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email, password }),
+    });
 
-    baseUrl
-      .post("/user/user-login", { email, password })
-      .then(async (response) => {
-        localStorage.setItem("token", response.data.token);
-        localStorage.setItem("user", response.data.user);
-        window.location.reload();
-        window.location.href = "/";
-      })
-      .catch((error) => {
-        console.error(error);
-      });
-  };
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Login failed");
+    }
+
+    const data = await response.json();
+
+    // Optional: store non-sensitive user info
+    localStorage.setItem("user", JSON.stringify(data.user));
+
+    // Redirect after successful login
+    window.location.href = "/";
+  } catch (error: any) {
+    console.error("Login error:", error);
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4 relative">

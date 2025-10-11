@@ -11,6 +11,7 @@ const baseUrl: AxiosInstance = axios.create({
     Authorization: `Bearer ${token || ""}`,
     "Content-Type": "application/json; charset=utf-8",
   },
+  withCredentials:true
 });
 
 

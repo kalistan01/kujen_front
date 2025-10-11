@@ -259,7 +259,6 @@ function AddAssignment({
         createdBy: "Current User",
         updatedBy: "Current User",
       };
-      console.log("New Assignment Created:", newAssignment);
 
       baseUrl
         .post("/assignlorry", newAssignment)

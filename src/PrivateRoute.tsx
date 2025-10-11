@@ -1,15 +1,37 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { Layout } from "./components/Layout";
-
+const API_URL = import.meta.env.VITE_API_URL;
 
 const PrivateRoute: React.FC = () => {
-  const token = localStorage.getItem("token");
-  if (token !== null && token?.length > 10) {
-    return <Layout />;
-  } else {
-    return <Navigate to="/login" />;
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(true);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const response = await fetch(`${API_URL}/auth/check`, {
+          method: "GET",
+          credentials: "include", // 👈 Required to send cookies
+        });
+
+        if (response.ok) {
+          setIsAuthenticated(true);
+        } else {
+          setIsAuthenticated(false);
+        }
+      } catch {
+        setIsAuthenticated(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
+
+  if (isAuthenticated === null) {
+    return <div>Loading...</div>; // Or a spinner
   }
+
+  return isAuthenticated ? <Layout /> : <Navigate to="/login" />;
 };
 
 export default PrivateRoute;
