@@ -96,7 +96,8 @@ function EditContainer({
       return: 0,
       status: "pending" as "pending" | "in-progress" | "completed",
     });
-    setEditingAssignment(null);
+    // setEditingAssignment(null);
+    
   };
   const updateContainer = (field: string, value: string | number) => {
     setContainers((prev) => ({
@@ -136,8 +137,8 @@ function EditContainer({
         console.error(error);
       });
 
-    // setIsDialogOpen(false);
-    // resetForm();
+    setIsDialogOpen(false);
+    resetForm();
   };
 
   return (
@@ -221,8 +222,8 @@ function EditContainer({
               <Input
                 type="date"
                 value={
-                  typeof containers.loadingDate === "string"
-                    ? containers.loadingDate.substring(0, 10)
+                  typeof containers.demoundDate === "string"
+                    ? containers.demoundDate.substring(0, 10)
                     : ""
                 }
                 onChange={(e) => updateContainer("demoundDate", e.target.value)}

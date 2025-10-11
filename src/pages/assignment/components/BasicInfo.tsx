@@ -1,8 +1,17 @@
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
-import { Calendar, FileText, Building, Ship } from "lucide-react";
+import { Calendar, FileText, Building, Ship, Edit } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import EditDetail from "./EditDetail";
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString("en-US", {
     year: "numeric",
@@ -10,15 +19,55 @@ const formatDate = (dateString: string) => {
     day: "numeric",
   });
 };
-function BasicInfo({ assignment }: any) {
+interface Assignment {
+  _id: string;
+  blNo: string;
+  cusdecDate: string;
+  cusdecNo: string;
+  regNo: string;
+  item: string;
+  exporter: string;
+  importer: string;
+}
+function BasicInfo({ assignment,isBasicDialogOpen, setIsBasicDialogOpen }: any) {
+  const [editingAssignment, seteditingAssignment] = useState<Assignment>();
+
+  const handleOpenEdit = () => {
+    setIsBasicDialogOpen(true);
+    seteditingAssignment(assignment);
+  };
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row justify-between items-center ">
         <CardTitle className="flex items-center">
           <FileText className="w-5 h-5 mr-2" />
           Basic Information
         </CardTitle>
+        <Dialog open={isBasicDialogOpen} onOpenChange={setIsBasicDialogOpen}>
+          <DialogTrigger asChild>
+            <Button
+              type="button"
+              onClick={handleOpenEdit}
+              variant="outline"
+              size="sm"
+            >
+              <Edit className="h-3 w-3" />
+              Edit Basic Information
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Assignment</DialogTitle>
+            </DialogHeader>
+            <EditDetail
+              setIsDialogOpen={setIsBasicDialogOpen}
+              editingAssignment={editingAssignment}
+              setEditingAssignment={seteditingAssignment}
+            />
+          </DialogContent>
+        </Dialog>
       </CardHeader>
+
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>

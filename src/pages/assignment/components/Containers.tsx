@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -56,9 +56,6 @@ interface ContainerType {
   status?: "pending" | "in-progress" | "completed";
 }
 
-interface ContainersProps {
-  container: ContainerType;
-}
 export const formatDate = (date?: string | Date) => {
   if (!date) return "-"; // fallback if date is missing
   const d = typeof date === "string" ? new Date(date) : date;
@@ -77,7 +74,13 @@ const formatDateTime = (dateString: string) => {
     minute: "2-digit",
   });
 };
-function Containers({ container }: ContainersProps) {
+function Containers({
+  container,
+  setOpen,
+}: {
+  container: ContainerType;
+  setOpen: (isOpen: boolean) => void;
+}) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAssignment, seteditingAssignment] = useState({});
 
@@ -104,9 +107,10 @@ function Containers({ container }: ContainersProps) {
         console.error(error);
       });
   };
-  const handleAdd = () => {
-    setIsDialogOpen(true);
-  };
+  useEffect(() => {
+    setOpen(isDialogOpen);
+  }, [isDialogOpen]);
+
   const handleOpenEdit = () => {
     setIsDialogOpen(true);
     seteditingAssignment(container);
@@ -157,57 +161,42 @@ function Containers({ container }: ContainersProps) {
       </div>
       <Separator />
       <div className="grid grid-cols-4 gap-4 text-sm">
-        {/* Weight */}
         <div>
           <p className="text-muted-foreground">Weight</p>
           <p className="font-semibold">₹{container.weight?.toLocaleString()}</p>
         </div>
-
-        {/* Day Hire */}
         <div>
           <p className="text-muted-foreground">Day Hire</p>
           <p className="font-semibold">
             ₹{container.dayHire?.toLocaleString()}
           </p>
         </div>
-
-        {/* Advanced */}
         <div>
           <p className="text-muted-foreground">Advanced</p>
           <p className="font-semibold text-green-600">
             ₹{container.advanced?.toLocaleString()}
           </p>
         </div>
-
-        {/* Out Hire */}
         <div>
           <p className="text-muted-foreground">Out Hire</p>
           <p className="font-semibold">
             ₹{container.outHire?.toLocaleString()}
           </p>
         </div>
-
-        {/* Other */}
         <div>
           <p className="text-muted-foreground">Other</p>
           <p className="font-semibold">₹{container.other?.toLocaleString()}</p>
         </div>
-
-        {/* Held Up */}
         <div>
           <p className="text-muted-foreground">Held Up</p>
           <p className="font-semibold">₹{container.heldUp?.toLocaleString()}</p>
         </div>
-
-        {/* Agent Fee */}
         <div>
           <p className="text-muted-foreground">Agent Fee</p>
           <p className="font-semibold">
             ₹{container.agentFee?.toLocaleString()}
           </p>
         </div>
-
-        {/* Return */}
         <div>
           <p className="text-muted-foreground">Return</p>
           <p className="font-semibold">₹{container.return?.toLocaleString()}</p>
@@ -267,7 +256,7 @@ function Containers({ container }: ContainersProps) {
         </Select>
       </div>
       <Card>
-        <CardContent className="flex items-center justify-end gap-6 pt-4">
+        <CardContent className="flex items-center justify-between gap-6 pt-4">
           <div>
             <p className="text-sm text-muted-foreground flex items-center">
               <User className="w-3 h-3 mr-1" />
@@ -294,8 +283,14 @@ function Containers({ container }: ContainersProps) {
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={handleOpenEdit} className="gap-2">
+              <Button
+                type="button"
+                onClick={handleOpenEdit}
+                variant="outline"
+                size="sm"
+              >
                 <Edit className="h-3 w-3" />
+                Edit Container
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">

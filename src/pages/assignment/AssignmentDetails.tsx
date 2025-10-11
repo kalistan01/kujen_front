@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import {
@@ -17,18 +18,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Package,
-  Edit,
-  Printer,
-  Trash2,
-} from "lucide-react";
+import { Package, Edit, Printer, Trash2, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import baseUrl from "@/api/baseUrl";
 import Containers from "./components/Containers";
 import Summary from "./components/Summary";
 import Record from "./components/Record";
 import BasicInfo from "./components/BasicInfo";
+import AddContainer from "./components/AddContainer";
 
 interface Container {
   id: string;
@@ -73,30 +70,21 @@ const AssignmentDetails = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isBasicDialogOpen, setIsBasicDialogOpen] = useState(false);
+  const [open, setOpen] = useState(false);
+
   const [assignment, setAssignment] = useState<any | null>(null);
   useEffect(() => {
     baseUrl
       .get("/assignlorry/" + id)
       .then(async (response) => {
-        console.log(response.data.data);
         setAssignment(response.data.data);
       })
       .catch((error) => {
         console.error(error);
       });
-  }, []);
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-
-  // const calculateTotal = () => {
-  //   return container.dayHire + container.outHire + container.other + container.agentFee + container.return - container.heldUp;
-  // };
+  }, [isDialogOpen, isBasicDialogOpen, open]);
 
   const handlePrint = () => {
     window.print();
@@ -108,14 +96,24 @@ const AssignmentDetails = () => {
 
   const handleDelete = () => {
     // Mock delete functionality
-    toast({
-      title: "Assignment Deleted",
-      description: "Assignment has been successfully deleted.",
-      variant: "destructive",
-    });
-    navigate("/");
+    setIsEditDialogOpen(true);
   };
-
+  const confrimDelete = () => {
+    baseUrl
+      .delete("/assignlorry/" + id)
+      .then(async (response) => {
+        setIsEditDialogOpen(false);
+        toast({
+          title: "Assignment Deleted",
+          description: "Assignment has been successfully deleted.",
+          variant: "destructive",
+        });
+        navigate("/assignments");
+      })
+      .catch((error) => {
+        console.error(error);
+      });
+  };
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-2">
       <div className="max-w-88xl mx-auto space-y-2">
@@ -144,7 +142,11 @@ const AssignmentDetails = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            <BasicInfo assignment={assignment} />
+            <BasicInfo
+              assignment={assignment}
+              isBasicDialogOpen={isBasicDialogOpen}
+              setIsBasicDialogOpen={setIsBasicDialogOpen}
+            />
 
             <Card>
               <CardHeader>
@@ -155,10 +157,31 @@ const AssignmentDetails = () => {
               </CardHeader>
               <CardContent className="space-y-6">
                 {assignment?.containers?.map((container, index) => (
-                  <Containers key={index} container={container} />
+                  <Containers
+                    key={index}
+                    container={container}
+                    setOpen={setOpen}
+                  />
                 ))}
               </CardContent>
             </Card>
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold"></h3>
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button type="button" variant="outline" size="sm">
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Container
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>add Container</DialogTitle>
+                  </DialogHeader>
+                  <AddContainer setIsDialogOpen={setIsDialogOpen} />
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
 
           <div className="space-y-6">
@@ -171,14 +194,6 @@ const AssignmentDetails = () => {
                 <CardTitle>Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button
-                  className="w-full"
-                  variant="outline"
-                  onClick={() => setIsEditDialogOpen(true)}
-                >
-                  <Edit className="w-4 h-4 mr-2" />
-                  Edit Assignment
-                </Button>
                 <Button
                   className="w-full"
                   variant="outline"
@@ -204,22 +219,10 @@ const AssignmentDetails = () => {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit Assignment</DialogTitle>
+            <DialogTitle>Delete Assignment</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div>
-              <Label htmlFor="status">Status</Label>
-              <Select defaultValue={assignment?.status}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="in-progress">In Progress</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <div>Confirm Delete</div>
             <div className="flex justify-end gap-2">
               <Button
                 variant="outline"
@@ -228,15 +231,11 @@ const AssignmentDetails = () => {
                 Cancel
               </Button>
               <Button
-                onClick={() => {
-                  setIsEditDialogOpen(false);
-                  toast({
-                    title: "Success",
-                    description: "Assignment updated successfully.",
-                  });
-                }}
+                variant="destructive"
+                onClick={() => confrimDelete()}
               >
-                Update
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete Assignment
               </Button>
             </div>
           </div>

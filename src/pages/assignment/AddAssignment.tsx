@@ -122,38 +122,7 @@ function AddAssignment({
       setContainers(containers.filter((_, i) => i !== index));
     }
   };
-  const resetForm = () => {
-    setFormData({
-      blNo: "",
-      cusdecDate: "",
-      cusdecNo: "",
-      regNo: "",
-      item: "",
-      exporter: "",
-      importer: "",
-    });
-    setContainers([
-      {
-        containerNo: "",
-        vocNo: "",
-        lorryId: "",
-        loadingDate: "",
-        demoundDate: "",
-        destination: "",
-        weight: 0,
-        dayHire: 0,
-        advanced: 0,
-        outHire: 0,
-        other: 0,
-        heldUp: 0,
-        agentFee: 0,
-        ot: 0,
-        return: 0,
-        status: "pending" as "pending" | "in-progress" | "completed",
-      },
-    ]);
-    setEditingAssignment(null);
-  };
+
   const updateContainer = (
     index: number,
     field: string,

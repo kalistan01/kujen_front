@@ -113,8 +113,8 @@ function AddContainer({
         console.error(error);
       });
 
-    // setIsDialogOpen(false);
-    // resetForm();
+    setIsDialogOpen(false);
+    resetForm();
   };
 
   return (
@@ -198,8 +198,8 @@ function AddContainer({
               <Input
                 type="date"
                 value={
-                  typeof containers.loadingDate === "string"
-                    ? containers.loadingDate.substring(0, 10)
+                  typeof containers.demoundDate === "string"
+                    ? containers.demoundDate.substring(0, 10)
                     : ""
                 }
                 onChange={(e) => updateContainer("demoundDate", e.target.value)}

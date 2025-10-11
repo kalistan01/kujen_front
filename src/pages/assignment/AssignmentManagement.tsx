@@ -17,147 +17,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Plus,
-  Edit,
-  Trash2,
-  Package,
-  Eye,
-} from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Plus, Package, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import baseUrl from "@/api/baseUrl";
 import AddAssignment from "./AddAssignment";
 
-interface Container {
-  id: string;
-  containerNo: string;
-  vocNo: string;
-  loadingDate: string;
-  demoundDate: string;
-  destination: string;
-  weight: number;
-  dayHire: number;
-  advanced: number;
-  outHire: number;
-  other: number;
-  heldUp: number;
-  agentFee: number;
-  return: number;
-  lorryId: { lorryNum: string; capacity: string } | string | null;
-  status?: "pending" | "in-progress" | "completed";
-}
-
-interface Assignment {
-  id: string;
-  blNo: string;
-  cusdecDate: string;
-  cusdecNo: string;
-  regNo: string;
-  item: string;
-  exporter: string;
-  importer: string;
-  containers: Container[];
-  createdAt: string;
-  createdBy: string;
-  updatedBy: string;
-  status: string;
-}
-
-
-const mockLorries = [
-  { id: "1", lorryNum: "MH12AB1234", capacity: "20 tons" },
-  { id: "2", lorryNum: "MH12CD5678", capacity: "15 tons" },
-  { id: "3", lorryNum: "MH14EF9012", capacity: "25 tons" },
-];
-
 export const AssignmentManagement = () => {
   const [assignments, setAssignments] = useState<any[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingAssignment, setEditingAssignment] = useState<any | null>(
-    null
-  );
-  const { toast } = useToast();
+  const [editingAssignment, setEditingAssignment] = useState<any | null>(null);
   const navigate = useNavigate();
 
-  const [formData, setFormData] = useState({
-    blNo: "",
-    cusdecDate: "",
-    cusdecNo: "",
-    regNo: "",
-    item: "",
-    exporter: "",
-    importer: "",
-  });
-
-  const [containers, setContainers] = useState<Omit<Container, "id">[]>([
-    {
-      containerNo: "",
-      vocNo: "",
-      lorryId: "",
-      loadingDate: "",
-      demoundDate: "",
-      destination: "",
-      weight: 0,
-      dayHire: 0,
-      advanced: 0,
-      outHire: 0,
-      other: 0,
-      heldUp: 0,
-      agentFee: 0,
-      return: 0,
-    },
-  ]);
-
-
-
   const handleAdd = () => {
-
     setIsDialogOpen(true);
-  };
-
-  const handleEdit = (assignment: Assignment) => {
-    setFormData({
-      blNo: assignment.blNo,
-      cusdecDate: assignment.cusdecDate,
-      cusdecNo: assignment.cusdecNo,
-      regNo: assignment.regNo,
-      item: assignment.item,
-      exporter: assignment.exporter,
-      importer: assignment.importer,
-    });
-
-    // Load all containers for editing
-    setContainers(
-      assignment.containers.map((container) => ({
-        containerNo: container.containerNo,
-        vocNo: container.vocNo,
-        lorryId: container.lorryId,
-        loadingDate: container.loadingDate,
-        demoundDate: container.demoundDate,
-        destination: container.destination,
-        weight: container.weight,
-        dayHire: container.dayHire,
-        advanced: container.advanced,
-        outHire: container.outHire,
-        other: container.other,
-        heldUp: container.heldUp,
-        agentFee: container.agentFee,
-        return: container.return,
-        status: container.status,
-      }))
-    );
-
-    setEditingAssignment(assignment);
-    setIsDialogOpen(true);
-  };
-
-  const handleDelete = (id: string) => {
-    setAssignments(assignments.filter((assignment) => assignment.id !== id));
-    toast({
-      title: "Success",
-      description: "Assignment deleted successfully.",
-    });
   };
 
   useEffect(() => {
@@ -166,12 +38,11 @@ export const AssignmentManagement = () => {
       .then(async (response) => {
         if (response.data.data.length > 0) setAssignments(response.data.data);
         console.log(response.data.data);
-        
       })
       .catch((error) => {
         console.error(error);
       });
-  }, []);
+  }, [isDialogOpen]);
   const getStatusColor = (status: any) => {
     switch (status) {
       case "pending":
@@ -238,7 +109,7 @@ export const AssignmentManagement = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {assignments.map((assignment, index:number) => (
+              {assignments.map((assignment, index: number) => (
                 <TableRow key={index}>
                   <TableCell className="font-medium">
                     {assignment.blNo}
@@ -256,17 +127,17 @@ export const AssignmentManagement = () => {
                       </div>
                       <div className="text-xs text-muted-foreground space-y-1">
                         {assignment.containers
-                          .map((c: any, i: number ) => (
+                          .map((c: any, i: number) => (
                             <div key={i} className="flex items-center gap-1">
                               <span className="font-mono">{c.containerNo}</span>
-                                <Badge
-                                  variant="outline"
-                                  className="text-xs px-1 py-0"
-                                >
-                                  {
-                                    c.lorryId ? c?.lorryId?.lorryNum : "Unassigned"
-                                  }
-                                </Badge>
+                              <Badge
+                                variant="outline"
+                                className="text-xs px-1 py-0"
+                              >
+                                {c.lorryId
+                                  ? c?.lorryId?.lorryNum
+                                  : "Unassigned"}
+                              </Badge>
                             </div>
                           ))
                           .slice(0, 3)}
@@ -297,29 +168,13 @@ export const AssignmentManagement = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => navigate(`/assignment/${assignment._id}`)}
+                        onClick={() =>
+                          navigate(`/assignment/${assignment._id}`)
+                        }
                         className="gap-1"
                       >
                         <Eye className="h-3 w-3" />
                         View
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEdit(assignment)}
-                        className="gap-1"
-                      >
-                        <Edit className="h-3 w-3" />
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDelete(assignment.id)}
-                        className="gap-1 hover:bg-destructive hover:text-destructive-foreground"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                        Delete
                       </Button>
                     </div>
                   </TableCell>
