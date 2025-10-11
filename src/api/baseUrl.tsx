@@ -3,10 +3,10 @@ import axios, { AxiosInstance, AxiosResponse, AxiosError } from "axios";
 // Retrieve the token and accessPermission from localStorage
 const token: string | null = localStorage.getItem("token");
 
-
+const API_URL = import.meta.env.VITE_API_URL;
 // Create Axios instance with base URL and headers
 const baseUrl: AxiosInstance = axios.create({
-  baseURL:"http://localhost:5001/api/v1",
+  baseURL:API_URL,
   headers: {
     Authorization: `Bearer ${token || ""}`,
     "Content-Type": "application/json; charset=utf-8",
