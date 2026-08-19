@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -10,8 +9,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-
-import { Package,  Printer, Trash2, Plus } from "lucide-react";
+import { Package, Printer, Trash2, Plus, ArrowLeft, FileDown, FileSpreadsheet } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import baseUrl from "@/api/baseUrl";
 import Containers from "./components/Containers";
@@ -19,26 +17,8 @@ import Summary from "./components/Summary";
 import Record from "./components/Record";
 import BasicInfo from "./components/BasicInfo";
 import AddContainer from "./components/AddContainer";
-
-interface Container {
-  id: string;
-  containerNo: string;
-  vocNo: string;
-  lorryId: string;
-  loadingDate: string;
-  demoundDate: string;
-  destination: { id: string; location: string; amount: number };
-  weight: number;
-  dayHire: number;
-  advanced: number;
-  outHire: number;
-  other: number;
-  heldUp: number;
-  agentFee: number;
-  return: number;
-}
-
-
+import { StatusBadge } from "@/components/StatusBadge";
+import AssignmentPrint from "./components/AssignmentPrint";
 
 const AssignmentDetails = () => {
   const { id } = useParams();
@@ -48,8 +28,8 @@ const AssignmentDetails = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isBasicDialogOpen, setIsBasicDialogOpen] = useState(false);
   const [open, setOpen] = useState(false);
-
   const [assignment, setAssignment] = useState<any | null>(null);
+
   useEffect(() => {
     baseUrl
       .get("/assignlorry/" + id)
@@ -61,22 +41,52 @@ const AssignmentDetails = () => {
       });
   }, [isDialogOpen, isBasicDialogOpen, open]);
 
-  const handlePrint = () => {
-    window.print();
-    toast({
-      title: "Print Initiated",
-      description: "Assignment details are being prepared for printing.",
-    });
+  const [exporting, setExporting] = useState<"pdf" | "excel" | null>(null);
+
+  const downloadExport = async (type: "pdf" | "excel") => {
+    if (!id || exporting) return;
+    setExporting(type);
+    try {
+      const response = await baseUrl.get(`/assignlorry/${id}/export/${type}`, {
+        responseType: "blob",
+      });
+      const contentType = String(response.headers["content-type"] || "");
+      if (contentType.includes("application/json")) {
+        throw new Error("Export failed");
+      }
+      const blob = new Blob([response.data], { type: contentType });
+      const ext = type === "pdf" ? "pdf" : "xlsx";
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `RG-Brothers-BL-${assignment?.blNo || id}.${ext}`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Export failed",
+        description: "Could not download the file. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setExporting(null);
+    }
   };
 
-  const handleDelete = () => {
-    // Mock delete functionality
-    setIsEditDialogOpen(true);
+  const handlePrint = () => {
+    const previousTitle = document.title;
+    document.title = `RG Brothers - BL ${assignment?.blNo || ""}`.trim();
+    window.print();
+    document.title = previousTitle;
   };
+
   const confrimDelete = () => {
     baseUrl
       .delete("/assignlorry/" + id)
-      .then(async (response) => {
+      .then(async () => {
         setIsEditDialogOpen(false);
         toast({
           title: "Assignment Deleted",
@@ -89,105 +99,120 @@ const AssignmentDetails = () => {
         console.error(error);
       });
   };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-2">
-      <div className="max-w-88xl mx-auto space-y-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div>
-              <h1 className="text-3xl font-bold">Assignment Details</h1>
-              {/* <p className="text-muted-foreground">
-                BL Number: {assignment?.blNo}
-              </p> */}
-            </div>
-          </div>
-          <Badge
-            variant={
-              assignment?.status === "completed"
-                ? "default"
-                : assignment?.status === "in-progress"
-                ? "secondary"
-                : "outline"
-            }
-            className="text-sm px-3 py-1"
+    <>
+    <div className="space-y-4 print:hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => navigate("/assignments")}
+            className="h-9 w-9 shrink-0"
           >
-            {assignment?.status}
-          </Badge>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="truncate text-xl font-bold tracking-tight">
+                {assignment?.blNo || "Assignment"}
+              </h1>
+              <StatusBadge status={assignment?.status} />
+            </div>
+            <p className="truncate text-sm text-muted-foreground">
+              {assignment?.item || "—"}
+            </p>
+          </div>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handlePrint}>
+            <Printer className="h-4 w-4" />
+            Print
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => downloadExport("pdf")}
+            disabled={!assignment || exporting === "pdf"}
+          >
+            <FileDown className="h-4 w-4" />
+            {exporting === "pdf" ? "PDF..." : "PDF"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => downloadExport("excel")}
+            disabled={!assignment || exporting === "excel"}
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            {exporting === "excel" ? "Excel..." : "Excel"}
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setIsEditDialogOpen(true)}
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete
+          </Button>
+        </div>
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <BasicInfo
-              assignment={assignment}
-              isBasicDialogOpen={isBasicDialogOpen}
-              setIsBasicDialogOpen={setIsBasicDialogOpen}
-            />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="space-y-4 lg:col-span-2">
+          <BasicInfo
+            assignment={assignment}
+            isBasicDialogOpen={isBasicDialogOpen}
+            setIsBasicDialogOpen={setIsBasicDialogOpen}
+          />
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Package className="w-5 h-5 mr-2" />
-                  Container Assignments ({assignment?.containers?.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {assignment?.containers?.map((container, index) => (
-                  <Containers
-                    key={index}
-                    container={container}
-                    setOpen={setOpen}
-                  />
-                ))}
-              </CardContent>
-            </Card>
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold"></h3>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 py-3">
+              <CardTitle className="flex items-center text-base">
+                <Package className="mr-2 h-4 w-4 text-amber-600" />
+                Containers ({assignment?.containers?.length || 0})
+              </CardTitle>
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button type="button" variant="outline" size="sm">
-                    <Plus className="h-4 w-4 mr-1" />
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="bg-[hsl(var(--brand-navy))] text-white hover:bg-[hsl(var(--brand-navy-muted))]"
+                  >
+                    <Plus className="h-4 w-4" />
                     Add Container
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
                   <DialogHeader>
-                    <DialogTitle>add Container</DialogTitle>
+                    <DialogTitle>Add Container</DialogTitle>
                   </DialogHeader>
                   <AddContainer setIsDialogOpen={setIsDialogOpen} />
                 </DialogContent>
               </Dialog>
-            </div>
-          </div>
+            </CardHeader>
+            <CardContent className="space-y-3 pb-4">
+              {assignment?.containers?.length ? (
+                assignment.containers.map((container, index) => (
+                  <Containers
+                    key={container._id || index}
+                    container={container}
+                    setOpen={setOpen}
+                  />
+                ))
+              ) : (
+                <p className="py-6 text-center text-sm text-muted-foreground">
+                  No containers added yet.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
-          <div className="space-y-6">
-            <Summary assignment={assignment} />
-
-            <Record assignment={assignment} />
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Actions</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Button
-                  className="w-full"
-                  variant="outline"
-                  onClick={handlePrint}
-                >
-                  <Printer className="w-4 h-4 mr-2" />
-                  Print Details
-                </Button>
-                <Button
-                  className="w-full"
-                  variant="destructive"
-                  onClick={handleDelete}
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete Assignment
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
+        <div className="space-y-4">
+          <Summary assignment={assignment} />
+          <Record assignment={assignment} />
         </div>
       </div>
 
@@ -196,27 +221,25 @@ const AssignmentDetails = () => {
           <DialogHeader>
             <DialogTitle>Delete Assignment</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>Confirm Delete</div>
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setIsEditDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={() => confrimDelete()}
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete Assignment
-              </Button>
-            </div>
+          <p className="text-sm text-muted-foreground">
+            This will permanently remove the assignment and cannot be undone.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsEditDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={() => confrimDelete()}>
+              Delete
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
     </div>
+    {assignment && <AssignmentPrint assignment={assignment} />}
+    </>
   );
 };
 

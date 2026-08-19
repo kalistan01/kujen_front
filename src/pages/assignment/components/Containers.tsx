@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -7,9 +6,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-
 import {
   Dialog,
   DialogContent,
@@ -17,18 +14,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Truck,
-  MapPin,
-  Calendar,
-  Weight,
-  User,
-  Edit,
-} from "lucide-react";
+import { Edit } from "lucide-react";
 import baseUrl from "@/api/baseUrl";
 import { useToast } from "@/hooks/use-toast";
 import { useParams } from "react-router-dom";
-import { Card, CardContent } from "@/components/ui/card";
 import EditContainer from "./EditContainer";
 interface ContainerType {
   _id?: string;
@@ -114,172 +103,47 @@ function Containers({
     setIsDialogOpen(true);
     seteditingAssignment(container);
   };
-  return (
-    <div className="border rounded-lg p-4 space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <p className="text-sm text-muted-foreground">Container Number</p>
-          <p className="font-semibold">{container?.containerNo}</p>
-        </div>
-        <div>
-          <p className="text-sm text-muted-foreground">VOC Number</p>
-          <p className="font-semibold">{container?.vocNo}</p>
-        </div>
+  const total =
+    (container.weight || 0) +
+    (container.dayHire || 0) +
+    (container.outHire || 0) +
+    (container.other || 0) +
+    (container.heldUp || 0) +
+    (container.return || 0) +
+    (container.agentFee || 0);
+  const paid = container.advanced || 0;
+  const balance = total - paid;
 
+  const statusTone =
+    status === "completed"
+      ? "border-l-emerald-500"
+      : status === "in-progress"
+        ? "border-l-sky-500"
+        : "border-l-amber-500";
+
+  return (
+    <div className={`space-y-3 rounded-lg border border-l-4 border-border/80 p-4 ${statusTone}`}>
+      <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <p className="text-sm text-muted-foreground">Assigned Lorry</p>
-          <p className="font-semibold flex items-center">
-            <Truck className="w-4 h-4 mr-1" />
-            {container?.lorryNum || "Unassigned"}
-            &nbsp;-&nbsp;
-            <Weight className="w-4 h-4 mr-1" />
-            {container?.capacity} feet ({container?.lorryOwner.toUpperCase()})
-          </p>
+          <p className="font-mono text-sm font-semibold">{container?.containerNo}</p>
+          <p className="text-xs text-muted-foreground">VOC {container?.vocNo}</p>
         </div>
-        <div>
-          <p className="text-sm text-muted-foreground">Destination</p>
-          <p className="font-semibold flex items-center">
-            <MapPin className="w-4 h-4 mr-1" />
-            {container?.destinationlocation}
-          </p>
-        </div>
-        <div>
-          <p className="text-sm text-muted-foreground">Loading Date</p>
-          <p className="font-semibold flex items-center">
-            <Calendar className="w-4 h-4 mr-1" />
-            {formatDate(container?.loadingDate)}
-          </p>
-        </div>
-        <div>
-          <p className="text-sm text-muted-foreground">demount Date</p>
-          <p className="font-semibold flex items-center">
-            <Calendar className="w-4 h-4 mr-1" />
-            {formatDate(container?.demoundDate)}
-          </p>
-        </div>
-      </div>
-      <Separator />
-      <div className="grid grid-cols-4 gap-4 text-sm">
-        <div>
-          <p className="text-muted-foreground">Weight</p>
-          <p className="font-semibold">₹{container.weight?.toLocaleString()}</p>
-        </div>
-        <div>
-          <p className="text-muted-foreground">Day Hire</p>
-          <p className="font-semibold">
-            ₹{container.dayHire?.toLocaleString()}
-          </p>
-        </div>
-        <div>
-          <p className="text-muted-foreground">Advanced</p>
-          <p className="font-semibold text-green-600">
-            ₹{container.advanced?.toLocaleString()}
-          </p>
-        </div>
-        <div>
-          <p className="text-muted-foreground">Out Hire</p>
-          <p className="font-semibold">
-            ₹{container.outHire?.toLocaleString()}
-          </p>
-        </div>
-        <div>
-          <p className="text-muted-foreground">Other</p>
-          <p className="font-semibold">₹{container.other?.toLocaleString()}</p>
-        </div>
-        <div>
-          <p className="text-muted-foreground">Held Up</p>
-          <p className="font-semibold">₹{container.heldUp?.toLocaleString()}</p>
-        </div>
-        <div>
-          <p className="text-muted-foreground">Agent Fee</p>
-          <p className="font-semibold">
-            ₹{container.agentFee?.toLocaleString()}
-          </p>
-        </div>
-        <div>
-          <p className="text-muted-foreground">Return</p>
-          <p className="font-semibold">₹{container.return?.toLocaleString()}</p>
-        </div>
-      </div>
-      <Separator />
-      <div className="grid grid-cols-4 gap-4 text-sm">
-        <div></div>
-        <div>
-          <p className="text-muted-foreground">TOTAL</p>
-          <p className="font-semibold">
-            ₹
-            {(container.weight || 0) +
-              (container.dayHire || 0) +
-              (container.outHire || 0) +
-              (container.other || 0) +
-              (container.heldUp || 0) +
-              (container.return || 0) +
-              (container.agentFee || 0)}
-          </p>
-        </div>
-        <div>
-          <p className="text-muted-foreground">PAID</p>
-          <p className="font-semibold">₹{container.advanced}</p>
-        </div>
-        <div>
-          <p className="text-muted-foreground">BALANCE</p>
-          <p className="font-semibold">
-            ₹{" "}
-            {(container.weight || 0) +
-              (container.dayHire || 0) +
-              (container.outHire || 0) +
-              (container.other || 0) +
-              (container.return || 0) +
-              (container.heldUp || 0) +
-              (container.agentFee || 0) -
-              (container.advanced || 0)}
-          </p>
-        </div>
-      </div>
-      <div>
-        <Label htmlFor="status">Status</Label>
-        <Select
-          defaultValue={container?.status}
-          onValueChange={(value: "pending" | "in-progress" | "completed") => {
-            toggleStatus(value);
-          }}
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="in-progress">In Progress</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <Card>
-        <CardContent className="flex items-center justify-between gap-6 pt-4">
-          <div>
-            <p className="text-sm text-muted-foreground flex items-center">
-              <User className="w-3 h-3 mr-1" />
-              Created by
-            </p>
-            <p className="font-semibold">{container?.createdBy}</p>
-            {container?.createdAt && (
-              <p className="text-xs text-muted-foreground">
-                {formatDateTime(container?.createdAt)}
-              </p>
-            )}
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground flex items-center">
-              <User className="w-3 h-3 mr-1" />
-              Updated by
-            </p>
-            <p className="font-semibold">{container?.updatedBy}</p>
-            {container?.updatedAt && (
-              <p className="text-xs text-muted-foreground">
-                {formatDateTime(container?.updatedAt)}
-              </p>
-            )}
-          </div>
+        <div className="flex items-center gap-2">
+          <Select
+            defaultValue={container?.status}
+            onValueChange={(value: "pending" | "in-progress" | "completed") => {
+              toggleStatus(value);
+            }}
+          >
+            <SelectTrigger className="h-8 w-[140px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="in-progress">In Progress</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+            </SelectContent>
+          </Select>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button
@@ -287,14 +151,15 @@ function Containers({
                 onClick={handleOpenEdit}
                 variant="outline"
                 size="sm"
+                className="h-8"
               >
-                <Edit className="h-3 w-3" />
-                Edit Container
+                <Edit className="h-3.5 w-3.5" />
+                Edit
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
               <DialogHeader>
-                <DialogTitle>Edit Assignment</DialogTitle>
+                <DialogTitle>Edit Container</DialogTitle>
               </DialogHeader>
               <EditContainer
                 setIsDialogOpen={setIsDialogOpen}
@@ -302,8 +167,83 @@ function Containers({
               />
             </DialogContent>
           </Dialog>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-3">
+        <div>
+          <p className="text-xs text-muted-foreground">Assigned Lorry</p>
+          <p className="font-medium">
+            {container?.lorryNum || "Unassigned"}
+            {container?.capacity ? ` · ${container.capacity} ft` : ""}
+            {container?.lorryOwner ? ` (${container.lorryOwner.toUpperCase()})` : ""}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground">Destination</p>
+          <p className="font-medium">{container?.destinationlocation || "—"}</p>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground">Loading / Demount</p>
+          <p className="font-medium">
+            {formatDate(container?.loadingDate)} / {formatDate(container?.demoundDate)}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-4">
+        {[
+          ["Weight", container.weight],
+          ["Day Hire", container.dayHire],
+          ["Advanced", container.advanced],
+          ["Out Hire", container.outHire],
+          ["Other", container.other],
+          ["Held Up", container.heldUp],
+          ["Agent Fee", container.agentFee],
+          ["Return", container.return],
+        ].map(([label, value]) => (
+          <div key={String(label)}>
+            <p className="text-xs text-muted-foreground">{label}</p>
+            <p
+              className={
+                label === "Advanced"
+                  ? "font-medium text-emerald-600"
+                  : "font-medium"
+              }
+            >
+              ₹{Number(value || 0).toLocaleString()}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap gap-x-5 gap-y-1 border-t border-border/70 pt-2 text-sm">
+        <p>
+          <span className="text-muted-foreground">Total </span>
+          <span className="font-semibold">₹{total.toLocaleString()}</span>
+        </p>
+        <p>
+          <span className="text-muted-foreground">Paid </span>
+          <span className="font-semibold text-emerald-600">
+            ₹{Number(paid).toLocaleString()}
+          </span>
+        </p>
+        <p>
+          <span className="text-muted-foreground">Balance </span>
+          <span className="font-bold">₹{balance.toLocaleString()}</span>
+        </p>
+      </div>
+
+      <div className="flex flex-wrap gap-x-5 text-xs text-muted-foreground">
+        <span>
+          Created by {typeof container?.createdBy === "object" ? (container as any).createdBy?.fullName : container?.createdBy}{" "}
+          {container?.createdAt ? `· ${formatDateTime(container.createdAt)}` : ""}
+        </span>
+        <span>
+          Updated by {typeof container?.updatedBy === "object" ? (container as any).updatedBy?.fullName : container?.updatedBy}{" "}
+          {container?.updatedAt ? `· ${formatDateTime(container.updatedAt)}` : ""}
+        </span>
+      </div>
     </div>
   );
 }

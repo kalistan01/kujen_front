@@ -13,6 +13,7 @@ import { RoleManagement } from "./pages/role/RoleManagement";
 import { UserManagement } from "./pages/user/UserManagement";
 import PrivateRoute from "./PrivateRoute";
 import { DestinationManagement } from "./pages/destination/DestinationManagement";
+import { LogsPage } from "./pages/logs/LogsPage";
 
 const queryClient = new QueryClient();
 const token: string | null = localStorage.getItem("token");
@@ -34,6 +35,7 @@ const App = () => (
                 />
                 <Route path="/users" element={<UserManagement />} />
                 <Route path="/roles" element={<RoleManagement />} />
+                <Route path="/logs" element={<LogsPage />} />
                 <Route
                   path="/lorry-owners"
                   element={<LorryOwnerManagement />}

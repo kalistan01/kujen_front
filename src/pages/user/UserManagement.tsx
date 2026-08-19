@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -17,10 +17,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Edit} from "lucide-react";
+import { Plus, Edit, Search, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import baseUrl from "@/api/baseUrl";
 import AddUser from "./AddUser";
+import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/PageHeader";
+import { StatusBadge } from "@/components/StatusBadge";
+
 interface User {
   id: string;
   _id?: string;
@@ -32,11 +36,14 @@ interface User {
   roleName: string;
   createdAt: string;
 }
+
 export const UserManagement = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [query, setQuery] = useState("");
   const { toast } = useToast();
+
   const handleAdd = () => {
     setEditingUser(null);
     setIsDialogOpen(true);
@@ -45,6 +52,7 @@ export const UserManagement = () => {
     setEditingUser(user);
     setIsDialogOpen(true);
   };
+
   useEffect(() => {
     baseUrl
       .get("/user")
@@ -63,7 +71,7 @@ export const UserManagement = () => {
           status: status ? 0 : 1,
         },
       })
-      .then(async (response) => {
+      .then(async () => {
         setUsers(
           users.map((user) =>
             user._id === id ? { ...user, status: !user.status } : user
@@ -80,20 +88,45 @@ export const UserManagement = () => {
       });
   };
 
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return users;
+    return users.filter((user) =>
+      [user.fullName, user.email, user.roleName]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(q))
+    );
+  }, [users, query]);
+
+  const initials = (name?: string) =>
+    (name || "U")
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("");
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">
-            User Management
-          </h2>
-          <p className="text-muted-foreground">
-            Manage system users and their roles
-          </p>
+      <PageHeader
+        title="Users"
+        description="Manage staff accounts and the roles assigned to them."
+      >
+        <div className="relative w-full sm:w-64">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search users..."
+            className="h-10 pl-9"
+          />
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={handleAdd} className="gap-2">
+            <Button
+              onClick={handleAdd}
+              className="gap-2 bg-[hsl(var(--brand-navy))] text-white hover:bg-[hsl(var(--brand-navy-muted))]"
+            >
               <Plus className="h-4 w-4" />
               Add User
             </Button>
@@ -112,65 +145,85 @@ export const UserManagement = () => {
             />
           </DialogContent>
         </Dialog>
-      </div>
+      </PageHeader>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Users ({users.length})</CardTitle>
+      <Card className="overflow-hidden">
+        <CardHeader className="border-b border-border/70 bg-muted/30 py-4">
+          <CardTitle className="flex items-center justify-between text-base font-semibold">
+            <span>Team directory</span>
+            <Badge variant="secondary">{filtered.length}</Badge>
+          </CardTitle>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.map((user, index) => (
-                <TableRow key={index}>
-                  <TableCell className="font-medium">{user.fullName}</TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{user.roleName}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    {user?.roleName !== "admin" && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleStatus(user._id, user.status)}
-                      >
-                        <Badge
-                          variant={user.status ? "default" : "destructive"}
+        <CardContent className="p-0">
+          {filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
+              <Users className="mb-3 h-10 w-10 text-muted-foreground/50" />
+              <p className="font-medium">No users found</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Add a staff member to get started.
+              </p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/20 hover:bg-muted/20">
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((user, index) => (
+                  <TableRow key={user._id || index}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-brand text-xs font-bold text-white">
+                          {initials(user.fullName)}
+                        </span>
+                        <span className="font-semibold">{user.fullName}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {user.email}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{user.roleName}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {user?.roleName !== "admin" ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-auto p-0 hover:bg-transparent"
+                          onClick={() => toggleStatus(user._id, user.status)}
                         >
-                          {user.status ? "Active" : "Inactive"}
-                        </Badge>
-                      </Button>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {new Date(user.createdAt).toLocaleString()}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
+                          <StatusBadge status={user.status} />
+                        </Button>
+                      ) : (
+                        <StatusBadge status={user.status} />
+                      )}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {new Date(user.createdAt).toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-right">
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
                         onClick={() => handleEdit(user)}
                       >
                         <Edit className="h-4 w-4" />
+                        Edit
                       </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>

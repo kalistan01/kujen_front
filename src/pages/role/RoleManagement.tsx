@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -17,10 +17,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Edit, Shield } from "lucide-react";
+import { Plus, Edit, Shield, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import baseUrl from "@/api/baseUrl";
 import AddRole from "./AddRole";
+import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/PageHeader";
+import { StatusBadge } from "@/components/StatusBadge";
 
 interface Role {
   id: string;
@@ -78,20 +81,14 @@ export const RoleManagement = () => {
   const [roles, setRoles] = useState<Role[]>(mockRoles);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
+  const [query, setQuery] = useState("");
   const { toast } = useToast();
-
-  const [formData, setFormData] = useState({
-    roleName: "",
-    permission: [] as number[],
-    denied: [] as number[],
-    status: true,
-    admin: false,
-  });
 
   const handleAdd = () => {
     setEditingRole(null);
     setIsDialogOpen(true);
   };
+
   useEffect(() => {
     baseUrl
       .get("/role/findRole")
@@ -102,6 +99,7 @@ export const RoleManagement = () => {
         console.error(error);
       });
   }, []);
+
   const handleEdit = (role: Role) => {
     setEditingRole(role);
     setIsDialogOpen(true);
@@ -116,7 +114,7 @@ export const RoleManagement = () => {
           headers: { roleid: id },
         }
       )
-      .then(async (response) => {
+      .then(async () => {
         setRoles(
           roles.map((role) =>
             role._id === id ? { ...role, status: !role.status } : role
@@ -132,20 +130,35 @@ export const RoleManagement = () => {
       });
   };
 
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return roles;
+    return roles.filter((role) =>
+      role.roleName?.toLowerCase().includes(q)
+    );
+  }, [roles, query]);
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">
-            Role Management
-          </h2>
-          <p className="text-muted-foreground">
-            Manage user roles and permissions
-          </p>
+      <PageHeader
+        title="Roles"
+        description="Control what staff can see and change across the system."
+      >
+        <div className="relative w-full sm:w-64">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search roles..."
+            className="h-10 pl-9"
+          />
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={handleAdd} className="gap-2">
+            <Button
+              onClick={handleAdd}
+              className="gap-2 bg-[hsl(var(--brand-navy))] text-white hover:bg-[hsl(var(--brand-navy-muted))]"
+            >
               <Plus className="h-4 w-4" />
               Add Role
             </Button>
@@ -163,94 +176,119 @@ export const RoleManagement = () => {
             />
           </DialogContent>
         </Dialog>
-      </div>
+      </PageHeader>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Roles ({roles.length})</CardTitle>
+      <Card className="overflow-hidden">
+        <CardHeader className="border-b border-border/70 bg-muted/30 py-4">
+          <CardTitle className="flex items-center justify-between text-base font-semibold">
+            <span>Access roles</span>
+            <Badge variant="secondary">{filtered.length}</Badge>
+          </CardTitle>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Role Name</TableHead>
-                <TableHead>Permissions</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {roles.map((role, index) => (
-                <TableRow key={index}>
-                  <TableCell className="font-medium">{role.roleName}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {role.permission.map((permId) => {
-                        const perm = availablePermissions.find(
-                          (p) => p.id === permId
-                        );
-                        return perm ? (
-                          <Badge
-                            key={permId}
-                            variant="outline"
-                            className="text-xs"
-                          >
-                            {perm.name}
-                          </Badge>
-                        ) : null;
-                      })}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {role.admin ? (
-                      <Badge variant="default" className="gap-1">
-                        <Shield className="h-3 w-3" />
-                        Admin
-                      </Badge>
-                    ) : (
-                      <Badge variant="default" className="gap-1">
-                        <Shield className="h-3 w-3" />
-                        staff
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {!role.admin && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleStatus(role._id, role.status)}
-                      >
-                        <Badge
-                          variant={role.status ? "default" : "destructive"}
-                        >
-                          {role.status ? "Active" : "Inactive"}
-                        </Badge>
-                      </Button>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {new Date(role.createdAt).toLocaleString()}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {!role.admin && (
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(role)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )}
-                  </TableCell>
+        <CardContent className="p-0">
+          {filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
+              <Shield className="mb-3 h-10 w-10 text-muted-foreground/50" />
+              <p className="font-medium">No roles found</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Create a role to define staff permissions.
+              </p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/20 hover:bg-muted/20">
+                  <TableHead>Role Name</TableHead>
+                  <TableHead>Permissions</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((role, index) => {
+                  const namedPermissions = role.permission
+                    .map((permId) =>
+                      availablePermissions.find((p) => p.id === permId)
+                    )
+                    .filter(Boolean);
+
+                  return (
+                    <TableRow key={role._id || index}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[hsl(var(--brand-navy))] text-white">
+                            <Shield className="h-4 w-4" />
+                          </span>
+                          <span className="font-semibold">{role.roleName}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {role.admin || namedPermissions.length === 0 ? (
+                          <Badge variant="secondary">
+                            {role.admin
+                              ? "Full access"
+                              : `${role.permission.length} permissions`}
+                          </Badge>
+                        ) : (
+                          <div className="flex flex-wrap gap-1">
+                            {namedPermissions.map((perm) => (
+                              <Badge
+                                key={perm!.id}
+                                variant="outline"
+                                className="text-xs"
+                              >
+                                {perm!.name}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="secondary"
+                          className="gap-1 capitalize"
+                        >
+                          <Shield className="h-3 w-3" />
+                          {role.admin ? "Admin" : "Staff"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {!role.admin ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-auto p-0 hover:bg-transparent"
+                            onClick={() => toggleStatus(role._id, role.status)}
+                          >
+                            <StatusBadge status={role.status} />
+                          </Button>
+                        ) : (
+                          <StatusBadge status={role.status} />
+                        )}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {new Date(role.createdAt).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {!role.admin && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(role)}
+                          >
+                            <Edit className="h-4 w-4" />
+                            Edit
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>

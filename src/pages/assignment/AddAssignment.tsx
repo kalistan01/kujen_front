@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,9 +12,32 @@ import {
 import {
   Plus,
   X,
+  Package,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import baseUrl from "@/api/baseUrl";
+
+function Field({
+  label,
+  required,
+  children,
+  className = "",
+}: {
+  label: string;
+  required?: boolean;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`space-y-1.5 ${className}`}>
+      <Label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+        {label}
+        {required ? <span className="text-destructive"> *</span> : null}
+      </Label>
+      {children}
+    </div>
+  );
+}
 interface Container {
   id: string;
   containerNo: string;
@@ -277,12 +300,13 @@ function AddAssignment({
     resetForm();
   };
   return (
-    <div className="space-y-6">
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Basic Information</h3>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="blNo">BL Number *</Label>
+    <div className="space-y-5">
+      <section className="overflow-hidden rounded-xl border border-border bg-card">
+        <div className="border-b border-border bg-muted/40 px-4 py-3">
+          <h3 className="text-sm font-semibold tracking-tight text-foreground">Basic information</h3>
+        </div>
+        <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Field label="BL Number" required>
             <Input
               id="blNo"
               value={formData.blNo}
@@ -290,10 +314,10 @@ function AddAssignment({
                 setFormData({ ...formData, blNo: e.target.value })
               }
               placeholder="Enter BL number"
+              className="h-10"
             />
-          </div>
-          <div>
-            <Label htmlFor="cusdecDate">Cusdec Date *</Label>
+          </Field>
+          <Field label="Cusdec Date" required>
             <Input
               id="cusdecDate"
               type="date"
@@ -301,13 +325,10 @@ function AddAssignment({
               onChange={(e) =>
                 setFormData({ ...formData, cusdecDate: e.target.value })
               }
+              className="h-10"
             />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="cusdecNo">Cusdec Number *</Label>
+          </Field>
+          <Field label="Cusdec Number" required>
             <Input
               id="cusdecNo"
               value={formData.cusdecNo}
@@ -315,10 +336,10 @@ function AddAssignment({
                 setFormData({ ...formData, cusdecNo: e.target.value })
               }
               placeholder="Enter cusdec number"
+              className="h-10"
             />
-          </div>
-          <div>
-            <Label htmlFor="regNo">Registration Number *</Label>
+          </Field>
+          <Field label="Registration Number" required>
             <Input
               id="regNo"
               value={formData.regNo}
@@ -326,13 +347,10 @@ function AddAssignment({
                 setFormData({ ...formData, regNo: e.target.value })
               }
               placeholder="Enter registration number"
+              className="h-10"
             />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="item">Item</Label>
+          </Field>
+          <Field label="Item">
             <Input
               id="item"
               value={formData.item}
@@ -340,10 +358,10 @@ function AddAssignment({
                 setFormData({ ...formData, item: e.target.value })
               }
               placeholder="Enter item description"
+              className="h-10"
             />
-          </div>
-          <div>
-            <Label htmlFor="exporter">Exporter</Label>
+          </Field>
+          <Field label="Exporter">
             <Input
               id="exporter"
               value={formData.exporter}
@@ -351,304 +369,296 @@ function AddAssignment({
                 setFormData({ ...formData, exporter: e.target.value })
               }
               placeholder="Enter exporter name"
+              className="h-10"
             />
+          </Field>
+          <Field label="Importer" className="sm:col-span-2 lg:col-span-1">
+            <Input
+              id="importer"
+              value={formData.importer}
+              onChange={(e) =>
+                setFormData({ ...formData, importer: e.target.value })
+              }
+              placeholder="Enter importer name"
+              className="h-10"
+            />
+          </Field>
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Package className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-semibold tracking-tight">
+              Containers ({containers.length})
+            </h3>
           </div>
-        </div>
-
-        <div>
-          <Label htmlFor="importer">Importer</Label>
-          <Input
-            id="importer"
-            value={formData.importer}
-            onChange={(e) =>
-              setFormData({ ...formData, importer: e.target.value })
-            }
-            placeholder="Enter importer name"
-          />
-        </div>
-      </div>
-
-      {/* Container Information */}
-      <div className="space-y-4">
-        <div className="flex justify-start items-center">
-          <h3 className="text-lg font-semibold">
-            Containers ({containers.length})
-          </h3>
-    
+          <Button
+            type="button"
+            onClick={addContainer}
+            variant="outline"
+            size="sm"
+            className="h-9"
+          >
+            <Plus className="h-4 w-4" />
+            Add Container
+          </Button>
         </div>
 
         {containers.map((container, index) => (
-          <div key={index} className="border rounded-lg p-4 space-y-4">
-            <div className="flex justify-between items-center">
-              <h4 className="font-medium">Container {index + 1}</h4>
+          <div
+            key={index}
+            className="overflow-hidden rounded-xl border border-border bg-card"
+          >
+            <div className="flex items-center justify-between gap-3 border-b border-border bg-muted/40 px-4 py-2.5">
+              <p className="text-sm font-semibold text-foreground">Container {index + 1}</p>
               {containers.length > 1 && (
                 <Button
                   type="button"
                   onClick={() => removeContainer(index)}
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
-                  className="text-destructive hover:text-destructive"
+                  className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
                 >
                   <X className="h-4 w-4" />
                 </Button>
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Container Number *</Label>
-                <Input
-                  value={container.containerNo}
-                  onChange={(e) =>
-                    updateContainer(index, "containerNo", e.target.value)
-                  }
-                  placeholder="Enter container number"
-                />
+            <div className="space-y-4 p-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <Field label="Container Number" required>
+                  <Input
+                    value={container.containerNo}
+                    onChange={(e) =>
+                      updateContainer(index, "containerNo", e.target.value)
+                    }
+                    placeholder="Enter container number"
+                    className="h-10"
+                  />
+                </Field>
+                <Field label="VOC Number" required>
+                  <Input
+                    value={container.vocNo}
+                    onChange={(e) =>
+                      updateContainer(index, "vocNo", e.target.value)
+                    }
+                    placeholder="Enter VOC number"
+                    className="h-10"
+                  />
+                </Field>
+                <Field label="Assign Lorry" required>
+                  <Select
+                    value={container.lorryId}
+                    onValueChange={(value) =>
+                      updateContainer(index, "lorryId", value)
+                    }
+                  >
+                    <SelectTrigger className="h-10">
+                      <SelectValue placeholder="Select lorry" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {lorries.map((lorry) => (
+                        <SelectItem key={lorry._id} value={lorry._id}>
+                          {lorry.lorryNum} - {lorry.capacity} -{" "}
+                          {lorry.owner.ownerName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Destination">
+                  <Select
+                    value={container.destination}
+                    onValueChange={(value) =>
+                      updateContainer(index, "destination", value)
+                    }
+                  >
+                    <SelectTrigger className="h-10">
+                      <SelectValue placeholder="Select destination" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {destination.map((dest) => (
+                        <SelectItem key={dest._id} value={dest._id}>
+                          {dest.type} - {dest.location}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Loading Date" required>
+                  <Input
+                    type="date"
+                    value={container.loadingDate}
+                    onChange={(e) =>
+                      updateContainer(index, "loadingDate", e.target.value)
+                    }
+                    className="h-10"
+                  />
+                </Field>
+                <Field label="Demount Date" required>
+                  <Input
+                    type="date"
+                    value={container.demoundDate}
+                    onChange={(e) =>
+                      updateContainer(index, "demoundDate", e.target.value)
+                    }
+                    className="h-10"
+                  />
+                </Field>
               </div>
-              <div>
-                <Label>VOC Number *</Label>
-                <Input
-                  value={container.vocNo}
-                  onChange={(e) =>
-                    updateContainer(index, "vocNo", e.target.value)
-                  }
-                  placeholder="Enter VOC number"
-                />
-              </div>
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Assign Lorry *</Label>
-                <Select
-                  value={container.lorryId}
-                  onValueChange={(value) =>
-                    updateContainer(index, "lorryId", value)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select lorry" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {lorries.map((lorry) => (
-                      <SelectItem key={lorry._id} value={lorry._id}>
-                        {lorry.lorryNum} - {lorry.capacity} -{" "}
-                        {lorry.owner.ownerName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="rounded-lg border border-border bg-muted/30 p-4">
+                <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                  Charges
+                </p>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <Field label="Weight (kg)" required>
+                    <Input
+                      type="number"
+                      value={container.weight || ""}
+                      onChange={(e) =>
+                        updateContainer(
+                          index,
+                          "weight",
+                          parseFloat(e.target.value) || 0
+                        )
+                      }
+                      placeholder="Enter weight"
+                      className="h-10"
+                    />
+                  </Field>
+                  <Field label="Day Hire (₹)" required>
+                    <Input
+                      type="number"
+                      value={container.dayHire || ""}
+                      onChange={(e) =>
+                        updateContainer(
+                          index,
+                          "dayHire",
+                          parseFloat(e.target.value) || 0
+                        )
+                      }
+                      placeholder="Enter day hire"
+                      className="h-10"
+                    />
+                  </Field>
+                  <Field label="Advanced (₹)" required>
+                    <Input
+                      type="number"
+                      value={container.advanced || ""}
+                      onChange={(e) =>
+                        updateContainer(
+                          index,
+                          "advanced",
+                          parseFloat(e.target.value) || 0
+                        )
+                      }
+                      placeholder="Enter advanced amount"
+                      className="h-10"
+                    />
+                  </Field>
+                  <Field label="Out Hire (₹)">
+                    <Input
+                      type="number"
+                      value={container.outHire || ""}
+                      onChange={(e) =>
+                        updateContainer(
+                          index,
+                          "outHire",
+                          parseFloat(e.target.value) || 0
+                        )
+                      }
+                      placeholder="Enter out hire"
+                      className="h-10"
+                    />
+                  </Field>
+                  <Field label="Other (₹)">
+                    <Input
+                      type="number"
+                      value={container.other || ""}
+                      onChange={(e) =>
+                        updateContainer(
+                          index,
+                          "other",
+                          parseFloat(e.target.value) || 0
+                        )
+                      }
+                      placeholder="Enter other amount"
+                      className="h-10"
+                    />
+                  </Field>
+                  <Field label="Held Up (₹)">
+                    <Input
+                      type="number"
+                      value={container.heldUp || ""}
+                      onChange={(e) =>
+                        updateContainer(
+                          index,
+                          "heldUp",
+                          parseFloat(e.target.value) || 0
+                        )
+                      }
+                      placeholder="Enter held up amount"
+                      className="h-10"
+                    />
+                  </Field>
+                  <Field label="Agent Fee (₹)">
+                    <Input
+                      type="number"
+                      value={container.agentFee || ""}
+                      onChange={(e) =>
+                        updateContainer(
+                          index,
+                          "agentFee",
+                          parseFloat(e.target.value) || 0
+                        )
+                      }
+                      placeholder="Enter agent fee"
+                      className="h-10"
+                    />
+                  </Field>
+                  <Field label="Return (₹)">
+                    <Input
+                      type="number"
+                      value={container.return || ""}
+                      onChange={(e) =>
+                        updateContainer(
+                          index,
+                          "return",
+                          parseFloat(e.target.value) || 0
+                        )
+                      }
+                      placeholder="Enter return amount"
+                      className="h-10"
+                    />
+                  </Field>
+                  <Field label="Status">
+                    <Select
+                      value={container.status}
+                      onValueChange={(value: Container["status"]) =>
+                        updateContainer(index, "status", value)
+                      }
+                    >
+                      <SelectTrigger className="h-10">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="in-progress">In Progress</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                </div>
               </div>
-              <div>
-                <Label>Destination</Label>
-                <Select
-                  value={container.destination}
-                  onValueChange={(value) =>
-                    updateContainer(index, "destination", value)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select destination" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {destination.map((dest) => (
-                      <SelectItem key={dest._id} value={dest._id}>
-                        {dest.type} - {dest.location}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Loading Date *</Label>
-                <Input
-                  type="date"
-                  value={container.loadingDate}
-                  onChange={(e) =>
-                    updateContainer(index, "loadingDate", e.target.value)
-                  }
-                />
-              </div>
-              <div>
-                <Label>Demound Date *</Label>
-                <Input
-                  type="date"
-                  value={container.demoundDate}
-                  onChange={(e) =>
-                    updateContainer(index, "demoundDate", e.target.value)
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <Label>Weight (kg) *</Label>
-                <Input
-                  type="number"
-                  value={container.weight || ""}
-                  onChange={(e) =>
-                    updateContainer(
-                      index,
-                      "weight",
-                      parseFloat(e.target.value) || 0
-                    )
-                  }
-                  placeholder="Enter weight"
-                />
-              </div>
-              <div>
-                <Label>Day Hire (₹) *</Label>
-                <Input
-                  type="number"
-                  value={container.dayHire || ""}
-                  onChange={(e) =>
-                    updateContainer(
-                      index,
-                      "dayHire",
-                      parseFloat(e.target.value) || 0
-                    )
-                  }
-                  placeholder="Enter day hire"
-                />
-              </div>
-              <div>
-                <Label>Advanced (₹) *</Label>
-                <Input
-                  type="number"
-                  value={container.advanced || ""}
-                  onChange={(e) =>
-                    updateContainer(
-                      index,
-                      "advanced",
-                      parseFloat(e.target.value) || 0
-                    )
-                  }
-                  placeholder="Enter advanced amount"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <Label>Out Hire (₹)</Label>
-                <Input
-                  type="number"
-                  value={container.outHire || ""}
-                  onChange={(e) =>
-                    updateContainer(
-                      index,
-                      "outHire",
-                      parseFloat(e.target.value) || 0
-                    )
-                  }
-                  placeholder="Enter out hire"
-                />
-              </div>
-              <div>
-                <Label>Other (₹)</Label>
-                <Input
-                  type="number"
-                  value={container.other || ""}
-                  onChange={(e) =>
-                    updateContainer(
-                      index,
-                      "other",
-                      parseFloat(e.target.value) || 0
-                    )
-                  }
-                  placeholder="Enter other amount"
-                />
-              </div>
-              <div>
-                <Label>Held Up (₹)</Label>
-                <Input
-                  type="number"
-                  value={container.heldUp || ""}
-                  onChange={(e) =>
-                    updateContainer(
-                      index,
-                      "heldUp",
-                      parseFloat(e.target.value) || 0
-                    )
-                  }
-                  placeholder="Enter held up amount"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Agent Fee (₹)</Label>
-                <Input
-                  type="number"
-                  value={container.agentFee || ""}
-                  onChange={(e) =>
-                    updateContainer(
-                      index,
-                      "agentFee",
-                      parseFloat(e.target.value) || 0
-                    )
-                  }
-                  placeholder="Enter agent fee"
-                />
-              </div>
-              <div>
-                <Label>Return (₹)</Label>
-                <Input
-                  type="number"
-                  value={container.return || ""}
-                  onChange={(e) =>
-                    updateContainer(
-                      index,
-                      "return",
-                      parseFloat(e.target.value) || 0
-                    )
-                  }
-                  placeholder="Enter return amount"
-                />
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="status">Status</Label>
-              <Select
-                value={container.status}
-                onValueChange={(value: Container["status"]) =>
-                  updateContainer(index, "status", value)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="in-progress">In Progress</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
           </div>
         ))}
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold">
-           
-          </h3>
-          <Button
-            type="button"
-            onClick={addContainer}
-            variant="outline"
-            size="sm"
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            Add Container
-          </Button>
-        </div>
-      </div>
+      </section>
 
-      <div className="flex justify-end gap-2 pt-4">
+      <div className="sticky bottom-0 -mx-6 -mb-5 flex justify-end gap-2 border-t border-border bg-card/95 px-6 py-4 backdrop-blur">
         <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
           Cancel
         </Button>

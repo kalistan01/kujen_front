@@ -1,7 +1,5 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { FileText, User } from "lucide-react";
 
 const formatDateTime = (dateString: string) => {
   return new Date(dateString).toLocaleDateString("en-US", {
@@ -12,35 +10,29 @@ const formatDateTime = (dateString: string) => {
     minute: "2-digit",
   });
 };
+
+const nameOf = (value: any) =>
+  typeof value === "object" ? value?.fullName || "—" : value || "—";
+
 function Record({ assignment }: any) {
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center">
-          <FileText className="w-5 h-5 mr-2" />
-          Record Information
-        </CardTitle>
+      <CardHeader className="py-3">
+        <CardTitle className="text-base">Record</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3 pb-4 text-sm">
         <div>
-          <p className="text-sm text-muted-foreground flex items-center">
-            <User className="w-3 h-3 mr-1" />
-            Created by
-          </p>
-          <p className="font-semibold">{assignment?.createdBy}</p>
+          <p className="text-xs text-muted-foreground">Created by</p>
+          <p className="font-medium">{nameOf(assignment?.createdBy)}</p>
           <p className="text-xs text-muted-foreground">
-            {formatDateTime(assignment?.createdAt)}
+            {assignment?.createdAt ? formatDateTime(assignment.createdAt) : "—"}
           </p>
         </div>
-        <Separator />
         <div>
-          <p className="text-sm text-muted-foreground flex items-center">
-            <User className="w-3 h-3 mr-1" />
-            Updated by
-          </p>
-          <p className="font-semibold">{assignment?.updatedBy}</p>
+          <p className="text-xs text-muted-foreground">Updated by</p>
+          <p className="font-medium">{nameOf(assignment?.updatedBy)}</p>
           <p className="text-xs text-muted-foreground">
-            {formatDateTime(assignment?.updatedAt)}
+            {assignment?.updatedAt ? formatDateTime(assignment.updatedAt) : "—"}
           </p>
         </div>
       </CardContent>

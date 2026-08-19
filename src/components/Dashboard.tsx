@@ -7,9 +7,28 @@ import {
   ClipboardList,
   TrendingUp,
   Package,
+  ArrowUpRight,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+
+const activities = [
+  {
+    title: "New lorry owner registered",
+    time: "2 hours ago",
+    tone: "bg-sky-500",
+  },
+  {
+    title: "Assignment completed",
+    time: "4 hours ago",
+    tone: "bg-amber-500",
+  },
+  {
+    title: "New destination added",
+    time: "6 hours ago",
+    tone: "bg-emerald-500",
+  },
+];
 
 export const Dashboard = () => {
   const navigate = useNavigate();
@@ -18,31 +37,36 @@ export const Dashboard = () => {
       title: "Total Users",
       value: "24",
       icon: Users,
-      color: "text-primary",
-      bgColor: "bg-primary/10",
+      href: "/users",
+      accent: "from-sky-500 to-blue-600",
+      iconWrap: "bg-sky-500/10 text-sky-600 dark:text-sky-300",
     },
     {
       title: "Lorry Owners",
       value: "12",
       icon: Truck,
-      color: "text-accent",
-      bgColor: "bg-accent/10",
+      href: "/lorry-owners",
+      accent: "from-amber-400 to-orange-500",
+      iconWrap: "bg-amber-500/10 text-amber-600 dark:text-amber-300",
     },
     {
       title: "Destinations",
       value: "18",
       icon: MapPin,
-      color: "text-success",
-      bgColor: "bg-success/10",
+      href: "/destinations",
+      accent: "from-emerald-500 to-teal-600",
+      iconWrap: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300",
     },
     {
       title: "Active Assignments",
       value: "8",
       icon: Package,
-      color: "text-warning",
-      bgColor: "bg-warning/10",
+      href: "/assignments",
+      accent: "from-violet-500 to-indigo-600",
+      iconWrap: "bg-violet-500/10 text-violet-600 dark:text-violet-300",
     },
   ]);
+
   useEffect(() => {
     baseUrl
       .get("/dashboard/topcount")
@@ -68,121 +92,149 @@ export const Dashboard = () => {
         console.error(error);
       });
   }, []);
+
+  const actions = [
+    {
+      label: "Add User",
+      hint: "Create a staff account",
+      icon: Users,
+      href: "/users",
+      tone: "text-sky-600 bg-sky-500/10",
+    },
+    {
+      label: "Add Owner",
+      hint: "Register a fleet owner",
+      icon: Truck,
+      href: "/lorry-owners",
+      tone: "text-amber-600 bg-amber-500/10",
+    },
+    {
+      label: "Add Destination",
+      hint: "Set a delivery route",
+      icon: MapPin,
+      href: "/destinations",
+      tone: "text-emerald-600 bg-emerald-500/10",
+    },
+    {
+      label: "New Assignment",
+      hint: "Plan a shipment",
+      icon: Package,
+      href: "/assignments",
+      tone: "text-violet-600 bg-violet-500/10",
+    },
+  ];
+
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-foreground">
-          Dashboard Overview
-        </h2>
-        <p className="text-muted-foreground">
-          Welcome to your logistics management system
+      <section className="relative overflow-hidden rounded-2xl bg-[hsl(var(--brand-navy))] px-6 py-7 text-white shadow-shell">
+        <div className="pointer-events-none absolute -right-10 -top-16 h-48 w-48 rounded-full bg-white/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-16 left-1/3 h-40 w-40 rounded-full bg-sky-400/15 blur-3xl" />
+        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/45">
+          RG Brothers
         </p>
-      </div>
+        <h2 className="mt-2 max-w-xl text-2xl font-bold tracking-tight sm:text-3xl">
+          Operations overview
+        </h2>
+        <p className="mt-2 max-w-lg text-sm text-white/65">
+          Track people, fleet, routes, and assignments from one professional
+          logistics workspace.
+        </p>
+      </section>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {stats.map((stat) => {
           const Icon = stat.icon;
           return (
-            <Card
+            <button
               key={stat.title}
-              className="hover:shadow-md transition-shadow"
+              type="button"
+              onClick={() => navigate(stat.href)}
+              className="text-left"
             >
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      {stat.title}
-                    </p>
-                    <p className="text-3xl font-bold text-foreground">
-                      {stat.value}
-                    </p>
+              <Card className="group relative overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+                <div
+                  className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${stat.accent}`}
+                />
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm text-muted-foreground">
+                        {stat.title}
+                      </p>
+                      <p className="mt-2 text-3xl font-bold tracking-tight">
+                        {stat.value}
+                      </p>
+                    </div>
+                    <div
+                      className={`flex h-11 w-11 items-center justify-center rounded-xl ${stat.iconWrap}`}
+                    >
+                      <Icon className="h-5 w-5" />
+                    </div>
                   </div>
-                  <div className={`p-3 rounded-full ${stat.bgColor}`}>
-                    <Icon className={`h-6 w-6 ${stat.color}`} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                  <p className="mt-4 flex items-center gap-1 text-xs font-medium text-muted-foreground group-hover:text-foreground">
+                    View details
+                    <ArrowUpRight className="h-3.5 w-3.5" />
+                  </p>
+                </CardContent>
+              </Card>
+            </button>
           );
         })}
       </div>
 
-      {/* Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Recent Activities
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <TrendingUp className="h-5 w-5 text-amber-500" />
+              Recent activity
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                <div className="w-2 h-2 bg-primary rounded-full"></div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">
-                    New lorry owner registered
-                  </p>
-                  <p className="text-xs text-muted-foreground">2 hours ago</p>
+          <CardContent className="space-y-3">
+            {activities.map((item) => (
+              <div
+                key={item.title}
+                className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/30 px-3 py-3"
+              >
+                <span className={`h-2.5 w-2.5 rounded-full ${item.tone}`} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{item.title}</p>
+                  <p className="text-xs text-muted-foreground">{item.time}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                <div className="w-2 h-2 bg-accent rounded-full"></div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Assignment completed</p>
-                  <p className="text-xs text-muted-foreground">4 hours ago</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                <div className="w-2 h-2 bg-success rounded-full"></div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">New destination added</p>
-                  <p className="text-xs text-muted-foreground">6 hours ago</p>
-                </div>
-              </div>
-            </div>
+            ))}
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ClipboardList className="h-5 w-5" />
-              Quick Actions
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <ClipboardList className="h-5 w-5 text-[hsl(var(--brand-navy))]" />
+              Quick actions
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-3">
-              <button
-                className="p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors text-left"
-                onClick={() => navigate("/users")}
-              >
-                <Users className="h-8 w-8 text-primary mb-2" />
-                <p className="font-medium text-sm">Add User</p>
-              </button>
-              <button
-                className="p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors text-left"
-                onClick={() => navigate("/lorry-owners")}
-              >
-                <Truck className="h-8 w-8 text-accent mb-2" />
-                <p className="font-medium text-sm">Add Owner</p>
-              </button>
-              <button
-                className="p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors text-left"
-                onClick={() => navigate("/destinations")}
-              >
-                <MapPin className="h-8 w-8 text-success mb-2" />
-                <p className="font-medium text-sm">Add Destination</p>
-              </button>
-              <button
-                className="p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors text-left"
-                onClick={() => navigate("/assignments")}
-              >
-                <Package className="h-8 w-8 text-warning mb-2" />
-                <p className="font-medium text-sm">New Assignment</p>
-              </button>
+              {actions.map((action) => {
+                const Icon = action.icon;
+                return (
+                  <button
+                    key={action.label}
+                    className="rounded-xl border border-border/70 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-[hsl(var(--brand-navy))]/40 hover:bg-muted/40"
+                    onClick={() => navigate(action.href)}
+                  >
+                    <div
+                      className={`mb-3 flex h-10 w-10 items-center justify-center rounded-lg ${action.tone}`}
+                    >
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <p className="text-sm font-semibold">{action.label}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {action.hint}
+                    </p>
+                  </button>
+                );
+              })}
             </div>
           </CardContent>
         </Card>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -8,11 +8,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Plus, Edit, Trash2, Truck, Phone, MapPin } from "lucide-react";
+import { Plus, Edit, Trash2, Truck, Phone, MapPin, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import baseUrl from "@/api/baseUrl";
 import AddLorryOwner from "./AddLorryOwner";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/PageHeader";
 
 interface Lorry {
   lorryNum: string;
@@ -29,16 +31,12 @@ interface LorryOwner {
   createdAt: string;
 }
 
-
-
 export const LorryOwnerManagement = () => {
   const [owners, setOwners] = useState<LorryOwner[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingOwner, setEditingOwner] = useState<LorryOwner | null>(null);
+  const [query, setQuery] = useState("");
   const { toast } = useToast();
-
-
-
 
   useEffect(() => {
     baseUrl
@@ -50,6 +48,7 @@ export const LorryOwnerManagement = () => {
         console.error(error);
       });
   }, []);
+
   const handleAdd = () => {
     setIsDialogOpen(true);
   };
@@ -59,10 +58,6 @@ export const LorryOwnerManagement = () => {
     setIsDialogOpen(true);
   };
 
-
-
-
-
   const handleDelete = (id: string) => {
     setOwners(owners.filter((owner) => owner.id !== id));
     toast({
@@ -71,25 +66,42 @@ export const LorryOwnerManagement = () => {
     });
   };
 
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return owners;
+    return owners.filter((owner) =>
+      [owner.companyName, owner.ownerName, owner.phoneNum, owner.address]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(q))
+    );
+  }, [owners, query]);
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">
-            Lorry Owner Management
-          </h2>
-          <p className="text-muted-foreground">
-            Manage lorry owners and their fleet
-          </p>
+      <PageHeader
+        title="Lorry Owners"
+        description="Manage owners, companies, and the vehicles in each fleet."
+      >
+        <div className="relative w-full sm:w-64">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search owners..."
+            className="h-10 pl-9"
+          />
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={handleAdd} className="gap-2">
+            <Button
+              onClick={handleAdd}
+              className="gap-2 bg-[hsl(var(--brand-navy))] text-white hover:bg-[hsl(var(--brand-navy-muted))]"
+            >
               <Plus className="h-4 w-4" />
               Add Owner
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-2xl">
             <DialogHeader>
               <DialogTitle>
                 {editingOwner ? "Edit Lorry Owner" : "Add New Lorry Owner"}
@@ -104,66 +116,85 @@ export const LorryOwnerManagement = () => {
             />
           </DialogContent>
         </Dialog>
-      </div>
+      </PageHeader>
 
-      <div className="grid gap-6">
-        {owners?.map((owner,i) => (
-          <Card key={i}>
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Truck className="h-5 w-5" />
-                    {owner.companyName}
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Owner: {owner.ownerName}
-                  </p>
+      {filtered.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center px-6 py-16 text-center">
+            <Truck className="mb-3 h-10 w-10 text-muted-foreground/50" />
+            <p className="font-medium">No lorry owners found</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Add an owner to start building your fleet directory.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-5 xl:grid-cols-2">
+          {filtered.map((owner, i) => (
+            <Card key={owner.id || i} className="overflow-hidden">
+              <CardHeader className="border-b border-border/70 bg-muted/20">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-brand text-white">
+                      <Truck className="h-5 w-5" />
+                    </span>
+                    <div>
+                      <CardTitle className="text-lg">
+                        {owner.companyName}
+                      </CardTitle>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Owner: {owner.ownerName}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEdit(owner)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDelete(owner.id)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleEdit(owner)}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDelete(owner.id)}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+              </CardHeader>
+              <CardContent className="pt-5">
+                <div className="mb-5 grid gap-3 md:grid-cols-2">
+                  <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-2 text-sm">
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    {owner.phoneNum || "No phone number"}
+                  </div>
+                  <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-2 text-sm">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    {owner.address}
+                  </div>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid md:grid-cols-2 gap-4 mb-4">
-                <div className="flex items-center gap-2 text-sm">
-                  <Phone className="h-4 w-4 text-muted-foreground" />
-                  {owner.phoneNum || "No phone number"}
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                  {owner.address}
-                </div>
-              </div>
 
-              <div>
-                <Label className="text-sm font-medium">
-                  Fleet ({owner?.lorries?.length} lorries)
-                </Label>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 mt-2">
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-sm font-semibold">Fleet</p>
+                  <Badge variant="secondary">
+                    {owner?.lorries?.length || 0} lorries
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {owner.lorries?.map((lorry, index) => (
                     <div
                       key={index}
-                      className="flex items-center gap-2 p-2 bg-muted rounded"
+                      className="flex items-center gap-3 rounded-xl border border-border/70 p-3"
                     >
-                      <Truck className="h-4 w-4 text-primary" />
+                      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600">
+                        <Truck className="h-4 w-4" />
+                      </span>
                       <div>
-                        <div className="font-medium text-sm">
+                        <div className="text-sm font-semibold">
                           {lorry.lorryNum}
                         </div>
                         <div className="text-xs text-muted-foreground">
@@ -173,11 +204,11 @@ export const LorryOwnerManagement = () => {
                     </div>
                   ))}
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

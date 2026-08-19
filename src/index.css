@@ -8,26 +8,26 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
-    --foreground: 210 15% 12%;
+    --background: 211 28% 97%;
+    --foreground: 211 40% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 210 15% 12%;
+    --card-foreground: 211 40% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 210 15% 12%;
+    --popover-foreground: 211 40% 12%;
 
-    --primary: 207 90% 54%;
+    --primary: 211 71% 36%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 210 15% 12%;
+    --secondary: 211 32% 95%;
+    --secondary-foreground: 211 40% 12%;
 
-    --muted: 210 40% 96%;
-    --muted-foreground: 210 13% 45%;
+    --muted: 211 28% 95%;
+    --muted-foreground: 211 12% 42%;
 
-    --accent: 25 95% 53%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 211 32% 94%;
+    --accent-foreground: 211 71% 28%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
@@ -38,41 +38,40 @@ All colors MUST be HSL.
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 207 90% 54%;
+    --border: 211 20% 88%;
+    --input: 211 20% 88%;
+    --ring: 211 71% 36%;
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
+    --sidebar-background: 211 71% 36%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 211 71% 36%;
+    --sidebar-accent: 211 62% 30%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 211 50% 48%;
+    --sidebar-ring: 211 71% 36%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --brand-navy: 211 71% 36%;
+    --brand-navy-muted: 211 72% 28%;
+    --brand-gold: 210 9% 72%;
+    --brand-gold-soft: 210 12% 82%;
+    --brand-silver: 210 9% 72%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 222 47% 6%;
     --foreground: 210 40% 98%;
 
-    --card: 222.2 84% 4.9%;
+    --card: 222 40% 9%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222.2 84% 4.9%;
+    --popover: 222 40% 9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 211 62% 48%;
+    --primary-foreground: 0 0% 100%;
 
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
@@ -80,23 +79,55 @@ All colors MUST be HSL.
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 217.2 32.6% 17.5%;
+    --accent: 211 32% 18%;
     --accent-foreground: 210 40% 98%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    --border: 217 25% 18%;
+    --input: 217 25% 18%;
+    --ring: 211 62% 48%;
+    --sidebar-background: 222 47% 8%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 211 62% 48%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 217 32% 16%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217 25% 16%;
+    --sidebar-ring: 211 62% 48%;
+
+    --brand-navy: 211 71% 36%;
+    --brand-navy-muted: 211 62% 48%;
+    --brand-gold: 210 9% 72%;
+    --brand-gold-soft: 210 12% 82%;
+    --brand-silver: 210 9% 72%;
+  }
+}
+
+@layer utilities {
+  .bg-gradient-primary {
+    background-image: linear-gradient(
+      135deg,
+      hsl(var(--primary)) 0%,
+      hsl(var(--brand-navy)) 100%
+    );
+  }
+
+  .bg-gradient-brand {
+    background-image: linear-gradient(
+      135deg,
+      hsl(var(--brand-navy)) 0%,
+      hsl(211 62% 48%) 100%
+    );
+  }
+
+  .shadow-shell {
+    box-shadow: 0 10px 40px -12px hsl(211 71% 36% / 0.22);
+  }
+
+  .surface-card {
+    @apply rounded-xl border border-border/80 bg-card shadow-sm;
   }
 }
 
@@ -106,10 +137,322 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+    color-scheme: light;
+  }
+
+  .dark body {
+    color-scheme: dark;
   }
 }
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
   -webkit-appearance: none;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #122033 !important;
+  }
+
+  .print-document {
+    color: #122033;
+    font-size: 11.5px;
+    line-height: 1.4;
+  }
+
+  .print-hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #1b5a9d !important;
+    color: #fff !important;
+    padding: 14px 16px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .print-mark {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: #111111 !important;
+    color: #1b5a9d !important;
+    font-weight: 800;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print-hero h1 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+  }
+
+  .print-hero p {
+    margin: 0;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    opacity: 0.7;
+  }
+
+  .print-bl {
+    text-align: right;
+  }
+
+  .print-bl span {
+    display: block;
+    font-size: 9px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    opacity: 0.65;
+  }
+
+  .print-bl strong {
+    display: block;
+    font-size: 16px;
+    margin: 2px 0;
+  }
+
+  .print-bl em {
+    font-style: normal;
+    text-transform: capitalize;
+    font-size: 11px;
+    color: #c5ccd4 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print-document h2 {
+    margin: 0 0 8px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #1b5a9d;
+    border-bottom: 2px solid #c5ccd4;
+    padding-bottom: 4px;
+  }
+
+  .print-info {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px 12px;
+    margin-bottom: 16px;
+  }
+
+  .print-info-sm {
+    margin-bottom: 8px;
+  }
+
+  .print-info span {
+    display: block;
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #667085;
+  }
+
+  .print-info b {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 1px;
+  }
+
+  .print-box {
+    border: 1px solid #d0d5dd;
+    border-radius: 6px;
+    padding: 10px 12px 8px;
+    margin-bottom: 10px;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-box-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .print-box-head h3 {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .print-box-head span {
+    text-transform: capitalize;
+    font-size: 10px;
+    font-weight: 700;
+    border: 1px solid #d0d5dd;
+    border-radius: 999px;
+    padding: 2px 8px;
+  }
+
+  .print-charges {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    margin-top: 4px;
+  }
+
+  .print-charges th,
+  .print-charges td {
+    border-top: 1px solid #eee;
+    padding: 4px 6px;
+    font-size: 11px;
+  }
+
+  .print-charges th {
+    text-align: left;
+    font-weight: 500;
+    color: #667085;
+    width: 22%;
+  }
+
+  .print-charges td {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    width: 28%;
+  }
+
+  .print-totals {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .print-totals div {
+    border: 1px solid #d0d5dd;
+    border-radius: 4px;
+    padding: 6px 8px;
+  }
+
+  .print-totals span {
+    display: block;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #667085;
+  }
+
+  .print-totals b {
+    display: block;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    margin-top: 1px;
+  }
+
+  .print-balance {
+    background: #1b5a9d !important;
+    color: #fff !important;
+    border-color: #1b5a9d !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print-balance span {
+    color: rgba(255, 255, 255, 0.7) !important;
+  }
+
+  .print-footer-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 6px;
+  }
+
+  .print-record p {
+    margin: 0 0 8px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .print-record span,
+  .print-record small {
+    display: block;
+    font-size: 9px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #667085;
+  }
+
+  .print-record small {
+    text-transform: none;
+    letter-spacing: 0;
+    margin-top: 1px;
+  }
+
+  .print-summary {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .print-summary th,
+  .print-summary td {
+    padding: 6px 0;
+    border-bottom: 1px solid #eee;
+    font-size: 12px;
+  }
+
+  .print-summary th {
+    text-align: left;
+    font-weight: 500;
+    color: #667085;
+  }
+
+  .print-summary td {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+  }
+
+  .print-remain th,
+  .print-remain td {
+    border-bottom: 0;
+    font-size: 13px;
+    color: #1b5a9d;
+    padding-top: 8px;
+  }
+
+  .print-empty {
+    margin: 0 0 12px;
+  }
+
+  .print-note {
+    margin-top: 18px;
+    padding-top: 8px;
+    border-top: 1px solid #d0d5dd;
+    font-size: 9px;
+    color: #667085;
+    text-align: center;
+    letter-spacing: 0.04em;
+  }
 }

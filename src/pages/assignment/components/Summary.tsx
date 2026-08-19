@@ -1,75 +1,62 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { DollarSign } from "lucide-react";
+
 function Summary({ assignment }: any) {
-  const totalAmount = assignment?.containers?.reduce(
-    (sum: any, container: any) => {
-      const containerTotal =
-        (container.weight || 0) +
-        (container.dayHire || 0) +
-        (container.outHire || 0) +
-        (container.other || 0) +
-        (container.heldUp || 0) +
-        (container.agentFee || 0) +
-        (container.return || 0);
-      return sum + containerTotal;
-    },
+  const containers = assignment?.containers || [];
+  const totalAmount = containers.reduce((sum: number, container: any) => {
+    return (
+      sum +
+      (container.weight || 0) +
+      (container.dayHire || 0) +
+      (container.outHire || 0) +
+      (container.other || 0) +
+      (container.heldUp || 0) +
+      (container.agentFee || 0) +
+      (container.return || 0)
+    );
+  }, 0);
+
+  const totalAdvanced = containers.reduce(
+    (sum: number, c: any) => sum + (c.advanced || 0),
+    0
+  );
+  const totalRemaining = containers.reduce(
+    (sum: number, c: any) =>
+      sum +
+      ((c.dayHire || 0) +
+        (c.outHire || 0) +
+        (c.weight || 0) +
+        (c.other || 0) +
+        (c.agentFee || 0) +
+        (c.return || 0) +
+        (c.heldUp || 0) -
+        (c.advanced || 0)),
     0
   );
 
+  const rows = [
+    { label: "Total", value: totalAmount },
+    { label: "Advanced", value: totalAdvanced, className: "text-emerald-600" },
+    { label: "Remaining", value: totalRemaining, className: "font-bold" },
+  ];
+
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center">
-          <DollarSign className="w-5 h-5 mr-2" />
-          Financial Summary
-        </CardTitle>
+      <CardHeader className="py-3">
+        <CardTitle className="text-base">Financial Summary</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-3">
-          <Separator />
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Total</span>
-              <span className="font-semibold">
-                ₹
-                {totalAmount}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Total Advanced</span>
-              <span className="font-semibold text-green-600">
-                ₹
-                {assignment?.containers
-                  .reduce((sum, c) => sum + c.advanced, 0)
-                  .toLocaleString()}
-              </span>
-            </div>
-            
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Total Remaining</span>
-              <span className="font-bold">
-                ₹
-                {assignment?.containers
-                  .reduce(
-                    (sum, c) =>
-                      sum +
-                      (c.dayHire +
-                        c.outHire +
-                        c.weight +
-                        c.other +
-                        c.agentFee +
-                        c.return +
-                        c.heldUp -
-                        c.advanced),
-                    0
-                  )
-                  .toLocaleString()}
-              </span>
-            </div>
+      <CardContent className="space-y-2 pb-4">
+        {rows.map((row) => (
+          <div
+            key={row.label}
+            className="flex items-center justify-between text-sm"
+          >
+            <span className="text-muted-foreground">{row.label}</span>
+            <span className={row.className}>
+              ₹{row.value.toLocaleString()}
+            </span>
           </div>
-        </div>
+        ))}
       </CardContent>
     </Card>
   );

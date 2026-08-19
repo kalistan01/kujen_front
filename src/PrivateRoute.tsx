@@ -15,6 +15,10 @@ const PrivateRoute: React.FC = () => {
         });
 
         if (response.ok) {
+          const data = await response.json();
+          if (data.user) {
+            localStorage.setItem("user", JSON.stringify(data.user));
+          }
           setIsAuthenticated(true);
         } else {
           setIsAuthenticated(false);
