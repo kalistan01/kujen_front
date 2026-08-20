@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import EditDetail from "./EditDetail";
 import { StatusBadge } from "@/components/StatusBadge";
+import { canManageAssignments } from "@/lib/permissions";
 
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString("en-US", {
@@ -51,6 +52,7 @@ function BasicInfo({
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 py-3">
         <CardTitle className="text-base">Basic Information</CardTitle>
+        {canManageAssignments() ? (
         <Dialog open={isBasicDialogOpen} onOpenChange={setIsBasicDialogOpen}>
           <DialogTrigger asChild>
             <Button
@@ -74,6 +76,7 @@ function BasicInfo({
             />
           </DialogContent>
         </Dialog>
+        ) : null}
       </CardHeader>
       <CardContent className="pb-4">
         <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">

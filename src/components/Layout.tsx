@@ -24,47 +24,54 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import { getAuthUser, isAdminUser, userInitials } from "@/lib/auth";
+import { getAuthUser, userInitials } from "@/lib/auth";
+import { can, P } from "@/lib/permissions";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
 const allMenuItems = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/" },
-  { id: "users", label: "Users", icon: Users, path: "/users" },
-  { id: "roles", label: "Roles", icon: Shield, path: "/roles" },
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/", permission: null },
+  { id: "users", label: "Users", icon: Users, path: "/users", permission: [P.USERS_VIEW, P.USERS_MANAGE] },
+  { id: "roles", label: "Roles", icon: Shield, path: "/roles", permission: [P.ROLES_MANAGE] },
   {
     id: "lorry-owners",
     label: "Lorry Owners",
     icon: Truck,
     path: "/lorry-owners",
+    permission: [P.LORRIES_VIEW, P.LORRIES_MANAGE],
   },
   {
     id: "destinations",
     label: "Destinations",
     icon: MapPin,
     path: "/destinations",
+    permission: [P.DESTINATIONS_VIEW, P.DESTINATIONS_MANAGE],
   },
   {
     id: "assignments",
     label: "Assignments",
     icon: ClipboardList,
     path: "/assignments",
+    permission: [P.ASSIGNMENTS_VIEW, P.ASSIGNMENTS_MANAGE],
   },
   {
     id: "logs",
     label: "Logs",
     icon: ScrollText,
     path: "/logs",
-    adminOnly: true,
+    permission: [P.LOGS_VIEW],
   },
 ];
 
 export const Layout = () => {
   const user = getAuthUser();
-  const admin = isAdminUser(user);
   const menuItems = useMemo(
-    () => allMenuItems.filter((item) => !item.adminOnly || admin),
-    [admin]
+    () =>
+      allMenuItems.filter(
+        (item) =>
+          !item.permission || item.permission.some((id) => can(id, user))
+      ),
+    [user]
   );
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);

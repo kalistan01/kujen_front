@@ -22,7 +22,8 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollText, Search } from "lucide-react";
 import baseUrl from "@/api/baseUrl";
 import { PageHeader } from "@/components/PageHeader";
-import { isAdminUser } from "@/lib/auth";
+import { can } from "@/lib/permissions";
+import { P } from "@/lib/permissions";
 import TablePagination from "@/components/TablePagination";
 
 type ActivityLog = {
@@ -112,7 +113,7 @@ export const LogsPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (!isAdminUser()) {
+  if (!can(P.LOGS_VIEW)) {
     return <Navigate to="/" replace />;
   }
 

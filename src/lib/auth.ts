@@ -5,7 +5,14 @@ export type AuthUser = {
   roleId?: string;
   roleName?: string;
   admin?: boolean;
+  permission?: number[];
+  denied?: number[];
 };
+
+function toIdList(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.map((id) => Number(id)).filter((id) => Number.isFinite(id));
+}
 
 export function getAuthUser(): AuthUser | null {
   try {
@@ -17,6 +24,8 @@ export function getAuthUser(): AuthUser | null {
         admin: true,
         fullName: "Administrator",
         roleName: "admin",
+        permission: [],
+        denied: [],
       };
     }
     if (parsed && typeof parsed === "object") {
@@ -24,6 +33,8 @@ export function getAuthUser(): AuthUser | null {
       return {
         ...parsed,
         admin: Boolean(parsed.admin) || roleName === "admin",
+        permission: toIdList(parsed.permission),
+        denied: toIdList(parsed.denied),
       };
     }
     return null;

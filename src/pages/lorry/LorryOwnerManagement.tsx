@@ -14,6 +14,8 @@ import AddLorryOwner from "./AddLorryOwner";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/PageHeader";
+import { can } from "@/lib/permissions";
+import { P } from "@/lib/permissions";
 
 interface Lorry {
   _id?: string;
@@ -92,6 +94,7 @@ export const LorryOwnerManagement = () => {
             className="h-10 pl-9"
           />
         </div>
+        {can(P.LORRIES_MANAGE) ? (
         <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
           <DialogTrigger asChild>
             <Button
@@ -117,6 +120,7 @@ export const LorryOwnerManagement = () => {
             />
           </DialogContent>
         </Dialog>
+        ) : null}
       </PageHeader>
 
       {filtered.length === 0 ? (
@@ -149,6 +153,7 @@ export const LorryOwnerManagement = () => {
                     </div>
                   </div>
                   <div className="flex gap-2">
+                    {can(P.LORRIES_MANAGE) ? (
                     <Button
                       variant="outline"
                       size="sm"
@@ -156,6 +161,7 @@ export const LorryOwnerManagement = () => {
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
+                    ) : null}
                   </div>
                 </div>
               </CardHeader>

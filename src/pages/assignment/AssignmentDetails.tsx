@@ -27,6 +27,7 @@ import {
   formatMoney,
   todayDateInput,
 } from "./lib/financials";
+import { canManageAssignments, canSeeField } from "@/lib/permissions";
 
 const AssignmentDetails = () => {
   const { id } = useParams();
@@ -41,6 +42,7 @@ const AssignmentDetails = () => {
   const [isBulkPayOpen, setIsBulkPayOpen] = useState(false);
   const [bulkPayDate, setBulkPayDate] = useState(todayDateInput());
   const [bulkPaying, setBulkPaying] = useState(false);
+  const canManage = canManageAssignments();
 
   const loadAssignment = () => {
     if (!id) return;
@@ -226,6 +228,7 @@ const AssignmentDetails = () => {
             <FileSpreadsheet className="h-4 w-4" />
             {exporting === "excel" ? "Excel..." : "Excel"}
           </Button>
+          {canManage ? (
           <Button
             variant="destructive"
             size="sm"
@@ -234,6 +237,7 @@ const AssignmentDetails = () => {
             <Trash2 className="h-4 w-4" />
             Delete
           </Button>
+          ) : null}
         </div>
       </div>
 
@@ -248,7 +252,7 @@ const AssignmentDetails = () => {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 py-3">
               <div className="flex items-center gap-3">
-                {payableContainers.length ? (
+                {payableContainers.length && canManage ? (
                   <Checkbox
                     checked={allPayableSelected}
                     onCheckedChange={(checked) =>
@@ -263,7 +267,7 @@ const AssignmentDetails = () => {
                 </CardTitle>
               </div>
               <div className="flex items-center gap-2">
-                {payableContainers.length ? (
+                {payableContainers.length && canManage && canSeeField("balancePaid") ? (
                   <Button
                     type="button"
                     size="sm"
@@ -281,6 +285,7 @@ const AssignmentDetails = () => {
                       : ""}
                   </Button>
                 ) : null}
+                {canManage ? (
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
                   <Button
@@ -299,6 +304,7 @@ const AssignmentDetails = () => {
                   <AddContainer setIsDialogOpen={setIsDialogOpen} />
                 </DialogContent>
               </Dialog>
+                ) : null}
               </div>
             </CardHeader>
             <CardContent className="space-y-3 pb-4">

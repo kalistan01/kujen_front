@@ -20,18 +20,22 @@ import DestinationSelect, {
   type DestinationOption,
 } from "./components/DestinationSelect";
 import { todayDateInput } from "./lib/financials";
+import { canSeeField, omitHiddenContainerFields } from "@/lib/permissions";
 
 function Field({
   label,
   required,
   children,
   className = "",
+  field,
 }: {
   label: string;
   required?: boolean;
   children: ReactNode;
   className?: string;
+  field?: string;
 }) {
+  if (field && !canSeeField(field)) return null;
   return (
     <div className={`space-y-1.5 ${className}`}>
       <Label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
@@ -271,7 +275,7 @@ function AddAssignment({
           ? editingAssignment.containers[index]?.id ||
             Date.now().toString() + index
           : Date.now().toString() + index,
-        ...container,
+        ...omitHiddenContainerFields(container),
       })
     );
 
@@ -510,12 +514,26 @@ function AddAssignment({
                 </Field>
               </div>
 
+              {[
+                "weight",
+                "dayHire",
+                "advanced",
+                "advancedDate",
+                "balancePaid",
+                "balanceDate",
+                "outHire",
+                "other",
+                "heldUp",
+                "agentFee",
+                "transportCommission",
+                "return",
+              ].some((key) => canSeeField(key)) ? (
               <div className="rounded-lg border border-border bg-muted/30 p-4">
                 <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                   Charges
                 </p>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  <Field label="Weight (kg)" required>
+                  <Field label="Weight (kg)" required field="weight">
                     <Input
                       type="number"
                       value={container.weight || ""}
@@ -530,7 +548,7 @@ function AddAssignment({
                       className="h-10"
                     />
                   </Field>
-                  <Field label="Day Hire (Rs)" required>
+                  <Field label="Day Hire (Rs)" required field="dayHire">
                     <Input
                       type="number"
                       value={container.dayHire || ""}
@@ -545,7 +563,7 @@ function AddAssignment({
                       className="h-10"
                     />
                   </Field>
-                  <Field label="Advanced (Rs)" required>
+                  <Field label="Advanced (Rs)" required field="advanced">
                     <Input
                       type="number"
                       value={container.advanced || ""}
@@ -560,7 +578,7 @@ function AddAssignment({
                       className="h-10"
                     />
                   </Field>
-                  <Field label="Advanced Date" required>
+                  <Field label="Advanced Date" required field="advancedDate">
                     <Input
                       type="date"
                       value={container.advancedDate || todayDateInput()}
@@ -570,7 +588,7 @@ function AddAssignment({
                       className="h-10"
                     />
                   </Field>
-                  <Field label="Balance Paid (Rs)">
+                  <Field label="Balance Paid (Rs)" field="balancePaid">
                     <Input
                       type="number"
                       value={container.balancePaid || ""}
@@ -585,7 +603,7 @@ function AddAssignment({
                       className="h-10"
                     />
                   </Field>
-                  <Field label="Balance Date">
+                  <Field label="Balance Date" field="balanceDate">
                     <Input
                       type="date"
                       value={container.balanceDate || todayDateInput()}
@@ -595,7 +613,7 @@ function AddAssignment({
                       className="h-10"
                     />
                   </Field>
-                  <Field label="Out Hire (Rs)">
+                  <Field label="Out Hire (Rs)" field="outHire">
                     <Input
                       type="number"
                       value={container.outHire || ""}
@@ -610,7 +628,7 @@ function AddAssignment({
                       className="h-10"
                     />
                   </Field>
-                  <Field label="Other (Rs)">
+                  <Field label="Other (Rs)" field="other">
                     <Input
                       type="number"
                       value={container.other || ""}
@@ -625,7 +643,7 @@ function AddAssignment({
                       className="h-10"
                     />
                   </Field>
-                  <Field label="Held Up (Rs)">
+                  <Field label="Held Up (Rs)" field="heldUp">
                     <Input
                       type="number"
                       value={container.heldUp || ""}
@@ -640,7 +658,7 @@ function AddAssignment({
                       className="h-10"
                     />
                   </Field>
-                  <Field label="Agent Fee (Rs)">
+                  <Field label="Agent Fee (Rs)" field="agentFee">
                     <Input
                       type="number"
                       value={container.agentFee || ""}
@@ -655,7 +673,7 @@ function AddAssignment({
                       className="h-10"
                     />
                   </Field>
-                  <Field label="Transport Commission (Rs)">
+                  <Field label="Transport Commission (Rs)" field="transportCommission">
                     <Input
                       type="number"
                       value={container.transportCommission || ""}
@@ -670,7 +688,7 @@ function AddAssignment({
                       className="h-10"
                     />
                   </Field>
-                  <Field label="Return (Rs)">
+                  <Field label="Return (Rs)" field="return">
                     <Input
                       type="number"
                       value={container.return || ""}
@@ -704,6 +722,7 @@ function AddAssignment({
                   </Field>
                 </div>
               </div>
+              ) : null}
             </div>
           </div>
         ))}

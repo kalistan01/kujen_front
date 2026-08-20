@@ -55,16 +55,29 @@ export const toDateInput = (value?: string | Date | null) => {
   return todayDateInput();
 };
 
-export const containerChargesTotal = (container: any = {}) =>
+export const containerChargesTotal = (
+  container: any = {},
+  fields: readonly { key: string }[] = CHARGE_FIELDS
+) =>
   roundMoney(
-    CHARGE_FIELDS.reduce((sum, field) => sum + toAmount(container[field.key]), 0)
+    fields.reduce((sum, field) => sum + toAmount(container[field.key]), 0)
   );
 
-export const getAssignmentFinancials = (containers: any[] = []) => {
+export const getAssignmentFinancials = (
+  containers: any[] = [],
+  options?: {
+    chargeFields?: readonly { key: ChargeKey; label: string }[];
+    commissionFields?: readonly { key: CommissionKey; label: string }[];
+  }
+) => {
+  const chargeFields = options?.chargeFields ?? CHARGE_FIELDS;
+  const commissionFields = options?.commissionFields ?? COMMISSION_FIELDS;
   const charges = CHARGE_FIELDS.reduce(
     (acc, field) => {
       acc[field.key] = roundMoney(
-        containers.reduce((sum, c) => sum + toAmount(c?.[field.key]), 0)
+        chargeFields.some((item) => item.key === field.key)
+          ? containers.reduce((sum, c) => sum + toAmount(c?.[field.key]), 0)
+          : 0
       );
       return acc;
     },
@@ -74,7 +87,9 @@ export const getAssignmentFinancials = (containers: any[] = []) => {
   const commissions = COMMISSION_FIELDS.reduce(
     (acc, field) => {
       acc[field.key] = roundMoney(
-        containers.reduce((sum, c) => sum + toAmount(c?.[field.key]), 0)
+        commissionFields.some((item) => item.key === field.key)
+          ? containers.reduce((sum, c) => sum + toAmount(c?.[field.key]), 0)
+          : 0
       );
       return acc;
     },
@@ -82,10 +97,13 @@ export const getAssignmentFinancials = (containers: any[] = []) => {
   );
 
   const total = roundMoney(
-    CHARGE_FIELDS.reduce((sum, field) => sum + charges[field.key], 0)
+    chargeFields.reduce((sum, field) => sum + charges[field.key as ChargeKey], 0)
   );
   const commissionTotal = roundMoney(
-    COMMISSION_FIELDS.reduce((sum, field) => sum + commissions[field.key], 0)
+    commissionFields.reduce(
+      (sum, field) => sum + commissions[field.key as CommissionKey],
+      0
+    )
   );
   const advanced = roundMoney(
     containers.reduce((sum, c) => sum + toAmount(c?.advanced), 0)

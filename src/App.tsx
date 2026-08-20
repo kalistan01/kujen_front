@@ -14,6 +14,8 @@ import { UserManagement } from "./pages/user/UserManagement";
 import PrivateRoute from "./PrivateRoute";
 import { DestinationManagement } from "./pages/destination/DestinationManagement";
 import { LogsPage } from "./pages/logs/LogsPage";
+import RequirePermission from "./components/RequirePermission";
+import { P } from "./lib/permissions";
 
 const queryClient = new QueryClient();
 const token: string | null = localStorage.getItem("token");
@@ -28,19 +30,62 @@ const App = () => (
             <Route path="/login" element={<Login />} />
               <Route path="/" element={<PrivateRoute />}>
                 <Route path="/" element={<Dashboard />} />
-                <Route path="/assignments" element={<AssignmentManagement />} />
+                <Route
+                  path="/assignments"
+                  element={
+                    <RequirePermission ids={[P.ASSIGNMENTS_VIEW, P.ASSIGNMENTS_MANAGE]}>
+                      <AssignmentManagement />
+                    </RequirePermission>
+                  }
+                />
                 <Route
                   path="/destinations"
-                  element={<DestinationManagement />}
+                  element={
+                    <RequirePermission ids={[P.DESTINATIONS_VIEW, P.DESTINATIONS_MANAGE]}>
+                      <DestinationManagement />
+                    </RequirePermission>
+                  }
                 />
-                <Route path="/users" element={<UserManagement />} />
-                <Route path="/roles" element={<RoleManagement />} />
-                <Route path="/logs" element={<LogsPage />} />
+                <Route
+                  path="/users"
+                  element={
+                    <RequirePermission ids={[P.USERS_VIEW, P.USERS_MANAGE]}>
+                      <UserManagement />
+                    </RequirePermission>
+                  }
+                />
+                <Route
+                  path="/roles"
+                  element={
+                    <RequirePermission ids={[P.ROLES_MANAGE]}>
+                      <RoleManagement />
+                    </RequirePermission>
+                  }
+                />
+                <Route
+                  path="/logs"
+                  element={
+                    <RequirePermission ids={[P.LOGS_VIEW]}>
+                      <LogsPage />
+                    </RequirePermission>
+                  }
+                />
                 <Route
                   path="/lorry-owners"
-                  element={<LorryOwnerManagement />}
+                  element={
+                    <RequirePermission ids={[P.LORRIES_VIEW, P.LORRIES_MANAGE]}>
+                      <LorryOwnerManagement />
+                    </RequirePermission>
+                  }
                 />
-                <Route path="/assignment/:id" element={<AssignmentDetails />} />
+                <Route
+                  path="/assignment/:id"
+                  element={
+                    <RequirePermission ids={[P.ASSIGNMENTS_VIEW, P.ASSIGNMENTS_MANAGE]}>
+                      <AssignmentDetails />
+                    </RequirePermission>
+                  }
+                />
               </Route>
            <Route path="*" element={<Navigate to="/login" />} />
           </Routes>

@@ -24,6 +24,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
+import { can } from "@/lib/permissions";
+import { P } from "@/lib/permissions";
 
 interface Destination {
   _id?: string;
@@ -126,6 +128,7 @@ export const DestinationManagement = () => {
             className="h-10 pl-9"
           />
         </div>
+        {can(P.DESTINATIONS_MANAGE) ? (
         <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
           <DialogTrigger asChild>
             <Button
@@ -150,6 +153,7 @@ export const DestinationManagement = () => {
             />
           </DialogContent>
         </Dialog>
+        ) : null}
       </PageHeader>
 
       <Card className="overflow-hidden">
@@ -192,6 +196,7 @@ export const DestinationManagement = () => {
                     </TableCell>
                     <TableCell>{destination.location}</TableCell>
                     <TableCell>
+                      {can(P.DESTINATIONS_MANAGE) ? (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -202,11 +207,15 @@ export const DestinationManagement = () => {
                       >
                         <StatusBadge status={destination.status} />
                       </Button>
+                      ) : (
+                        <StatusBadge status={destination.status} />
+                      )}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {new Date(destination.createdAt).toLocaleString()}
                     </TableCell>
                     <TableCell className="text-right">
+                      {can(P.DESTINATIONS_MANAGE) ? (
                       <Button
                         variant="outline"
                         size="sm"
@@ -215,6 +224,7 @@ export const DestinationManagement = () => {
                         <Edit className="h-4 w-4" />
                         Edit
                       </Button>
+                      ) : null}
                     </TableCell>
                   </TableRow>
                 ))}

@@ -24,6 +24,8 @@ import AddUser from "./AddUser";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
+import { can } from "@/lib/permissions";
+import { P } from "@/lib/permissions";
 
 interface User {
   id: string;
@@ -121,6 +123,7 @@ export const UserManagement = () => {
             className="h-10 pl-9"
           />
         </div>
+        {can(P.USERS_MANAGE) ? (
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button
@@ -145,6 +148,7 @@ export const UserManagement = () => {
             />
           </DialogContent>
         </Dialog>
+        ) : null}
       </PageHeader>
 
       <Card className="overflow-hidden">
@@ -193,7 +197,7 @@ export const UserManagement = () => {
                       <Badge variant="secondary">{user.roleName}</Badge>
                     </TableCell>
                     <TableCell>
-                      {user?.roleName !== "admin" ? (
+                      {can(P.USERS_MANAGE) && user?.roleName !== "admin" ? (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -210,6 +214,7 @@ export const UserManagement = () => {
                       {new Date(user.createdAt).toLocaleString()}
                     </TableCell>
                     <TableCell className="text-right">
+                      {can(P.USERS_MANAGE) ? (
                       <Button
                         variant="outline"
                         size="sm"
@@ -218,6 +223,7 @@ export const UserManagement = () => {
                         <Edit className="h-4 w-4" />
                         Edit
                       </Button>
+                      ) : null}
                     </TableCell>
                   </TableRow>
                 ))}

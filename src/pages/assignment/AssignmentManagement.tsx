@@ -42,6 +42,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import TablePagination from "@/components/TablePagination";
+import { canManageAssignments } from "@/lib/permissions";
 
 const formatDate = (value?: string) => {
   if (!value) return "—";
@@ -200,6 +201,7 @@ export const AssignmentManagement = () => {
           <FileSpreadsheet className="h-4 w-4" />
           {exporting === "excel" ? "Excel..." : "Excel"}
         </Button>
+        {canManageAssignments() ? (
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button
@@ -230,6 +232,7 @@ export const AssignmentManagement = () => {
             </div>
           </DialogContent>
         </Dialog>
+        ) : null}
       </PageHeader>
 
       <Card className="overflow-hidden">

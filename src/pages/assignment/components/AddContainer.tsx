@@ -17,6 +17,8 @@ import DestinationSelect, {
   type DestinationOption,
 } from "./DestinationSelect";
 import { todayDateInput } from "../lib/financials";
+import { omitHiddenContainerFields } from "@/lib/permissions";
+import { FieldGate } from "@/components/RequirePermission";
 interface Container {
   containerNo?: string;
   vocNo?: string;
@@ -113,7 +115,7 @@ function AddContainer({
   const handleSave = () => {
 
     baseUrl
-      .post(`assignlorry/${id}/containers`, containers)
+      .post(`assignlorry/${id}/containers`, omitHiddenContainerFields(containers))
       .then(async (response) => {
         toast({
           title: "Success",
@@ -212,148 +214,163 @@ function AddContainer({
           </div>
 
           <div className="grid grid-cols-3 gap-4">
-            <div>
-              <Label>Weight (kg) *</Label>
-              <Input
-                type="number"
-                value={containers.weight || ""}
-                onChange={(e) =>
-                  updateContainer("weight", parseFloat(e.target.value) || 0)
-                }
-                placeholder="Enter weight"
-              />
-            </div>
-            <div>
-              <Label>Day Hire (Rs) *</Label>
-              <Input
-                type="number"
-                value={containers.dayHire || ""}
-                onChange={(e) =>
-                  updateContainer("dayHire", parseFloat(e.target.value) || 0)
-                }
-                placeholder="Enter day hire"
-              />
-            </div>
-            <div>
-              <Label>Advanced (Rs) *</Label>
-              <Input
-                type="number"
-                value={containers.advanced || ""}
-                onChange={(e) =>
-                  updateContainer("advanced", parseFloat(e.target.value) || 0)
-                }
-                placeholder="Enter advanced amount"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <Label>Advanced Date *</Label>
-              <Input
-                type="date"
-                value={containers.advancedDate || todayDateInput()}
-                onChange={(e) =>
-                  updateContainer("advancedDate", e.target.value)
-                }
-              />
-            </div>
-            <div>
-              <Label>Balance Paid (Rs)</Label>
-              <Input
-                type="number"
-                value={containers.balancePaid || ""}
-                onChange={(e) =>
-                  updateContainer("balancePaid", parseFloat(e.target.value) || 0)
-                }
-                placeholder="Enter balance paid"
-              />
-            </div>
-            <div>
-              <Label>Balance Date</Label>
-              <Input
-                type="date"
-                value={containers.balanceDate || todayDateInput()}
-                onChange={(e) =>
-                  updateContainer("balanceDate", e.target.value)
-                }
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <Label>Out Hire (Rs)</Label>
-              <Input
-                type="number"
-                value={containers.outHire || ""}
-                onChange={(e) =>
-                  updateContainer("outHire", parseFloat(e.target.value) || 0)
-                }
-                placeholder="Enter out hire"
-              />
-            </div>
-            <div>
-              <Label>Other (Rs)</Label>
-              <Input
-                type="number"
-                value={containers.other || ""}
-                onChange={(e) =>
-                  updateContainer("other", parseFloat(e.target.value) || 0)
-                }
-                placeholder="Enter other amount"
-              />
-            </div>
-            <div>
-              <Label>Held Up (Rs)</Label>
-              <Input
-                type="number"
-                value={containers.heldUp || ""}
-                onChange={(e) =>
-                  updateContainer("heldUp", parseFloat(e.target.value) || 0)
-                }
-                placeholder="Enter held up amount"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <Label>Agent Fee (Rs)</Label>
-              <Input
-                type="number"
-                value={containers.agentFee || ""}
-                onChange={(e) =>
-                  updateContainer("agentFee", parseFloat(e.target.value) || 0)
-                }
-                placeholder="Enter agent fee"
-              />
-            </div>
-            <div>
-              <Label>Transport Commission (Rs)</Label>
-              <Input
-                type="number"
-                value={containers.transportCommission || ""}
-                onChange={(e) =>
-                  updateContainer(
-                    "transportCommission",
-                    parseFloat(e.target.value) || 0
-                  )
-                }
-                placeholder="Enter transport commission"
-              />
-            </div>
-            <div>
-              <Label>Return (Rs)</Label>
-              <Input
-                type="number"
-                value={containers.return || ""}
-                onChange={(e) =>
-                  updateContainer("return", parseFloat(e.target.value) || 0)
-                }
-                placeholder="Enter return amount"
-              />
-            </div>
+            <FieldGate field="weight">
+              <div>
+                <Label>Weight (kg) *</Label>
+                <Input
+                  type="number"
+                  value={containers.weight || ""}
+                  onChange={(e) =>
+                    updateContainer("weight", parseFloat(e.target.value) || 0)
+                  }
+                  placeholder="Enter weight"
+                />
+              </div>
+            </FieldGate>
+            <FieldGate field="dayHire">
+              <div>
+                <Label>Day Hire (Rs) *</Label>
+                <Input
+                  type="number"
+                  value={containers.dayHire || ""}
+                  onChange={(e) =>
+                    updateContainer("dayHire", parseFloat(e.target.value) || 0)
+                  }
+                  placeholder="Enter day hire"
+                />
+              </div>
+            </FieldGate>
+            <FieldGate field="advanced">
+              <div>
+                <Label>Advanced (Rs) *</Label>
+                <Input
+                  type="number"
+                  value={containers.advanced || ""}
+                  onChange={(e) =>
+                    updateContainer("advanced", parseFloat(e.target.value) || 0)
+                  }
+                  placeholder="Enter advanced amount"
+                />
+              </div>
+            </FieldGate>
+            <FieldGate field="advancedDate">
+              <div>
+                <Label>Advanced Date *</Label>
+                <Input
+                  type="date"
+                  value={containers.advancedDate || todayDateInput()}
+                  onChange={(e) =>
+                    updateContainer("advancedDate", e.target.value)
+                  }
+                />
+              </div>
+            </FieldGate>
+            <FieldGate field="balancePaid">
+              <div>
+                <Label>Balance Paid (Rs)</Label>
+                <Input
+                  type="number"
+                  value={containers.balancePaid || ""}
+                  onChange={(e) =>
+                    updateContainer("balancePaid", parseFloat(e.target.value) || 0)
+                  }
+                  placeholder="Enter balance paid"
+                />
+              </div>
+            </FieldGate>
+            <FieldGate field="balanceDate">
+              <div>
+                <Label>Balance Date</Label>
+                <Input
+                  type="date"
+                  value={containers.balanceDate || todayDateInput()}
+                  onChange={(e) =>
+                    updateContainer("balanceDate", e.target.value)
+                  }
+                />
+              </div>
+            </FieldGate>
+            <FieldGate field="outHire">
+              <div>
+                <Label>Out Hire (Rs)</Label>
+                <Input
+                  type="number"
+                  value={containers.outHire || ""}
+                  onChange={(e) =>
+                    updateContainer("outHire", parseFloat(e.target.value) || 0)
+                  }
+                  placeholder="Enter out hire"
+                />
+              </div>
+            </FieldGate>
+            <FieldGate field="other">
+              <div>
+                <Label>Other (Rs)</Label>
+                <Input
+                  type="number"
+                  value={containers.other || ""}
+                  onChange={(e) =>
+                    updateContainer("other", parseFloat(e.target.value) || 0)
+                  }
+                  placeholder="Enter other amount"
+                />
+              </div>
+            </FieldGate>
+            <FieldGate field="heldUp">
+              <div>
+                <Label>Held Up (Rs)</Label>
+                <Input
+                  type="number"
+                  value={containers.heldUp || ""}
+                  onChange={(e) =>
+                    updateContainer("heldUp", parseFloat(e.target.value) || 0)
+                  }
+                  placeholder="Enter held up amount"
+                />
+              </div>
+            </FieldGate>
+            <FieldGate field="agentFee">
+              <div>
+                <Label>Agent Fee (Rs)</Label>
+                <Input
+                  type="number"
+                  value={containers.agentFee || ""}
+                  onChange={(e) =>
+                    updateContainer("agentFee", parseFloat(e.target.value) || 0)
+                  }
+                  placeholder="Enter agent fee"
+                />
+              </div>
+            </FieldGate>
+            <FieldGate field="transportCommission">
+              <div>
+                <Label>Transport Commission (Rs)</Label>
+                <Input
+                  type="number"
+                  value={containers.transportCommission || ""}
+                  onChange={(e) =>
+                    updateContainer(
+                      "transportCommission",
+                      parseFloat(e.target.value) || 0
+                    )
+                  }
+                  placeholder="Enter transport commission"
+                />
+              </div>
+            </FieldGate>
+            <FieldGate field="return">
+              <div>
+                <Label>Return (Rs)</Label>
+                <Input
+                  type="number"
+                  value={containers.return || ""}
+                  onChange={(e) =>
+                    updateContainer("return", parseFloat(e.target.value) || 0)
+                  }
+                  placeholder="Enter return amount"
+                />
+              </div>
+            </FieldGate>
           </div>
           <div>
             <Label htmlFor="status">Status</Label>

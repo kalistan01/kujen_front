@@ -2,11 +2,11 @@ import {
   CHARGE_FIELDS,
   COMMISSION_FIELDS,
   containerChargesTotal,
-  containerPaid,
   formatMoney as money,
   getAssignmentFinancials,
   toAmount,
 } from "../lib/financials";
+import { canSeeField } from "@/lib/permissions";
 
 const formatDate = (value?: string | Date) => {
   if (!value) return "—";
@@ -50,8 +50,12 @@ function AssignmentPrint({ assignment }: { assignment: any }) {
   const containers = (assignment?.containers || []).filter(
     (c: any) => c && (c.containerNo || c._id)
   );
+  const chargeFields = CHARGE_FIELDS.filter((field) => canSeeField(field.key));
+  const commissionFields = COMMISSION_FIELDS.filter((field) =>
+    canSeeField(field.key)
+  );
   const { charges, commissions, total, advanced, balancePaid, remaining } =
-    getAssignmentFinancials(containers);
+    getAssignmentFinancials(containers, { chargeFields, commissionFields });
   const status = (assignment?.status || "pending").replace(/-/g, " ");
 
   return (
@@ -107,30 +111,38 @@ function AssignmentPrint({ assignment }: { assignment: any }) {
           <p className="print-empty">No containers added.</p>
         ) : (
           containers.map((c: any, index: number) => {
-            const tot = containerChargesTotal(c);
-            const paid = containerPaid(c);
+            const tot = containerChargesTotal(c, chargeFields);
+            const paid =
+              (canSeeField("advanced") ? toAmount(c.advanced) : 0) +
+              (canSeeField("balancePaid") ? toAmount(c.balancePaid) : 0);
             const chargeRows = [
-              ["Weight", toAmount(c.weight)],
-              ["Day Hire", toAmount(c.dayHire)],
-              [
-                c.advancedDate
-                  ? `Advanced (${formatDate(c.advancedDate)})`
-                  : "Advanced",
-                toAmount(c.advanced),
-              ],
-              [
-                c.balanceDate
-                  ? `Balance Paid (${formatDate(c.balanceDate)})`
-                  : "Balance Paid",
-                toAmount(c.balancePaid),
-              ],
-              ["Out Hire", toAmount(c.outHire)],
-              ["Other", toAmount(c.other)],
-              ["Held Up", toAmount(c.heldUp)],
-              ["Agent Fee", toAmount(c.agentFee)],
-              ["Transport Commission", toAmount(c.transportCommission)],
-              ["Return", toAmount(c.return)],
-            ];
+              canSeeField("weight") ? ["Weight", toAmount(c.weight)] : null,
+              canSeeField("dayHire") ? ["Day Hire", toAmount(c.dayHire)] : null,
+              canSeeField("advanced")
+                ? [
+                    c.advancedDate
+                      ? `Advanced (${formatDate(c.advancedDate)})`
+                      : "Advanced",
+                    toAmount(c.advanced),
+                  ]
+                : null,
+              canSeeField("balancePaid")
+                ? [
+                    c.balanceDate
+                      ? `Balance Paid (${formatDate(c.balanceDate)})`
+                      : "Balance Paid",
+                    toAmount(c.balancePaid),
+                  ]
+                : null,
+              canSeeField("outHire") ? ["Out Hire", toAmount(c.outHire)] : null,
+              canSeeField("other") ? ["Other", toAmount(c.other)] : null,
+              canSeeField("heldUp") ? ["Held Up", toAmount(c.heldUp)] : null,
+              canSeeField("agentFee") ? ["Agent Fee", toAmount(c.agentFee)] : null,
+              canSeeField("transportCommission")
+                ? ["Transport Commission", toAmount(c.transportCommission)]
+                : null,
+              canSeeField("return") ? ["Return", toAmount(c.return)] : null,
+            ].filter(Boolean) as [string, number][];
             return (
               <article key={c._id || index} className="print-box">
                 <div className="print-box-head">
@@ -180,6 +192,7 @@ function AssignmentPrint({ assignment }: { assignment: any }) {
                     <b>{formatDate(c.demoundDate)}</b>
                   </div>
                 </div>
+                {chargeRows.length ? (
                 <table className="print-charges">
                   <tbody>
                     {Array.from({
@@ -200,6 +213,8 @@ function AssignmentPrint({ assignment }: { assignment: any }) {
                     })}
                   </tbody>
                 </table>
+                ) : null}
+                {canSeeField("totals") ? (
                 <div className="print-totals">
                   <div>
                     <span>Total</span>
@@ -214,6 +229,7 @@ function AssignmentPrint({ assignment }: { assignment: any }) {
                     <b>{money(tot - paid)}</b>
                   </div>
                 </div>
+                ) : null}
               </article>
             );
           })
@@ -236,33 +252,42 @@ function AssignmentPrint({ assignment }: { assignment: any }) {
             </p>
           </div>
         </div>
+        {chargeFields.length || commissionFields.length || canSeeField("totals") ? (
         <div>
           <h2>Financial summary</h2>
           <table className="print-summary">
             <tbody>
-              {CHARGE_FIELDS.map((field) => (
+              {chargeFields.map((field) => (
                 <tr key={field.key}>
                   <th>{field.label}</th>
                   <td>{money(charges[field.key])}</td>
                 </tr>
               ))}
-              <tr>
-                <th>Total</th>
-                <td>{money(total)}</td>
-              </tr>
-              <tr>
-                <th>Advanced</th>
-                <td>{money(advanced)}</td>
-              </tr>
-              <tr>
-                <th>Balance Paid</th>
-                <td>{money(balancePaid)}</td>
-              </tr>
-              <tr className="print-remain">
-                <th>Remaining</th>
-                <td>{money(remaining)}</td>
-              </tr>
-              {COMMISSION_FIELDS.map((field) => (
+              {canSeeField("totals") ? (
+                <>
+                  <tr>
+                    <th>Total</th>
+                    <td>{money(total)}</td>
+                  </tr>
+                  {canSeeField("advanced") ? (
+                    <tr>
+                      <th>Advanced</th>
+                      <td>{money(advanced)}</td>
+                    </tr>
+                  ) : null}
+                  {canSeeField("balancePaid") ? (
+                    <tr>
+                      <th>Balance Paid</th>
+                      <td>{money(balancePaid)}</td>
+                    </tr>
+                  ) : null}
+                  <tr className="print-remain">
+                    <th>Remaining</th>
+                    <td>{money(remaining)}</td>
+                  </tr>
+                </>
+              ) : null}
+              {commissionFields.map((field) => (
                 <tr key={field.key}>
                   <th>{field.label}</th>
                   <td>{money(commissions[field.key])}</td>
@@ -271,6 +296,7 @@ function AssignmentPrint({ assignment }: { assignment: any }) {
             </tbody>
           </table>
         </div>
+        ) : null}
       </section>
 
       <p className="print-note">

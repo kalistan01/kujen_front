@@ -11,7 +11,8 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { isAdminUser } from "@/lib/auth";
+import { can } from "@/lib/permissions";
+import { P } from "@/lib/permissions";
 
 type ActivityItem = {
   _id: string;
@@ -63,7 +64,11 @@ const moduleTone: Record<string, string> = {
 
 export const Dashboard = () => {
   const navigate = useNavigate();
-  const admin = isAdminUser();
+  const canUsers = can(P.USERS_VIEW) || can(P.USERS_MANAGE);
+  const canLorries = can(P.LORRIES_VIEW) || can(P.LORRIES_MANAGE);
+  const canDestinations = can(P.DESTINATIONS_VIEW) || can(P.DESTINATIONS_MANAGE);
+  const canAssignments = can(P.ASSIGNMENTS_VIEW) || can(P.ASSIGNMENTS_MANAGE);
+  const canLogs = can(P.LOGS_VIEW);
   const [stats, setStats] = useState([
     {
       title: "Total Users",
@@ -192,7 +197,22 @@ export const Dashboard = () => {
       </section>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {stats.map((stat) => {
+        {stats
+          .filter((stat) => {
+            switch (stat.title) {
+              case "Total Users":
+                return canUsers;
+              case "Lorry Owners":
+                return canLorries;
+              case "Destinations":
+                return canDestinations;
+              case "Assignments":
+                return canAssignments;
+              default:
+                return true;
+            }
+          })
+          .map((stat) => {
           const Icon = stat.icon;
           return (
             <button
@@ -240,7 +260,7 @@ export const Dashboard = () => {
                 <TrendingUp className="h-5 w-5 text-amber-500" />
                 Recent activity
               </span>
-              {admin && (
+              {canLogs && (
                 <button
                   type="button"
                   onClick={() => navigate("/logs")}
@@ -339,7 +359,22 @@ export const Dashboard = () => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {actions.map((action) => {
+            {actions
+              .filter((action) => {
+                switch (action.href) {
+                  case "/users":
+                    return can(P.USERS_MANAGE);
+                  case "/lorry-owners":
+                    return can(P.LORRIES_MANAGE);
+                  case "/destinations":
+                    return can(P.DESTINATIONS_MANAGE);
+                  case "/assignments":
+                    return can(P.ASSIGNMENTS_MANAGE);
+                  default:
+                    return true;
+                }
+              })
+              .map((action) => {
               const Icon = action.icon;
               return (
                 <button

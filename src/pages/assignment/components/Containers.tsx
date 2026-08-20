@@ -23,12 +23,14 @@ import { useToast } from "@/hooks/use-toast";
 import { useParams } from "react-router-dom";
 import EditContainer from "./EditContainer";
 import {
-  containerBalance,
   containerChargesTotal,
-  containerPaid,
   formatMoney,
   todayDateInput,
+  CHARGE_FIELDS,
+  roundMoney,
+  toAmount,
 } from "../lib/financials";
+import { canSeeField, canManageAssignments } from "@/lib/permissions";
 interface ContainerType {
   _id?: string;
   containerNo?: string;
@@ -155,9 +157,14 @@ function Containers({
         setPaying(false);
       });
   };
-  const total = containerChargesTotal(container);
-  const paid = containerPaid(container);
-  const balance = containerBalance(container);
+  const visibleCharges = CHARGE_FIELDS.filter((field) => canSeeField(field.key));
+  const total = containerChargesTotal(container, visibleCharges);
+  const paid = roundMoney(
+    (canSeeField("advanced") ? toAmount(container.advanced) : 0) +
+      (canSeeField("balancePaid") ? toAmount(container.balancePaid) : 0)
+  );
+  const balance = roundMoney(total - paid);
+  const canManage = canManageAssignments();
 
   const statusTone =
     status === "completed"
@@ -170,7 +177,7 @@ function Containers({
     <div className={`space-y-3 rounded-lg border border-l-4 border-border/80 p-4 ${statusTone}`}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex min-w-0 items-start gap-3">
-          {balance > 0 && container?._id && onSelect ? (
+          {balance > 0 && container?._id && onSelect && canManage ? (
             <Checkbox
               className="mt-1"
               checked={selected}
@@ -186,6 +193,7 @@ function Containers({
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {canManage ? (
           <Select
             defaultValue={container?.status}
             onValueChange={(value: "pending" | "in-progress" | "completed") => {
@@ -201,6 +209,12 @@ function Containers({
               <SelectItem value="completed">Completed</SelectItem>
             </SelectContent>
           </Select>
+          ) : (
+            <span className="text-xs capitalize text-muted-foreground">
+              {(status || "pending").replace(/-/g, " ")}
+            </span>
+          )}
+          {canManage ? (
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button
@@ -224,6 +238,7 @@ function Containers({
               />
             </DialogContent>
           </Dialog>
+          ) : null}
         </div>
       </div>
 
@@ -250,17 +265,23 @@ function Containers({
 
       <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-4">
         {[
-          ["Weight", container.weight],
-          ["Day Hire", container.dayHire],
-          ["Advanced", container.advanced],
-          ["Balance Paid", container.balancePaid],
-          ["Out Hire", container.outHire],
-          ["Other", container.other],
-          ["Held Up", container.heldUp],
-          ["Agent Fee", container.agentFee],
-          ["Transport Commission", container.transportCommission],
-          ["Return", container.return],
-        ].map(([label, value]) => (
+          canSeeField("weight") ? ["Weight", container.weight, "weight"] : null,
+          canSeeField("dayHire") ? ["Day Hire", container.dayHire, "dayHire"] : null,
+          canSeeField("advanced") ? ["Advanced", container.advanced, "advanced"] : null,
+          canSeeField("balancePaid") ? ["Balance Paid", container.balancePaid, "balancePaid"] : null,
+          canSeeField("outHire") ? ["Out Hire", container.outHire, "outHire"] : null,
+          canSeeField("other") ? ["Other", container.other, "other"] : null,
+          canSeeField("heldUp") ? ["Held Up", container.heldUp, "heldUp"] : null,
+          canSeeField("agentFee") ? ["Agent Fee", container.agentFee, "agentFee"] : null,
+          canSeeField("transportCommission")
+            ? ["Transport Commission", container.transportCommission, "transportCommission"]
+            : null,
+          canSeeField("return") ? ["Return", container.return, "return"] : null,
+        ]
+          .filter(Boolean)
+          .map((row) => {
+            const [label, value] = row as [string, number, string];
+            return (
           <div key={String(label)}>
             <p className="text-xs text-muted-foreground">{label}</p>
             <p
@@ -272,20 +293,22 @@ function Containers({
             >
               {formatMoney(value)}
             </p>
-            {label === "Advanced" ? (
+            {label === "Advanced" && canSeeField("advancedDate") ? (
               <p className="text-xs text-muted-foreground">
                 {formatDate(container.advancedDate)}
               </p>
             ) : null}
-            {label === "Balance Paid" && container.balancePaid ? (
+            {label === "Balance Paid" && container.balancePaid && canSeeField("balanceDate") ? (
               <p className="text-xs text-muted-foreground">
                 {formatDate(container.balanceDate)}
               </p>
             ) : null}
           </div>
-        ))}
+            );
+          })}
       </div>
 
+      {canSeeField("totals") ? (
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/70 pt-2 text-sm">
         <div className="flex flex-wrap gap-x-5 gap-y-1">
           <p>
@@ -303,7 +326,7 @@ function Containers({
             <span className="font-bold">{formatMoney(balance)}</span>
           </p>
         </div>
-        {balance > 0 ? (
+        {balance > 0 && canManage && canSeeField("balancePaid") ? (
           <Dialog
             open={isPayOpen}
             onOpenChange={(open) => {
@@ -355,6 +378,7 @@ function Containers({
           </Dialog>
         ) : null}
       </div>
+      ) : null}
 
       <div className="flex flex-wrap gap-x-5 text-xs text-muted-foreground">
         <span>

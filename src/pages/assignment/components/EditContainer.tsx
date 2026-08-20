@@ -16,7 +16,9 @@ import { useParams } from "react-router-dom";
 import DestinationSelect, {
   type DestinationOption,
 } from "./DestinationSelect";
-import { todayDateInput, toDateInput, containerBalance, containerChargesTotal, containerPaid, formatMoney, toAmount } from "../lib/financials";
+import { todayDateInput, toDateInput, containerChargesTotal, formatMoney, toAmount, CHARGE_FIELDS, roundMoney } from "../lib/financials";
+import { canSeeField, omitHiddenContainerFields } from "@/lib/permissions";
+import { FieldGate } from "@/components/RequirePermission";
 interface Container {
   _id?: string;
   containerNo?: string;
@@ -145,7 +147,7 @@ function EditContainer({
   const handleSave = () => {
 
     baseUrl
-      .put(`assignlorry/${id}/containers/${containers?._id}`, containers)
+      .put(`assignlorry/${id}/containers/${containers?._id}`, omitHiddenContainerFields(containers))
       .then(async (response) => {
         toast({
           title: "Success",
@@ -160,12 +162,16 @@ function EditContainer({
     resetForm();
   };
 
-  const total = containerChargesTotal(containers);
-  const paid = containerPaid(containers);
-  const remaining = containerBalance(containers);
+  const visibleCharges = CHARGE_FIELDS.filter((field) => canSeeField(field.key));
+  const total = containerChargesTotal(containers, visibleCharges);
+  const paid = roundMoney(
+    (canSeeField("advanced") ? toAmount(containers.advanced) : 0) +
+      (canSeeField("balancePaid") ? toAmount(containers.balancePaid) : 0)
+  );
+  const remaining = roundMoney(total - paid);
   const balanceDue = Math.max(
     0,
-    total - toAmount(containers.advanced)
+    total - (canSeeField("advanced") ? toAmount(containers.advanced) : 0)
   );
 
   return (
@@ -252,172 +258,188 @@ function EditContainer({
           </div>
 
           <div className="grid grid-cols-3 gap-4">
-            <div>
-              <Label>Weight (kg) *</Label>
-              <Input
-                type="number"
-                value={containers.weight || ""}
-                onChange={(e) =>
-                  updateContainer("weight", parseFloat(e.target.value) || 0)
-                }
-                placeholder="Enter weight"
-              />
-            </div>
-            <div>
-              <Label>Day Hire (Rs) *</Label>
-              <Input
-                type="number"
-                value={containers.dayHire || ""}
-                onChange={(e) =>
-                  updateContainer("dayHire", parseFloat(e.target.value) || 0)
-                }
-                placeholder="Enter day hire"
-              />
-            </div>
-            <div>
-              <Label>Advanced (Rs) *</Label>
-              <Input
-                type="number"
-                value={containers.advanced || ""}
-                onChange={(e) =>
-                  updateContainer("advanced", parseFloat(e.target.value) || 0)
-                }
-                placeholder="Enter advanced amount"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <Label>Advanced Date *</Label>
-              <Input
-                type="date"
-                value={toDateInput(containers.advancedDate)}
-                onChange={(e) =>
-                  updateContainer("advancedDate", e.target.value)
-                }
-              />
-            </div>
-            <div>
-              <Label>Balance (Rs)</Label>
-              <Input
-                type="number"
-                value={balanceDue}
-                readOnly
-                className="bg-muted"
-              />
-            </div>
-            <div>
-              <Label>Remaining (Rs)</Label>
-              <Input
-                type="number"
-                value={remaining}
-                readOnly
-                className="bg-muted"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <Label>Balance Paid (Rs)</Label>
-              <Input
-                type="number"
-                value={containers.balancePaid || ""}
-                onChange={(e) =>
-                  updateContainer(
-                    "balancePaid",
-                    parseFloat(e.target.value) || 0
-                  )
-                }
-                placeholder={balanceDue ? String(balanceDue) : "Enter balance paid"}
-              />
-            </div>
-            <div>
-              <Label>Balance Date</Label>
-              <Input
-                type="date"
-                value={toDateInput(containers.balanceDate)}
-                onChange={(e) =>
-                  updateContainer("balanceDate", e.target.value)
-                }
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <Label>Out Hire (Rs)</Label>
-              <Input
-                type="number"
-                value={containers.outHire || ""}
-                onChange={(e) =>
-                  updateContainer("outHire", parseFloat(e.target.value) || 0)
-                }
-                placeholder="Enter out hire"
-              />
-            </div>
-            <div>
-              <Label>Other (Rs)</Label>
-              <Input
-                type="number"
-                value={containers.other || ""}
-                onChange={(e) =>
-                  updateContainer("other", parseFloat(e.target.value) || 0)
-                }
-                placeholder="Enter other amount"
-              />
-            </div>
-            <div>
-              <Label>Held Up (Rs)</Label>
-              <Input
-                type="number"
-                value={containers.heldUp || ""}
-                onChange={(e) =>
-                  updateContainer("heldUp", parseFloat(e.target.value) || 0)
-                }
-                placeholder="Enter held up amount"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <Label>Agent Fee (Rs)</Label>
-              <Input
-                type="number"
-                value={containers.agentFee || ""}
-                onChange={(e) =>
-                  updateContainer("agentFee", parseFloat(e.target.value) || 0)
-                }
-                placeholder="Enter agent fee"
-              />
-            </div>
-            <div>
-              <Label>Transport Commission (Rs)</Label>
-              <Input
-                type="number"
-                value={containers.transportCommission || ""}
-                onChange={(e) =>
-                  updateContainer(
-                    "transportCommission",
-                    parseFloat(e.target.value) || 0
-                  )
-                }
-                placeholder="Enter transport commission"
-              />
-            </div>
-            <div>
-              <Label>Return (Rs)</Label>
-              <Input
-                type="number"
-                value={containers.return || ""}
-                onChange={(e) =>
-                  updateContainer("return", parseFloat(e.target.value) || 0)
-                }
-                placeholder="Enter return amount"
-              />
-            </div>
+            <FieldGate field="weight">
+              <div>
+                <Label>Weight (kg) *</Label>
+                <Input
+                  type="number"
+                  value={containers.weight || ""}
+                  onChange={(e) =>
+                    updateContainer("weight", parseFloat(e.target.value) || 0)
+                  }
+                  placeholder="Enter weight"
+                />
+              </div>
+            </FieldGate>
+            <FieldGate field="dayHire">
+              <div>
+                <Label>Day Hire (Rs) *</Label>
+                <Input
+                  type="number"
+                  value={containers.dayHire || ""}
+                  onChange={(e) =>
+                    updateContainer("dayHire", parseFloat(e.target.value) || 0)
+                  }
+                  placeholder="Enter day hire"
+                />
+              </div>
+            </FieldGate>
+            <FieldGate field="advanced">
+              <div>
+                <Label>Advanced (Rs) *</Label>
+                <Input
+                  type="number"
+                  value={containers.advanced || ""}
+                  onChange={(e) =>
+                    updateContainer("advanced", parseFloat(e.target.value) || 0)
+                  }
+                  placeholder="Enter advanced amount"
+                />
+              </div>
+            </FieldGate>
+            <FieldGate field="advancedDate">
+              <div>
+                <Label>Advanced Date *</Label>
+                <Input
+                  type="date"
+                  value={toDateInput(containers.advancedDate)}
+                  onChange={(e) =>
+                    updateContainer("advancedDate", e.target.value)
+                  }
+                />
+              </div>
+            </FieldGate>
+            <FieldGate field="totals">
+              <div>
+                <Label>Balance (Rs)</Label>
+                <Input
+                  type="number"
+                  value={balanceDue}
+                  readOnly
+                  className="bg-muted"
+                />
+              </div>
+            </FieldGate>
+            <FieldGate field="totals">
+              <div>
+                <Label>Remaining (Rs)</Label>
+                <Input
+                  type="number"
+                  value={remaining}
+                  readOnly
+                  className="bg-muted"
+                />
+              </div>
+            </FieldGate>
+            <FieldGate field="balancePaid">
+              <div>
+                <Label>Balance Paid (Rs)</Label>
+                <Input
+                  type="number"
+                  value={containers.balancePaid || ""}
+                  onChange={(e) =>
+                    updateContainer(
+                      "balancePaid",
+                      parseFloat(e.target.value) || 0
+                    )
+                  }
+                  placeholder={balanceDue ? String(balanceDue) : "Enter balance paid"}
+                />
+              </div>
+            </FieldGate>
+            <FieldGate field="balanceDate">
+              <div>
+                <Label>Balance Date</Label>
+                <Input
+                  type="date"
+                  value={toDateInput(containers.balanceDate)}
+                  onChange={(e) =>
+                    updateContainer("balanceDate", e.target.value)
+                  }
+                />
+              </div>
+            </FieldGate>
+            <FieldGate field="outHire">
+              <div>
+                <Label>Out Hire (Rs)</Label>
+                <Input
+                  type="number"
+                  value={containers.outHire || ""}
+                  onChange={(e) =>
+                    updateContainer("outHire", parseFloat(e.target.value) || 0)
+                  }
+                  placeholder="Enter out hire"
+                />
+              </div>
+            </FieldGate>
+            <FieldGate field="other">
+              <div>
+                <Label>Other (Rs)</Label>
+                <Input
+                  type="number"
+                  value={containers.other || ""}
+                  onChange={(e) =>
+                    updateContainer("other", parseFloat(e.target.value) || 0)
+                  }
+                  placeholder="Enter other amount"
+                />
+              </div>
+            </FieldGate>
+            <FieldGate field="heldUp">
+              <div>
+                <Label>Held Up (Rs)</Label>
+                <Input
+                  type="number"
+                  value={containers.heldUp || ""}
+                  onChange={(e) =>
+                    updateContainer("heldUp", parseFloat(e.target.value) || 0)
+                  }
+                  placeholder="Enter held up amount"
+                />
+              </div>
+            </FieldGate>
+            <FieldGate field="agentFee">
+              <div>
+                <Label>Agent Fee (Rs)</Label>
+                <Input
+                  type="number"
+                  value={containers.agentFee || ""}
+                  onChange={(e) =>
+                    updateContainer("agentFee", parseFloat(e.target.value) || 0)
+                  }
+                  placeholder="Enter agent fee"
+                />
+              </div>
+            </FieldGate>
+            <FieldGate field="transportCommission">
+              <div>
+                <Label>Transport Commission (Rs)</Label>
+                <Input
+                  type="number"
+                  value={containers.transportCommission || ""}
+                  onChange={(e) =>
+                    updateContainer(
+                      "transportCommission",
+                      parseFloat(e.target.value) || 0
+                    )
+                  }
+                  placeholder="Enter transport commission"
+                />
+              </div>
+            </FieldGate>
+            <FieldGate field="return">
+              <div>
+                <Label>Return (Rs)</Label>
+                <Input
+                  type="number"
+                  value={containers.return || ""}
+                  onChange={(e) =>
+                    updateContainer("return", parseFloat(e.target.value) || 0)
+                  }
+                  placeholder="Enter return amount"
+                />
+              </div>
+            </FieldGate>
           </div>
           <div>
             <Label htmlFor="status">Status</Label>
@@ -440,6 +462,7 @@ function EditContainer({
         </div>
       </div>
 
+      {canSeeField("totals") ? (
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/40 px-4 py-3 text-sm">
         <p>
           <span className="text-muted-foreground">Total </span>
@@ -456,6 +479,7 @@ function EditContainer({
           <span className="font-bold">{formatMoney(remaining)}</span>
         </p>
       </div>
+      ) : null}
 
       <div className="flex justify-end gap-2 pt-4">
         <Button variant="outline" onClick={() => setIsDialogOpen(false)}>

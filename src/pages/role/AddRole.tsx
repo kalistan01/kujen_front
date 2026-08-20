@@ -6,6 +6,15 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import baseUrl from "@/api/baseUrl";
+import {
+  ALL_PERMISSION_IDS,
+  DEFAULT_STAFF_PERMISSIONS,
+  FIELD_PERMISSIONS,
+  PAGE_PERMISSIONS,
+  hydrateRolePermissions,
+  type PermissionItem,
+} from "@/lib/permissions";
+
 interface Role {
   id: string;
   _id?: string;
@@ -16,25 +25,13 @@ interface Role {
   admin: boolean;
   createdAt: string;
 }
-const availablePermissions = [
-  { id: 1, name: "View Users", description: "Can view user information" },
-  {
-    id: 2,
-    name: "Manage Users",
-    description: "Can add, edit, and delete users",
-  },
-  { id: 3, name: "View Lorries", description: "Can view lorry information" },
-  {
-    id: 4,
-    name: "Manage Lorries",
-    description: "Can add, edit, and delete lorries",
-  },
-  {
-    id: 5,
-    name: "Manage Assignments",
-    description: "Can create and modify assignments",
-  },
-];
+
+function splitPermissions(allowed: number[]) {
+  const permission = Array.from(new Set(allowed));
+  const denied = ALL_PERMISSION_IDS.filter((id) => !permission.includes(id));
+  return { permission, denied };
+}
+
 function AddRole({
   editingRole,
   setRoles,
@@ -47,26 +44,34 @@ function AddRole({
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     roleName: "",
-    permission: [] as number[],
-    denied: [] as number[],
+    permission: DEFAULT_STAFF_PERMISSIONS as number[],
+    denied: ALL_PERMISSION_IDS.filter(
+      (id) => !DEFAULT_STAFF_PERMISSIONS.includes(id)
+    ),
     status: true,
     admin: false,
   });
   const resetForm = () => {
     setFormData({
       roleName: "",
-      permission: [],
-      denied: [],
+      permission: [...DEFAULT_STAFF_PERMISSIONS],
+      denied: ALL_PERMISSION_IDS.filter(
+        (id) => !DEFAULT_STAFF_PERMISSIONS.includes(id)
+      ),
       status: true,
       admin: false,
     });
   };
   useEffect(() => {
     if (editingRole) {
+      const access = hydrateRolePermissions(
+        editingRole.permission,
+        editingRole.denied
+      );
       setFormData({
         roleName: editingRole.roleName,
-        permission: editingRole.permission,
-        denied: editingRole.denied,
+        permission: access.permission,
+        denied: access.denied,
         status: editingRole.status,
         admin: editingRole.admin,
       });
@@ -77,20 +82,26 @@ function AddRole({
   }, [editingRole]);
 
   const handlePermissionChange = (permissionId: number, checked: boolean) => {
-    if (checked) {
-      setFormData({
-        ...formData,
-        permission: [...formData.permission, permissionId],
-        denied: formData.denied.filter((id) => id !== permissionId),
-      });
-    } else {
-      setFormData({
-        ...formData,
-        permission: formData.permission.filter((id) => id !== permissionId),
-        denied: [...formData.denied, permissionId],
-      });
-    }
+    const nextAllowed = checked
+      ? [...formData.permission, permissionId]
+      : formData.permission.filter((id) => id !== permissionId);
+    setFormData({
+      ...formData,
+      ...splitPermissions(nextAllowed),
+    });
   };
+
+  const handleGroupToggle = (items: PermissionItem[], checked: boolean) => {
+    const ids = items.map((item) => item.id);
+    const nextAllowed = checked
+      ? Array.from(new Set([...formData.permission, ...ids]))
+      : formData.permission.filter((id) => !ids.includes(id));
+    setFormData({
+      ...formData,
+      ...splitPermissions(nextAllowed),
+    });
+  };
+
   const handleSave = () => {
     if (!formData.roleName) {
       toast({
@@ -100,15 +111,22 @@ function AddRole({
       });
       return;
     }
+    const payload = formData.admin
+      ? {
+          ...formData,
+          permission: [...ALL_PERMISSION_IDS],
+          denied: [] as number[],
+        }
+      : formData;
     if (editingRole) {
       baseUrl
-        .patch("/role/updateRole", formData,{
-            headers: { roleid: editingRole._id },
+        .patch("/role/updateRole", payload, {
+          headers: { roleid: editingRole._id },
         })
-        .then(async (response) => {
+        .then(async () => {
           setRoles((prevRoles) =>
             prevRoles.map((role) =>
-              role._id === editingRole._id ? { ...role, ...formData } : role
+              role._id === editingRole._id ? { ...role, ...payload } : role
             )
           );
           toast({
@@ -122,12 +140,12 @@ function AddRole({
     } else {
       const newRole: Role = {
         id: Date.now().toString(),
-        ...formData,
+        ...payload,
         createdAt: new Date().toISOString().split("T")[0],
       };
       baseUrl
         .post("/role/addRole", newRole)
-        .then(async (response) => {
+        .then(async () => {
           setRoles((prevRoles) => [...prevRoles, newRole]);
           toast({
             title: "Success",
@@ -141,27 +159,34 @@ function AddRole({
     setIsDialogOpen(false);
     resetForm();
   };
-  return (
-    <div className="space-y-4">
+
+  const renderGroup = (title: string, items: PermissionItem[]) => {
+    const allChecked = items.every((item) =>
+      formData.permission.includes(item.id)
+    );
+    return (
       <div>
-        <Label htmlFor="roleName">Role Name *</Label>
-        <Input
-          id="roleName"
-          value={formData.roleName}
-          onChange={(e) =>
-            setFormData({ ...formData, roleName: e.target.value })
-          }
-          placeholder="Enter role name"
-        />
-      </div>
-      <div>
-        <Label>Permissions</Label>
-        <div className="space-y-3 mt-2 max-h-48 overflow-y-auto">
-          {availablePermissions.map((permission) => (
+        <div className="mb-2 flex items-center justify-between">
+          <Label>{title}</Label>
+          {!formData.admin && (
+            <button
+              type="button"
+              className="text-xs font-medium text-muted-foreground hover:text-foreground"
+              onClick={() => handleGroupToggle(items, !allChecked)}
+            >
+              {allChecked ? "Clear" : "Select all"}
+            </button>
+          )}
+        </div>
+        <div className="max-h-48 space-y-3 overflow-y-auto rounded-lg border border-border/70 p-3">
+          {items.map((permission) => (
             <div key={permission.id} className="flex items-start space-x-3">
               <Checkbox
                 id={`permission-${permission.id}`}
-                checked={formData.permission.includes(permission.id)}
+                checked={
+                  formData.admin || formData.permission.includes(permission.id)
+                }
+                disabled={formData.admin}
                 onCheckedChange={(checked) =>
                   handlePermissionChange(permission.id, checked as boolean)
                 }
@@ -181,12 +206,36 @@ function AddRole({
           ))}
         </div>
       </div>
+    );
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label htmlFor="roleName">Role Name *</Label>
+        <Input
+          id="roleName"
+          value={formData.roleName}
+          onChange={(e) =>
+            setFormData({ ...formData, roleName: e.target.value })
+          }
+          placeholder="Enter role name"
+        />
+      </div>
+      {renderGroup("Pages", PAGE_PERMISSIONS)}
+      {renderGroup("Assignment fields", FIELD_PERMISSIONS)}
       <div className="flex items-center space-x-2">
         <Checkbox
           id="admin"
           checked={formData.admin}
           onCheckedChange={(checked) =>
-            setFormData({ ...formData, admin: checked as boolean })
+            setFormData({
+              ...formData,
+              admin: checked as boolean,
+              ...(checked
+                ? { permission: [...ALL_PERMISSION_IDS], denied: [] }
+                : {}),
+            })
           }
         />
         <Label htmlFor="admin">Admin Role</Label>

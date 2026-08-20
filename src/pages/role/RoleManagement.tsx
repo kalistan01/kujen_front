@@ -24,6 +24,7 @@ import AddRole from "./AddRole";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
+import { ALL_PERMISSIONS } from "@/lib/permissions";
 
 interface Role {
   id: string;
@@ -40,7 +41,7 @@ const mockRoles: Role[] = [
   {
     id: "1",
     roleName: "Admin",
-    permission: [1, 2, 3, 4, 5],
+    permission: ALL_PERMISSIONS.map((item) => item.id),
     denied: [],
     status: true,
     admin: true,
@@ -49,31 +50,11 @@ const mockRoles: Role[] = [
   {
     id: "2",
     roleName: "Manager",
-    permission: [1, 2, 3],
-    denied: [4, 5],
+    permission: [1, 2, 3, 6, 8],
+    denied: [4, 5, 7, 9, 10],
     status: true,
     admin: false,
     createdAt: "2024-01-05",
-  },
-];
-
-const availablePermissions = [
-  { id: 1, name: "View Users", description: "Can view user information" },
-  {
-    id: 2,
-    name: "Manage Users",
-    description: "Can add, edit, and delete users",
-  },
-  { id: 3, name: "View Lorries", description: "Can view lorry information" },
-  {
-    id: 4,
-    name: "Manage Lorries",
-    description: "Can add, edit, and delete lorries",
-  },
-  {
-    id: 5,
-    name: "Manage Assignments",
-    description: "Can create and modify assignments",
   },
 ];
 
@@ -163,7 +144,7 @@ export const RoleManagement = () => {
               Add Role
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
+          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
             <DialogHeader>
               <DialogTitle>
                 {editingRole ? "Edit Role" : "Add New Role"}
@@ -208,11 +189,11 @@ export const RoleManagement = () => {
               </TableHeader>
               <TableBody>
                 {filtered.map((role, index) => {
-                  const namedPermissions = role.permission
+                  const namedPermissions = (role.permission || [])
                     .map((permId) =>
-                      availablePermissions.find((p) => p.id === permId)
+                      ALL_PERMISSIONS.find((p) => p.id === permId)
                     )
-                    .filter(Boolean);
+                    .filter((perm) => perm && perm.group === "pages");
 
                   return (
                     <TableRow key={role._id || index}>
@@ -229,7 +210,7 @@ export const RoleManagement = () => {
                           <Badge variant="secondary">
                             {role.admin
                               ? "Full access"
-                              : `${role.permission.length} permissions`}
+                              : `${(role.permission || []).length} permissions`}
                           </Badge>
                         ) : (
                           <div className="flex flex-wrap gap-1">
