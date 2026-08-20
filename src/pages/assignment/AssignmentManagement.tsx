@@ -41,6 +41,7 @@ import AddAssignment from "./AddAssignment";
 import { StatusBadge } from "@/components/StatusBadge";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
+import TablePagination from "@/components/TablePagination";
 
 const formatDate = (value?: string) => {
   if (!value) return "—";
@@ -71,6 +72,8 @@ export const AssignmentManagement = () => {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [exporting, setExporting] = useState<"pdf" | "excel" | null>(null);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -120,6 +123,17 @@ export const AssignmentManagement = () => {
       return true;
     });
   }, [assignments, query, status, fromDate, toDate]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query, status, fromDate, toDate]);
+
+  const pages = Math.max(1, Math.ceil(filtered.length / pageSize) || 1);
+  const currentPage = Math.min(page, pages);
+  const paged = filtered.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   const hasFilters = Boolean(query.trim() || status !== "all" || fromDate || toDate);
 
@@ -268,6 +282,7 @@ export const AssignmentManagement = () => {
                   setStatus("all");
                   setFromDate("");
                   setToDate("");
+                  setPage(1);
                 }}
               >
                 Clear
@@ -300,7 +315,7 @@ export const AssignmentManagement = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((assignment, index: number) => {
+                {paged.map((assignment, index: number) => {
                   const containers = assignment.containers || [];
                   return (
                     <TableRow key={assignment._id || index}>
@@ -373,6 +388,13 @@ export const AssignmentManagement = () => {
               </TableBody>
             </Table>
           )}
+          <TablePagination
+            page={currentPage}
+            pages={pages}
+            total={filtered.length}
+            limit={pageSize}
+            onPageChange={setPage}
+          />
         </CardContent>
       </Card>
     </div>

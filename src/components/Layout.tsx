@@ -127,7 +127,7 @@ export const Layout = () => {
             <img
               src="/logo.png"
               alt="RG Brothers"
-              className="h-11 w-11 rounded-lg bg-black object-cover ring-1 ring-sidebar-foreground/40"
+              className="h-11 w-11 rounded-lg bg-white object-cover ring-1 ring-sidebar-foreground/40"
             />
             <div className="min-w-0">
               <h1 className="truncate text-[17px] font-bold leading-tight tracking-tight text-sidebar-foreground">

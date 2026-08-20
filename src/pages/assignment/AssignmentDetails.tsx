@@ -9,7 +9,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Package, Printer, Trash2, Plus, ArrowLeft, FileDown, FileSpreadsheet } from "lucide-react";
+import { Package, Printer, Trash2, Plus, ArrowLeft, FileDown, FileSpreadsheet, Banknote } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import baseUrl from "@/api/baseUrl";
 import Containers from "./components/Containers";
@@ -19,6 +19,14 @@ import BasicInfo from "./components/BasicInfo";
 import AddContainer from "./components/AddContainer";
 import { StatusBadge } from "@/components/StatusBadge";
 import AssignmentPrint from "./components/AssignmentPrint";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  containerBalance,
+  formatMoney,
+  todayDateInput,
+} from "./lib/financials";
 
 const AssignmentDetails = () => {
   const { id } = useParams();
@@ -29,8 +37,13 @@ const AssignmentDetails = () => {
   const [isBasicDialogOpen, setIsBasicDialogOpen] = useState(false);
   const [open, setOpen] = useState(false);
   const [assignment, setAssignment] = useState<any | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isBulkPayOpen, setIsBulkPayOpen] = useState(false);
+  const [bulkPayDate, setBulkPayDate] = useState(todayDateInput());
+  const [bulkPaying, setBulkPaying] = useState(false);
 
-  useEffect(() => {
+  const loadAssignment = () => {
+    if (!id) return;
     baseUrl
       .get("/assignlorry/" + id)
       .then(async (response) => {
@@ -39,7 +52,11 @@ const AssignmentDetails = () => {
       .catch((error) => {
         console.error(error);
       });
-  }, [isDialogOpen, isBasicDialogOpen, open]);
+  };
+
+  useEffect(() => {
+    loadAssignment();
+  }, [id, isDialogOpen, isBasicDialogOpen, open]);
 
   const [exporting, setExporting] = useState<"pdf" | "excel" | null>(null);
 
@@ -81,6 +98,67 @@ const AssignmentDetails = () => {
     document.title = `RG Brothers - BL ${assignment?.blNo || ""}`.trim();
     window.print();
     document.title = previousTitle;
+  };
+
+  const containers = assignment?.containers || [];
+  const payableContainers = containers.filter(
+    (c: any) => c?._id && containerBalance(c) > 0
+  );
+  const selectedContainers = payableContainers.filter((c: any) =>
+    selectedIds.includes(c._id)
+  );
+  const selectedTotal = selectedContainers.reduce(
+    (sum: number, c: any) => sum + containerBalance(c),
+    0
+  );
+  const allPayableSelected =
+    payableContainers.length > 0 &&
+    payableContainers.every((c: any) => selectedIds.includes(c._id));
+
+  const toggleSelected = (containerId: string, checked: boolean) => {
+    setSelectedIds((prev) =>
+      checked
+        ? prev.includes(containerId)
+          ? prev
+          : [...prev, containerId]
+        : prev.filter((id) => id !== containerId)
+    );
+  };
+
+  const toggleSelectAll = (checked: boolean) => {
+    setSelectedIds(checked ? payableContainers.map((c: any) => c._id) : []);
+  };
+
+  const handleBulkPay = () => {
+    if (!id || bulkPaying || !selectedContainers.length) return;
+    setBulkPaying(true);
+    baseUrl
+      .patch(`/assignlorry/${id}/pay-balances`, {
+        containerIds: selectedContainers.map((c: any) => c._id),
+        balanceDate: bulkPayDate || todayDateInput(),
+      })
+      .then(() => {
+        toast({
+          title: "Balances paid",
+          description: `${selectedContainers.length} container${
+            selectedContainers.length === 1 ? "" : "s"
+          } · ${formatMoney(selectedTotal)}`,
+        });
+        setIsBulkPayOpen(false);
+        setSelectedIds([]);
+        loadAssignment();
+      })
+      .catch((error) => {
+        toast({
+          title: "Payment failed",
+          description:
+            error?.response?.data?.message || "Could not pay the balances.",
+          variant: "destructive",
+        });
+      })
+      .finally(() => {
+        setBulkPaying(false);
+      });
   };
 
   const confrimDelete = () => {
@@ -169,11 +247,41 @@ const AssignmentDetails = () => {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 py-3">
-              <CardTitle className="flex items-center text-base">
-                <Package className="mr-2 h-4 w-4 text-amber-600" />
-                Containers ({assignment?.containers?.length || 0})
-              </CardTitle>
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <div className="flex items-center gap-3">
+                {payableContainers.length ? (
+                  <Checkbox
+                    checked={allPayableSelected}
+                    onCheckedChange={(checked) =>
+                      toggleSelectAll(Boolean(checked))
+                    }
+                    aria-label="Select all containers with balance"
+                  />
+                ) : null}
+                <CardTitle className="flex items-center text-base">
+                  <Package className="mr-2 h-4 w-4 text-amber-600" />
+                  Containers ({assignment?.containers?.length || 0})
+                </CardTitle>
+              </div>
+              <div className="flex items-center gap-2">
+                {payableContainers.length ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={!selectedContainers.length}
+                    onClick={() => {
+                      setBulkPayDate(todayDateInput());
+                      setIsBulkPayOpen(true);
+                    }}
+                  >
+                    <Banknote className="h-4 w-4" />
+                    Pay selected
+                    {selectedContainers.length
+                      ? ` (${selectedContainers.length})`
+                      : ""}
+                  </Button>
+                ) : null}
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
                   <Button
                     type="button"
@@ -191,6 +299,7 @@ const AssignmentDetails = () => {
                   <AddContainer setIsDialogOpen={setIsDialogOpen} />
                 </DialogContent>
               </Dialog>
+              </div>
             </CardHeader>
             <CardContent className="space-y-3 pb-4">
               {assignment?.containers?.length ? (
@@ -199,6 +308,14 @@ const AssignmentDetails = () => {
                     key={container._id || index}
                     container={container}
                     setOpen={setOpen}
+                    onPaid={() => {
+                      setSelectedIds((prev) =>
+                        prev.filter((cid) => cid !== container._id)
+                      );
+                      loadAssignment();
+                    }}
+                    selected={selectedIds.includes(container._id)}
+                    onSelect={toggleSelected}
                   />
                 ))
               ) : (
@@ -210,11 +327,70 @@ const AssignmentDetails = () => {
           </Card>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-4 lg:sticky lg:top-20 lg:z-20 lg:self-start print:static">
           <Summary assignment={assignment} />
           <Record assignment={assignment} />
         </div>
       </div>
+
+      <Dialog open={isBulkPayOpen} onOpenChange={setIsBulkPayOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Pay selected balances</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-border p-2">
+              {selectedContainers.map((c: any) => (
+                <div
+                  key={c._id}
+                  className="flex items-center justify-between gap-3 rounded-md bg-muted/40 px-3 py-2 text-sm"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-mono font-semibold">
+                      {c.containerNo || "—"}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      Lorry {c.lorryNum || "Unassigned"}
+                      {c.capacity ? ` · ${c.capacity} ft` : ""}
+                    </p>
+                  </div>
+                  <span className="shrink-0 font-semibold">
+                    {formatMoney(containerBalance(c))}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Total</span>
+              <span className="font-bold">{formatMoney(selectedTotal)}</span>
+            </div>
+            <div>
+              <Label>Date</Label>
+              <Input
+                type="date"
+                value={bulkPayDate}
+                onChange={(e) => setBulkPayDate(e.target.value)}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsBulkPayOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleBulkPay}
+                disabled={bulkPaying || !selectedContainers.length || !bulkPayDate}
+              >
+                {bulkPaying ? "Paying..." : "Pay"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-md">

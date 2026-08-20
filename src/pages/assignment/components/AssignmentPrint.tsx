@@ -1,11 +1,26 @@
-const money = (value?: number) =>
-  `₹${Number(value || 0).toLocaleString("en-IN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+import {
+  CHARGE_FIELDS,
+  COMMISSION_FIELDS,
+  containerChargesTotal,
+  containerPaid,
+  formatMoney as money,
+  getAssignmentFinancials,
+  toAmount,
+} from "../lib/financials";
 
 const formatDate = (value?: string | Date) => {
   if (!value) return "—";
+  if (typeof value === "string") {
+    const part = value.substring(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(part)) {
+      const [y, m, d] = part.split("-").map(Number);
+      return new Date(y, m - 1, d).toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+    }
+  }
   const date = typeof value === "string" ? new Date(value) : value;
   if (Number.isNaN(date.getTime())) return String(value);
   return date.toLocaleDateString("en-GB", {
@@ -31,26 +46,12 @@ const formatDateTime = (value?: string) => {
 const nameOf = (value: any) =>
   typeof value === "object" ? value?.fullName || "—" : value || "—";
 
-const containerTotal = (c: any) =>
-  (c.weight || 0) +
-  (c.dayHire || 0) +
-  (c.outHire || 0) +
-  (c.other || 0) +
-  (c.heldUp || 0) +
-  (c.agentFee || 0) +
-  (c.return || 0);
-
 function AssignmentPrint({ assignment }: { assignment: any }) {
-  const containers = assignment?.containers || [];
-  const total = containers.reduce(
-    (sum: number, c: any) => sum + containerTotal(c),
-    0
+  const containers = (assignment?.containers || []).filter(
+    (c: any) => c && (c.containerNo || c._id)
   );
-  const advanced = containers.reduce(
-    (sum: number, c: any) => sum + (c.advanced || 0),
-    0
-  );
-  const remaining = total - advanced;
+  const { charges, commissions, total, advanced, balancePaid, remaining } =
+    getAssignmentFinancials(containers);
   const status = (assignment?.status || "pending").replace(/-/g, " ");
 
   return (
@@ -106,17 +107,29 @@ function AssignmentPrint({ assignment }: { assignment: any }) {
           <p className="print-empty">No containers added.</p>
         ) : (
           containers.map((c: any, index: number) => {
-            const tot = containerTotal(c);
-            const paid = c.advanced || 0;
-            const charges = [
-              ["Weight", c.weight],
-              ["Day Hire", c.dayHire],
-              ["Advanced", c.advanced],
-              ["Out Hire", c.outHire],
-              ["Other", c.other],
-              ["Held Up", c.heldUp],
-              ["Agent Fee", c.agentFee],
-              ["Return", c.return],
+            const tot = containerChargesTotal(c);
+            const paid = containerPaid(c);
+            const chargeRows = [
+              ["Weight", toAmount(c.weight)],
+              ["Day Hire", toAmount(c.dayHire)],
+              [
+                c.advancedDate
+                  ? `Advanced (${formatDate(c.advancedDate)})`
+                  : "Advanced",
+                toAmount(c.advanced),
+              ],
+              [
+                c.balanceDate
+                  ? `Balance Paid (${formatDate(c.balanceDate)})`
+                  : "Balance Paid",
+                toAmount(c.balancePaid),
+              ],
+              ["Out Hire", toAmount(c.outHire)],
+              ["Other", toAmount(c.other)],
+              ["Held Up", toAmount(c.heldUp)],
+              ["Agent Fee", toAmount(c.agentFee)],
+              ["Transport Commission", toAmount(c.transportCommission)],
+              ["Return", toAmount(c.return)],
             ];
             return (
               <article key={c._id || index} className="print-box">
@@ -169,15 +182,19 @@ function AssignmentPrint({ assignment }: { assignment: any }) {
                 </div>
                 <table className="print-charges">
                   <tbody>
-                    {Array.from({ length: 4 }).map((_, i) => {
-                      const left = charges[i];
-                      const right = charges[i + 4];
+                    {Array.from({
+                      length: Math.ceil(chargeRows.length / 2),
+                    }).map((_, i) => {
+                      const left = chargeRows[i * 2];
+                      const right = chargeRows[i * 2 + 1];
                       return (
-                        <tr key={left[0] as string}>
+                        <tr key={String(left[0])}>
                           <th>{left[0]}</th>
                           <td>{money(left[1] as number)}</td>
-                          <th>{right[0]}</th>
-                          <td>{money(right[1] as number)}</td>
+                          <th>{right?.[0] || ""}</th>
+                          <td>
+                            {right ? money(right[1] as number) : ""}
+                          </td>
                         </tr>
                       );
                     })}
@@ -223,6 +240,12 @@ function AssignmentPrint({ assignment }: { assignment: any }) {
           <h2>Financial summary</h2>
           <table className="print-summary">
             <tbody>
+              {CHARGE_FIELDS.map((field) => (
+                <tr key={field.key}>
+                  <th>{field.label}</th>
+                  <td>{money(charges[field.key])}</td>
+                </tr>
+              ))}
               <tr>
                 <th>Total</th>
                 <td>{money(total)}</td>
@@ -231,10 +254,20 @@ function AssignmentPrint({ assignment }: { assignment: any }) {
                 <th>Advanced</th>
                 <td>{money(advanced)}</td>
               </tr>
+              <tr>
+                <th>Balance Paid</th>
+                <td>{money(balancePaid)}</td>
+              </tr>
               <tr className="print-remain">
                 <th>Remaining</th>
                 <td>{money(remaining)}</td>
               </tr>
+              {COMMISSION_FIELDS.map((field) => (
+                <tr key={field.key}>
+                  <th>{field.label}</th>
+                  <td>{money(commissions[field.key])}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

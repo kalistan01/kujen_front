@@ -8,8 +8,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Edit, Trash2, Truck, Phone, MapPin, Search } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Plus, Edit, Truck, Phone, MapPin, Search } from "lucide-react";
 import baseUrl from "@/api/baseUrl";
 import AddLorryOwner from "./AddLorryOwner";
 import { Input } from "@/components/ui/input";
@@ -17,12 +16,15 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/PageHeader";
 
 interface Lorry {
+  _id?: string;
   lorryNum: string;
   capacity: string;
+  inUse?: boolean;
 }
 
 interface LorryOwner {
-  id: string;
+  id?: string;
+  _id?: string;
   ownerName: string;
   phoneNum: string;
   address: string;
@@ -36,7 +38,6 @@ export const LorryOwnerManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingOwner, setEditingOwner] = useState<LorryOwner | null>(null);
   const [query, setQuery] = useState("");
-  const { toast } = useToast();
 
   useEffect(() => {
     baseUrl
@@ -50,6 +51,7 @@ export const LorryOwnerManagement = () => {
   }, []);
 
   const handleAdd = () => {
+    setEditingOwner(null);
     setIsDialogOpen(true);
   };
 
@@ -58,12 +60,11 @@ export const LorryOwnerManagement = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    setOwners(owners.filter((owner) => owner.id !== id));
-    toast({
-      title: "Success",
-      description: "Lorry owner deleted successfully.",
-    });
+  const handleDialogChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setEditingOwner(null);
+    }
   };
 
   const filtered = useMemo(() => {
@@ -91,7 +92,7 @@ export const LorryOwnerManagement = () => {
             className="h-10 pl-9"
           />
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
           <DialogTrigger asChild>
             <Button
               onClick={handleAdd}
@@ -131,7 +132,7 @@ export const LorryOwnerManagement = () => {
       ) : (
         <div className="grid gap-5 xl:grid-cols-2">
           {filtered.map((owner, i) => (
-            <Card key={owner.id || i} className="overflow-hidden">
+            <Card key={owner._id || owner.id || i} className="overflow-hidden">
               <CardHeader className="border-b border-border/70 bg-muted/20">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3">
@@ -154,14 +155,6 @@ export const LorryOwnerManagement = () => {
                       onClick={() => handleEdit(owner)}
                     >
                       <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(owner.id)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>

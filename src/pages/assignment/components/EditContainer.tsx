@@ -13,6 +13,10 @@ import { Plus, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import baseUrl from "@/api/baseUrl";
 import { useParams } from "react-router-dom";
+import DestinationSelect, {
+  type DestinationOption,
+} from "./DestinationSelect";
+import { todayDateInput, toDateInput, containerBalance, containerChargesTotal, containerPaid, formatMoney, toAmount } from "../lib/financials";
 interface Container {
   _id?: string;
   containerNo?: string;
@@ -32,10 +36,14 @@ interface Container {
   weight?: number;
   dayHire?: number;
   advanced?: number;
+  advancedDate?: string;
+  balancePaid?: number;
+  balanceDate?: string;
   outHire?: number;
   other?: number;
   heldUp?: number;
   agentFee?: number;
+  transportCommission?: number;
   return?: number;
   ot?: number;
   status?: "pending" | "in-progress" | "completed";
@@ -50,7 +58,7 @@ function EditContainer({
 }) {
   const { toast } = useToast();
   const { id } = useParams();
-  const [destination, setDestination] = useState([]);
+  const [destination, setDestination] = useState<DestinationOption[]>([]);
   const [lorries, setLorries] = useState([]);
   const [containers, setContainers] = useState<Container>({
     containerNo: "",
@@ -62,17 +70,26 @@ function EditContainer({
     weight: 0,
     dayHire: 0,
     advanced: 0,
+    advancedDate: todayDateInput(),
+    balancePaid: 0,
+    balanceDate: todayDateInput(),
     outHire: 0,
     other: 0,
     heldUp: 0,
     agentFee: 0,
+    transportCommission: 0,
     return: 0,
     ot: 0,
     status: "pending" as "pending" | "in-progress" | "completed",
   });
 
   useEffect(() => {
-    setContainers(editingAssignment);
+    if (!editingAssignment) return;
+    setContainers({
+      ...editingAssignment,
+      advancedDate: toDateInput(editingAssignment.advancedDate),
+      balanceDate: toDateInput(editingAssignment.balanceDate),
+    });
   }, [editingAssignment]);
 
   const resetForm = () => {
@@ -86,10 +103,14 @@ function EditContainer({
       weight: 0,
       dayHire: 0,
       advanced: 0,
+      advancedDate: todayDateInput(),
+      balancePaid: 0,
+      balanceDate: todayDateInput(),
       outHire: 0,
       other: 0,
       heldUp: 0,
       agentFee: 0,
+      transportCommission: 0,
       ot: 0,
       return: 0,
       status: "pending" as "pending" | "in-progress" | "completed",
@@ -139,6 +160,14 @@ function EditContainer({
     resetForm();
   };
 
+  const total = containerChargesTotal(containers);
+  const paid = containerPaid(containers);
+  const remaining = containerBalance(containers);
+  const balanceDue = Math.max(
+    0,
+    total - toAmount(containers.advanced)
+  );
+
   return (
     <div className="space-y-6">
       <div className="space-y-4">
@@ -184,21 +213,14 @@ function EditContainer({
             </div>
             <div>
               <Label>Destination</Label>
-              <Select
+              <DestinationSelect
+                destinations={destination}
                 value={containers.destination}
-                onValueChange={(value) => updateContainer("destination", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select destination" />
-                </SelectTrigger>
-                <SelectContent>
-                  {destination.map((dest) => (
-                    <SelectItem key={dest._id} value={dest._id}>
-                      {dest.type} - {dest.location}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                onChange={(value) => updateContainer("destination", value)}
+                onCreated={(dest) =>
+                  setDestination((prev) => [...prev, dest])
+                }
+              />
             </div>
           </div>
 
@@ -242,7 +264,7 @@ function EditContainer({
               />
             </div>
             <div>
-              <Label>Day Hire (₹) *</Label>
+              <Label>Day Hire (Rs) *</Label>
               <Input
                 type="number"
                 value={containers.dayHire || ""}
@@ -253,7 +275,7 @@ function EditContainer({
               />
             </div>
             <div>
-              <Label>Advanced (₹) *</Label>
+              <Label>Advanced (Rs) *</Label>
               <Input
                 type="number"
                 value={containers.advanced || ""}
@@ -267,7 +289,65 @@ function EditContainer({
 
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <Label>Out Hire (₹)</Label>
+              <Label>Advanced Date *</Label>
+              <Input
+                type="date"
+                value={toDateInput(containers.advancedDate)}
+                onChange={(e) =>
+                  updateContainer("advancedDate", e.target.value)
+                }
+              />
+            </div>
+            <div>
+              <Label>Balance (Rs)</Label>
+              <Input
+                type="number"
+                value={balanceDue}
+                readOnly
+                className="bg-muted"
+              />
+            </div>
+            <div>
+              <Label>Remaining (Rs)</Label>
+              <Input
+                type="number"
+                value={remaining}
+                readOnly
+                className="bg-muted"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <Label>Balance Paid (Rs)</Label>
+              <Input
+                type="number"
+                value={containers.balancePaid || ""}
+                onChange={(e) =>
+                  updateContainer(
+                    "balancePaid",
+                    parseFloat(e.target.value) || 0
+                  )
+                }
+                placeholder={balanceDue ? String(balanceDue) : "Enter balance paid"}
+              />
+            </div>
+            <div>
+              <Label>Balance Date</Label>
+              <Input
+                type="date"
+                value={toDateInput(containers.balanceDate)}
+                onChange={(e) =>
+                  updateContainer("balanceDate", e.target.value)
+                }
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <Label>Out Hire (Rs)</Label>
               <Input
                 type="number"
                 value={containers.outHire || ""}
@@ -278,7 +358,7 @@ function EditContainer({
               />
             </div>
             <div>
-              <Label>Other (₹)</Label>
+              <Label>Other (Rs)</Label>
               <Input
                 type="number"
                 value={containers.other || ""}
@@ -289,7 +369,7 @@ function EditContainer({
               />
             </div>
             <div>
-              <Label>Held Up (₹)</Label>
+              <Label>Held Up (Rs)</Label>
               <Input
                 type="number"
                 value={containers.heldUp || ""}
@@ -301,9 +381,9 @@ function EditContainer({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div>
-              <Label>Agent Fee (₹)</Label>
+              <Label>Agent Fee (Rs)</Label>
               <Input
                 type="number"
                 value={containers.agentFee || ""}
@@ -314,7 +394,21 @@ function EditContainer({
               />
             </div>
             <div>
-              <Label>Return (₹)</Label>
+              <Label>Transport Commission (Rs)</Label>
+              <Input
+                type="number"
+                value={containers.transportCommission || ""}
+                onChange={(e) =>
+                  updateContainer(
+                    "transportCommission",
+                    parseFloat(e.target.value) || 0
+                  )
+                }
+                placeholder="Enter transport commission"
+              />
+            </div>
+            <div>
+              <Label>Return (Rs)</Label>
               <Input
                 type="number"
                 value={containers.return || ""}
@@ -344,6 +438,23 @@ function EditContainer({
             </Select>
           </div>
         </div>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/40 px-4 py-3 text-sm">
+        <p>
+          <span className="text-muted-foreground">Total </span>
+          <span className="font-semibold">{formatMoney(total)}</span>
+        </p>
+        <p>
+          <span className="text-muted-foreground">Paid </span>
+          <span className="font-semibold text-emerald-600">
+            {formatMoney(paid)}
+          </span>
+        </p>
+        <p>
+          <span className="text-muted-foreground">Balance </span>
+          <span className="font-bold">{formatMoney(remaining)}</span>
+        </p>
       </div>
 
       <div className="flex justify-end gap-2 pt-4">

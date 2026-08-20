@@ -54,7 +54,7 @@ const Login = () => {
           <img
             src="/logo.png"
             alt="RG Brothers"
-            className="h-11 w-11 rounded-lg object-cover ring-1 ring-white/15"
+            className="h-11 w-11 rounded-lg bg-white object-cover ring-1 ring-white/15"
           />
           <div>
             <p className="text-lg font-bold leading-tight">RG Brothers</p>
@@ -99,7 +99,7 @@ const Login = () => {
             <img
               src="/logo.png"
               alt="RG Brothers"
-              className="h-11 w-11 rounded-lg object-cover"
+              className="h-11 w-11 rounded-lg bg-white object-cover"
             />
             <div>
               <p className="font-bold">RG Brothers</p>

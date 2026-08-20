@@ -4,15 +4,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Plus,  Trash2, Truck } from "lucide-react";
+import { Plus, Trash2, Truck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import baseUrl from "@/api/baseUrl";
+
 interface Lorry {
+  _id?: string;
   lorryNum: string;
   capacity: string;
+  inUse?: boolean;
 }
+
 interface LorryOwner {
-  id: string;
+  id?: string;
   _id?: string;
   ownerName: string;
   phoneNum: string;
@@ -21,8 +25,17 @@ interface LorryOwner {
   lorries: Lorry[];
   createdAt: string;
 }
+
+const emptyForm = {
+  _id: "",
+  ownerName: "",
+  phoneNum: "",
+  address: "",
+  companyName: "",
+  lorries: [] as Lorry[],
+};
+
 function AddLorryOwner({
-  owners,
   setOwners,
   setIsDialogOpen,
   editingOwner,
@@ -39,32 +52,36 @@ function AddLorryOwner({
     lorryNum: "",
     capacity: "",
   });
-  const [formData, setFormData] = useState({
-    _id: "",
-    ownerName: "",
-    phoneNum: "",
-    address: "",
-    companyName: "",
-    lorries: [] as Lorry[],
-  });
+  const [formData, setFormData] = useState(emptyForm);
+  const [saving, setSaving] = useState(false);
+
   useEffect(() => {
     if (editingOwner) {
       setFormData({
-        _id: editingOwner._id,
-        ownerName: editingOwner.ownerName,
-        phoneNum: editingOwner.phoneNum,
-        address: editingOwner.address,
-        companyName: editingOwner.companyName,
-        lorries: editingOwner.lorries,
+        _id: editingOwner._id || "",
+        ownerName: editingOwner.ownerName || "",
+        phoneNum: editingOwner.phoneNum || "",
+        address: editingOwner.address || "",
+        companyName: editingOwner.companyName || "",
+        lorries: editingOwner.lorries || [],
       });
+      return;
     }
 
-    return () => {
-      resetForm();
-    };
+    setFormData(emptyForm);
+    setNewLorry({ lorryNum: "", capacity: "" });
   }, [editingOwner]);
 
-  const handleSave = () => {
+  const resetForm = () => {
+    setFormData(emptyForm);
+    setNewLorry({
+      lorryNum: "",
+      capacity: "",
+    });
+    setEditingOwner(null);
+  };
+
+  const handleSave = async () => {
     if (!formData.ownerName || !formData.address || !formData.companyName) {
       toast({
         title: "Validation Error",
@@ -73,60 +90,67 @@ function AddLorryOwner({
       });
       return;
     }
-    if (editingOwner) {
-      setOwners(
-        owners.map((owner) =>
-          owner.id === editingOwner.id ? { ...owner, ...formData } : owner
-        )
-      );
-      baseUrl
-        .put("/lorry/" + editingOwner._id, formData)
-        .then(async (response) => {
+
+    const payload = {
+      ownerName: formData.ownerName,
+      phoneNum: formData.phoneNum,
+      address: formData.address,
+      companyName: formData.companyName,
+      lorries: formData.lorries,
+    };
+
+    const ownerId = editingOwner?._id;
+    setSaving(true);
+
+    try {
+      if (editingOwner) {
+        if (!ownerId) {
           toast({
-            title: "Success",
-            description: "Lorry owner updated successfully.",
+            title: "Error",
+            description: "Cannot update this owner because it has no ID.",
+            variant: "destructive",
           });
-        })
-        .catch((error) => {
-          console.error(error);
+          return;
+        }
+
+        const response = await baseUrl.put(`/lorry/${ownerId}`, payload);
+        const updated = response.data.data;
+        setOwners((prev) =>
+          prev.map((owner) =>
+            owner._id === ownerId ? { ...owner, ...updated } : owner
+          )
+        );
+        toast({
+          title: "Success",
+          description: "Lorry owner updated successfully.",
         });
-    } else {
-      const newOwner: LorryOwner = {
-        id: Date.now().toString(),
-        ...formData,
-        createdAt: new Date().toISOString().split("T")[0],
-      };
-      setOwners([...owners, newOwner]);
-      baseUrl
-        .post("/lorry", newOwner)
-        .then(async (response) => {
-          toast({
-            title: "Success",
-            description: "Lorry owner created successfully.",
-          });
-        })
-        .catch((error) => {
-          console.error(error);
+      } else {
+        const response = await baseUrl.post("/lorry", payload);
+        const created: LorryOwner = {
+          ...response.data.owner,
+          lorries: response.data.lorries || payload.lorries,
+        };
+        setOwners((prev) => [...prev, created]);
+        toast({
+          title: "Success",
+          description: "Lorry owner created successfully.",
         });
+      }
+
+      setIsDialogOpen(false);
+      resetForm();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description:
+          error?.response?.data?.message || "Failed to save lorry owner.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
     }
-    setIsDialogOpen(false);
-    resetForm();
   };
-  const resetForm = () => {
-    setFormData({
-      _id: "",
-      ownerName: "",
-      phoneNum: "",
-      address: "",
-      companyName: "",
-      lorries: [],
-    });
-    setNewLorry({
-      lorryNum: "",
-      capacity: "",
-    });
-    setEditingOwner(null);
-  };
+
   const addLorry = () => {
     if (!newLorry.lorryNum || !newLorry.capacity) {
       toast({
@@ -145,11 +169,22 @@ function AddLorryOwner({
   };
 
   const removeLorry = (index: number) => {
+    const lorry = formData.lorries[index];
+    if (editingOwner && lorry?.inUse) {
+      toast({
+        title: "Cannot delete",
+        description: "This lorry is used in an assignment.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setFormData({
       ...formData,
       lorries: formData.lorries.filter((_, i) => i !== index),
     });
   };
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
@@ -220,7 +255,7 @@ function AddLorryOwner({
                 setNewLorry({ ...newLorry, capacity: e.target.value })
               }
             />
-            <Button onClick={addLorry} size="sm">
+            <Button type="button" onClick={addLorry} size="sm">
               <Plus className="h-4 w-4" />
             </Button>
           </div>
@@ -229,22 +264,27 @@ function AddLorryOwner({
             <div className="space-y-1">
               {formData.lorries.map((lorry, index) => (
                 <div
-                  key={index}
+                  key={lorry._id || index}
                   className="flex items-center justify-between bg-muted p-2 rounded"
                 >
                   <div className="flex items-center gap-2">
                     <Truck className="h-4 w-4" />
                     <span className="font-medium">{lorry.lorryNum}</span>
                     <Badge variant="outline">{lorry.capacity}</Badge>
+                    {lorry.inUse && (
+                      <Badge variant="secondary">Assigned</Badge>
+                    )}
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeLorry(index)}
-                    className="text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  {(!editingOwner || !lorry.inUse) && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeLorry(index)}
+                      className="text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>
@@ -253,10 +293,16 @@ function AddLorryOwner({
       </div>
 
       <div className="flex justify-end gap-2 pt-4">
-        <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+        <Button
+          variant="outline"
+          onClick={() => {
+            setIsDialogOpen(false);
+            resetForm();
+          }}
+        >
           Cancel
         </Button>
-        <Button onClick={handleSave}>
+        <Button onClick={handleSave} disabled={saving}>
           {editingOwner ? "Update" : "Create"}
         </Button>
       </div>

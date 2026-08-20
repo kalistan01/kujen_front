@@ -65,11 +65,19 @@ export const DestinationManagement = () => {
   }, []);
 
   const handleAdd = () => {
+    setEditingDestination(null);
     setIsDialogOpen(true);
   };
   const handleEdit = (destination: Destination) => {
     setEditingDestination(destination);
     setIsDialogOpen(true);
+  };
+
+  const handleDialogChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setEditingDestination(null);
+    }
   };
 
   const toggleStatus = (id: string, currentStatus: boolean) => {
@@ -118,7 +126,7 @@ export const DestinationManagement = () => {
             className="h-10 pl-9"
           />
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
           <DialogTrigger asChild>
             <Button
               onClick={handleAdd}

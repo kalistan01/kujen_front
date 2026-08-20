@@ -13,6 +13,10 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import baseUrl from "@/api/baseUrl";
 import { useParams } from "react-router-dom";
+import DestinationSelect, {
+  type DestinationOption,
+} from "./DestinationSelect";
+import { todayDateInput } from "../lib/financials";
 interface Container {
   containerNo?: string;
   vocNo?: string;
@@ -31,10 +35,14 @@ interface Container {
   weight?: number;
   dayHire?: number;
   advanced?: number;
+  advancedDate?: string;
+  balancePaid?: number;
+  balanceDate?: string;
   outHire?: number;
   other?: number;
   heldUp?: number;
   agentFee?: number;
+  transportCommission?: number;
   return?: number;
   ot?: number;
   status?: "pending" | "in-progress" | "completed";
@@ -47,7 +55,7 @@ function AddContainer({
 }) {
   const { toast } = useToast();
   const { id } = useParams();
-  const [destination, setDestination] = useState([]);
+  const [destination, setDestination] = useState<DestinationOption[]>([]);
   const [lorries, setLorries] = useState([]); 
   const intialstate :Container ={
     containerNo: "",
@@ -59,10 +67,14 @@ function AddContainer({
     weight: 0,
     dayHire: 0,
     advanced: 0,
+    advancedDate: todayDateInput(),
+    balancePaid: 0,
+    balanceDate: todayDateInput(),
     outHire: 0,
     other: 0,
     heldUp: 0,
     agentFee: 0,
+    transportCommission: 0,
     return: 0,
     ot: 0,
     status: "pending" as "pending" | "in-progress" | "completed",
@@ -161,21 +173,14 @@ function AddContainer({
             </div>
             <div>
               <Label>Destination</Label>
-              <Select
+              <DestinationSelect
+                destinations={destination}
                 value={containers.destination}
-                onValueChange={(value) => updateContainer("destination", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select destination" />
-                </SelectTrigger>
-                <SelectContent>
-                  {destination.map((dest) => (
-                    <SelectItem key={dest._id} value={dest._id}>
-                      {dest.type} - {dest.location}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                onChange={(value) => updateContainer("destination", value)}
+                onCreated={(dest) =>
+                  setDestination((prev) => [...prev, dest])
+                }
+              />
             </div>
           </div>
 
@@ -219,7 +224,7 @@ function AddContainer({
               />
             </div>
             <div>
-              <Label>Day Hire (₹) *</Label>
+              <Label>Day Hire (Rs) *</Label>
               <Input
                 type="number"
                 value={containers.dayHire || ""}
@@ -230,7 +235,7 @@ function AddContainer({
               />
             </div>
             <div>
-              <Label>Advanced (₹) *</Label>
+              <Label>Advanced (Rs) *</Label>
               <Input
                 type="number"
                 value={containers.advanced || ""}
@@ -244,7 +249,41 @@ function AddContainer({
 
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <Label>Out Hire (₹)</Label>
+              <Label>Advanced Date *</Label>
+              <Input
+                type="date"
+                value={containers.advancedDate || todayDateInput()}
+                onChange={(e) =>
+                  updateContainer("advancedDate", e.target.value)
+                }
+              />
+            </div>
+            <div>
+              <Label>Balance Paid (Rs)</Label>
+              <Input
+                type="number"
+                value={containers.balancePaid || ""}
+                onChange={(e) =>
+                  updateContainer("balancePaid", parseFloat(e.target.value) || 0)
+                }
+                placeholder="Enter balance paid"
+              />
+            </div>
+            <div>
+              <Label>Balance Date</Label>
+              <Input
+                type="date"
+                value={containers.balanceDate || todayDateInput()}
+                onChange={(e) =>
+                  updateContainer("balanceDate", e.target.value)
+                }
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <Label>Out Hire (Rs)</Label>
               <Input
                 type="number"
                 value={containers.outHire || ""}
@@ -255,7 +294,7 @@ function AddContainer({
               />
             </div>
             <div>
-              <Label>Other (₹)</Label>
+              <Label>Other (Rs)</Label>
               <Input
                 type="number"
                 value={containers.other || ""}
@@ -266,7 +305,7 @@ function AddContainer({
               />
             </div>
             <div>
-              <Label>Held Up (₹)</Label>
+              <Label>Held Up (Rs)</Label>
               <Input
                 type="number"
                 value={containers.heldUp || ""}
@@ -278,9 +317,9 @@ function AddContainer({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div>
-              <Label>Agent Fee (₹)</Label>
+              <Label>Agent Fee (Rs)</Label>
               <Input
                 type="number"
                 value={containers.agentFee || ""}
@@ -291,7 +330,21 @@ function AddContainer({
               />
             </div>
             <div>
-              <Label>Return (₹)</Label>
+              <Label>Transport Commission (Rs)</Label>
+              <Input
+                type="number"
+                value={containers.transportCommission || ""}
+                onChange={(e) =>
+                  updateContainer(
+                    "transportCommission",
+                    parseFloat(e.target.value) || 0
+                  )
+                }
+                placeholder="Enter transport commission"
+              />
+            </div>
+            <div>
+              <Label>Return (Rs)</Label>
               <Input
                 type="number"
                 value={containers.return || ""}

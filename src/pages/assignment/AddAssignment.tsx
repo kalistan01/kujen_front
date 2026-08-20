@@ -16,6 +16,10 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import baseUrl from "@/api/baseUrl";
+import DestinationSelect, {
+  type DestinationOption,
+} from "./components/DestinationSelect";
+import { todayDateInput } from "./lib/financials";
 
 function Field({
   label,
@@ -50,10 +54,14 @@ interface Container {
   weight: number;
   dayHire: number;
   advanced: number;
+  advancedDate: string;
+  balancePaid: number;
+  balanceDate: string;
   outHire: number;
   other: number;
   heldUp: number;
   agentFee: number;
+  transportCommission: number;
   return: number;
   ot: number;
 }
@@ -85,7 +93,7 @@ function AddAssignment({
   assignments: Assignment[];
   setEditingAssignment: (assignment: Assignment | null) => void;
 }) {
-  const [destination, setDestination] = useState([]);
+  const [destination, setDestination] = useState<DestinationOption[]>([]);
   const [lorries, setLorries] = useState([]);
   const [formData, setFormData] = useState({
     blNo: "",
@@ -107,10 +115,14 @@ function AddAssignment({
       weight: 0,
       dayHire: 0,
       advanced: 0,
+      advancedDate: todayDateInput(),
+      balancePaid: 0,
+      balanceDate: todayDateInput(),
       outHire: 0,
       other: 0,
       heldUp: 0,
       agentFee: 0,
+      transportCommission: 0,
       return: 0,
       ot: 0,
       status: "pending" as "pending" | "in-progress" | "completed",
@@ -131,10 +143,14 @@ function AddAssignment({
         weight: 0,
         dayHire: 0,
         advanced: 0,
+        advancedDate: todayDateInput(),
+        balancePaid: 0,
+        balanceDate: todayDateInput(),
         outHire: 0,
         other: 0,
         heldUp: 0,
         agentFee: 0,
+        transportCommission: 0,
         return: 0,
         ot: 0,
       },
@@ -234,10 +250,14 @@ function AddAssignment({
           weight: 0,
           dayHire: 0,
           advanced: 0,
+          advancedDate: todayDateInput(),
+          balancePaid: 0,
+          balanceDate: todayDateInput(),
           outHire: 0,
           other: 0,
           heldUp: 0,
           agentFee: 0,
+          transportCommission: 0,
           ot: 0,
           return: 0,
           status: "pending" as "pending" | "in-progress" | "completed",
@@ -387,23 +407,11 @@ function AddAssignment({
       </section>
 
       <section className="space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Package className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-semibold tracking-tight">
-              Containers ({containers.length})
-            </h3>
-          </div>
-          <Button
-            type="button"
-            onClick={addContainer}
-            variant="outline"
-            size="sm"
-            className="h-9"
-          >
-            <Plus className="h-4 w-4" />
-            Add Container
-          </Button>
+        <div className="flex items-center gap-2">
+          <Package className="h-4 w-4 text-primary" />
+          <h3 className="text-sm font-semibold tracking-tight">
+            Containers ({containers.length})
+          </h3>
         </div>
 
         {containers.map((container, index) => (
@@ -469,23 +477,16 @@ function AddAssignment({
                   </Select>
                 </Field>
                 <Field label="Destination">
-                  <Select
+                  <DestinationSelect
+                    destinations={destination}
                     value={container.destination}
-                    onValueChange={(value) =>
+                    onChange={(value) =>
                       updateContainer(index, "destination", value)
                     }
-                  >
-                    <SelectTrigger className="h-10">
-                      <SelectValue placeholder="Select destination" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {destination.map((dest) => (
-                        <SelectItem key={dest._id} value={dest._id}>
-                          {dest.type} - {dest.location}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onCreated={(dest) =>
+                      setDestination((prev) => [...prev, dest])
+                    }
+                  />
                 </Field>
                 <Field label="Loading Date" required>
                   <Input
@@ -529,7 +530,7 @@ function AddAssignment({
                       className="h-10"
                     />
                   </Field>
-                  <Field label="Day Hire (₹)" required>
+                  <Field label="Day Hire (Rs)" required>
                     <Input
                       type="number"
                       value={container.dayHire || ""}
@@ -544,7 +545,7 @@ function AddAssignment({
                       className="h-10"
                     />
                   </Field>
-                  <Field label="Advanced (₹)" required>
+                  <Field label="Advanced (Rs)" required>
                     <Input
                       type="number"
                       value={container.advanced || ""}
@@ -559,7 +560,42 @@ function AddAssignment({
                       className="h-10"
                     />
                   </Field>
-                  <Field label="Out Hire (₹)">
+                  <Field label="Advanced Date" required>
+                    <Input
+                      type="date"
+                      value={container.advancedDate || todayDateInput()}
+                      onChange={(e) =>
+                        updateContainer(index, "advancedDate", e.target.value)
+                      }
+                      className="h-10"
+                    />
+                  </Field>
+                  <Field label="Balance Paid (Rs)">
+                    <Input
+                      type="number"
+                      value={container.balancePaid || ""}
+                      onChange={(e) =>
+                        updateContainer(
+                          index,
+                          "balancePaid",
+                          parseFloat(e.target.value) || 0
+                        )
+                      }
+                      placeholder="Enter balance paid"
+                      className="h-10"
+                    />
+                  </Field>
+                  <Field label="Balance Date">
+                    <Input
+                      type="date"
+                      value={container.balanceDate || todayDateInput()}
+                      onChange={(e) =>
+                        updateContainer(index, "balanceDate", e.target.value)
+                      }
+                      className="h-10"
+                    />
+                  </Field>
+                  <Field label="Out Hire (Rs)">
                     <Input
                       type="number"
                       value={container.outHire || ""}
@@ -574,7 +610,7 @@ function AddAssignment({
                       className="h-10"
                     />
                   </Field>
-                  <Field label="Other (₹)">
+                  <Field label="Other (Rs)">
                     <Input
                       type="number"
                       value={container.other || ""}
@@ -589,7 +625,7 @@ function AddAssignment({
                       className="h-10"
                     />
                   </Field>
-                  <Field label="Held Up (₹)">
+                  <Field label="Held Up (Rs)">
                     <Input
                       type="number"
                       value={container.heldUp || ""}
@@ -604,7 +640,7 @@ function AddAssignment({
                       className="h-10"
                     />
                   </Field>
-                  <Field label="Agent Fee (₹)">
+                  <Field label="Agent Fee (Rs)">
                     <Input
                       type="number"
                       value={container.agentFee || ""}
@@ -619,7 +655,22 @@ function AddAssignment({
                       className="h-10"
                     />
                   </Field>
-                  <Field label="Return (₹)">
+                  <Field label="Transport Commission (Rs)">
+                    <Input
+                      type="number"
+                      value={container.transportCommission || ""}
+                      onChange={(e) =>
+                        updateContainer(
+                          index,
+                          "transportCommission",
+                          parseFloat(e.target.value) || 0
+                        )
+                      }
+                      placeholder="Enter transport commission"
+                      className="h-10"
+                    />
+                  </Field>
+                  <Field label="Return (Rs)">
                     <Input
                       type="number"
                       value={container.return || ""}
@@ -656,6 +707,17 @@ function AddAssignment({
             </div>
           </div>
         ))}
+
+        <Button
+          type="button"
+          onClick={addContainer}
+          variant="outline"
+          size="sm"
+          className="h-9 w-full"
+        >
+          <Plus className="h-4 w-4" />
+          Add Container
+        </Button>
       </section>
 
       <div className="sticky bottom-0 -mx-6 -mb-5 flex justify-end gap-2 border-t border-border bg-card/95 px-6 py-4 backdrop-blur">

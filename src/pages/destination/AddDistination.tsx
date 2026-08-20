@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -11,14 +11,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import baseUrl from "@/api/baseUrl";
+
 interface Destination {
   _id?: string;
-  id: string;
+  id?: string;
   type: string;
   location: string;
-  createdAt: string;
+  createdAt?: string;
+  status?: boolean;
 }
-
 
 interface DropDistination {
   id: string;
@@ -26,57 +27,55 @@ interface DropDistination {
 }
 
 const mockDropDistinations: DropDistination[] = [
-  {
-    id: "1",
-    type: "Port",
-  },
-  {
-    id: "2",
-    type: "Yard",
-  },
-  {
-    id: "3",
-    type: "Store",
-  },
-  {
-    id: "4",
-    type: "Other",
-  },
+  { id: "1", type: "Port" },
+  { id: "2", type: "Yard" },
+  { id: "3", type: "Store" },
+  { id: "4", type: "RCT" },
+  { id: "5", type: "Other" },
 ];
+
+const emptyForm = {
+  _id: "",
+  type: "",
+  location: "",
+};
+
 function AddDistination({
   editingDestination,
   setDestinations,
   setEditingDestination,
   setIsDialogOpen,
-}: any) {
+}: {
+  editingDestination: Destination | null;
+  setDestinations: React.Dispatch<React.SetStateAction<Destination[]>>;
+  setEditingDestination: React.Dispatch<
+    React.SetStateAction<Destination | null>
+  >;
+  setIsDialogOpen: React.Dispatch<React.SetStateAction<boolean>>;
+}) {
   const { toast } = useToast();
-  const [formData, setFormData] = useState({
-    _id: "",
-    type: "",
-    location: "",
-  });
-  const resetForm = () => {
-    setFormData({
-      _id: "",
-      type: "",
-      location: "",
-    });
-    setEditingDestination(null);
-  };
+  const [formData, setFormData] = useState(emptyForm);
+  const [saving, setSaving] = useState(false);
+
   useEffect(() => {
     if (editingDestination) {
       setFormData({
-        _id: editingDestination._id,
-        type: editingDestination.type,
-        location: editingDestination.location,
+        _id: editingDestination._id || "",
+        type: editingDestination.type || "",
+        location: editingDestination.location || "",
       });
+      return;
     }
 
-    return () => {
-      resetForm();
-    };
+    setFormData(emptyForm);
   }, [editingDestination]);
-  const handleSave = () => {
+
+  const resetForm = () => {
+    setFormData(emptyForm);
+    setEditingDestination(null);
+  };
+
+  const handleSave = async () => {
     if (!formData.type || !formData.location) {
       toast({
         title: "Validation Error",
@@ -86,50 +85,62 @@ function AddDistination({
       return;
     }
 
-    if (editingDestination) {
-      baseUrl
-        .put("/destination/" + editingDestination._id, formData)
-        .then(async (response) => {
-          setDestinations((prevDestinations) =>
-            prevDestinations.map((dest) =>
-              dest._id === editingDestination._id
-                ? { ...dest, type: formData.type, location: formData.location }
-                : dest
-            )
-          );
-          toast({
-            title: "Success",
-            description: "Destination updated successfully.",
-          });
-        })
-        .catch((error) => {
-          console.error(error);
-        });
-    } else {
-      const newDestination: Destination = {
-        id: Date.now().toString(),
-        type: formData.type,
-        location: formData.location,
-        createdAt: new Date().toISOString(),
-      };
-      setDestinations((prevRoles) => [...prevRoles, newDestination]);
+    const payload = {
+      type: formData.type,
+      location: formData.location,
+    };
+    const destinationId = editingDestination?._id;
+    setSaving(true);
 
-      baseUrl
-        .post("/destination", newDestination)
-        .then(async (response) => {
+    try {
+      if (editingDestination) {
+        if (!destinationId) {
           toast({
-            title: "Success",
-            description: "Destination created successfully.",
+            title: "Error",
+            description: "Cannot update this destination because it has no ID.",
+            variant: "destructive",
           });
-        })
-        .catch((error) => {
-          console.error(error);
+          return;
+        }
+
+        const response = await baseUrl.put(
+          `/destination/${destinationId}`,
+          payload
+        );
+        const updated = response.data.data;
+        setDestinations((prevDestinations) =>
+          prevDestinations.map((dest) =>
+            dest._id === destinationId ? { ...dest, ...updated } : dest
+          )
+        );
+        toast({
+          title: "Success",
+          description: "Destination updated successfully.",
         });
+      } else {
+        const response = await baseUrl.post("/destination", payload);
+        const created = response.data.data;
+        setDestinations((prev) => [...prev, created]);
+        toast({
+          title: "Success",
+          description: "Destination created successfully.",
+        });
+      }
+
+      setIsDialogOpen(false);
+      resetForm();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description:
+          error?.response?.data?.message || "Failed to save destination.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
     }
-
-    setIsDialogOpen(false);
-    resetForm();
   };
+
   return (
     <div className="space-y-4">
       <div>
@@ -151,7 +162,7 @@ function AddDistination({
         </Select>
       </div>
       <div>
-        <Label htmlFor="start">Location *</Label>
+        <Label htmlFor="location">Location *</Label>
         <Input
           id="location"
           value={formData.location}
@@ -163,10 +174,16 @@ function AddDistination({
       </div>
 
       <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+        <Button
+          variant="outline"
+          onClick={() => {
+            setIsDialogOpen(false);
+            resetForm();
+          }}
+        >
           Cancel
         </Button>
-        <Button onClick={handleSave}>
+        <Button onClick={handleSave} disabled={saving}>
           {editingDestination ? "Update" : "Create"}
         </Button>
       </div>
