@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { NavLink, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,8 +11,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Banknote, FileDown, FileSpreadsheet, Printer } from "lucide-react";
+import { cn } from "@/lib/utils";
 import baseUrl from "@/api/baseUrl";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
@@ -63,7 +64,8 @@ export const AssignmentManagement = () => {
   const [destination, setDestination] = useState("all");
   const [lorryOwners, setLorryOwners] = useState<any[]>([]);
   const [exporting, setExporting] = useState<"pdf" | "excel" | null>(null);
-  const [tab, setTab] = useState("assignments");
+  const location = useLocation();
+  const isContainers = location.pathname.endsWith("/containers");
   const [page, setPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isBulkPayOpen, setIsBulkPayOpen] = useState(false);
@@ -286,15 +288,20 @@ export const AssignmentManagement = () => {
     status,
     fromDate,
     toDate,
-    tab,
+    isContainers,
     balanceFilter,
     advancedFilter,
     owner,
     destination,
   ]);
 
-  const isContainersTab = tab === "containers";
-  const listTotal = isContainersTab ? filteredContainers.length : filtered.length;
+  useEffect(() => {
+    if (!isContainers && status === "in-progress") {
+      setStatus("all");
+    }
+  }, [isContainers, status]);
+
+  const listTotal = isContainers ? filteredContainers.length : filtered.length;
   const pages = Math.max(1, Math.ceil(listTotal / pageSize) || 1);
   const currentPage = Math.min(page, pages);
   const paged = filtered.slice(
@@ -514,8 +521,12 @@ export const AssignmentManagement = () => {
     <>
     <div className="space-y-3 print:hidden">
       <PageHeader
-        title="Assignments"
-        description="Track bill of lading records, containers, and shipment status."
+        title={isContainers ? "Containers" : "Assignments"}
+        description={
+          isContainers
+            ? "Search containers across assignments, print lists, and pay balances."
+            : "Track bill of lading records, containers, and shipment status."
+        }
         className="gap-2 sm:items-center"
       >
         <Button
@@ -549,149 +560,159 @@ export const AssignmentManagement = () => {
         ) : null}
       </PageHeader>
 
-      <Tabs
-        value={tab}
-        onValueChange={(value) => {
-          setTab(value);
-          setPage(1);
-          if (value === "assignments" && status === "in-progress") {
-            setStatus("all");
-          }
-        }}
-      >
-        <Card className="overflow-hidden">
-          <CardHeader className="flex flex-row flex-wrap items-center gap-2 space-y-0 border-b border-border/70 bg-muted/30 px-3 py-2">
-            <TabsList className="h-8">
-              <TabsTrigger value="assignments" className="h-6 px-2.5 text-xs">
+      <Card className="overflow-hidden">
+        <CardHeader className="space-y-2 border-b border-border/70 bg-muted/30 px-3 py-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <nav className="inline-flex h-8 items-center rounded-md bg-muted p-1 text-muted-foreground">
+              <NavLink
+                to="/assignments"
+                end
+                className={({ isActive }) =>
+                  cn(
+                    "inline-flex h-6 items-center rounded-sm px-2.5 text-xs font-medium transition-all",
+                    isActive
+                      ? "bg-background text-foreground shadow-sm"
+                      : "hover:text-foreground"
+                  )
+                }
+              >
                 Assignments
-              </TabsTrigger>
-              <TabsTrigger value="containers" className="h-6 px-2.5 text-xs">
+              </NavLink>
+              <NavLink
+                to="/assignments/containers"
+                className={({ isActive }) =>
+                  cn(
+                    "inline-flex h-6 items-center rounded-sm px-2.5 text-xs font-medium transition-all",
+                    isActive
+                      ? "bg-background text-foreground shadow-sm"
+                      : "hover:text-foreground"
+                  )
+                }
+              >
                 Containers
-              </TabsTrigger>
-            </TabsList>
-            <AssignmentFilters
-              query={query}
-              onQueryChange={setQuery}
-              status={status}
-              onStatusChange={setStatus}
-              fromDate={fromDate}
-              onFromDateChange={setFromDate}
-              toDate={toDate}
-              onToDateChange={setToDate}
-              hasFilters={hasFilters}
-              placeholder={
-                isContainersTab
-                  ? "Search BL, container, VOC, lorry..."
-                  : "Search BL, item, exporter..."
-              }
-              statuses={isContainersTab ? CONTAINER_STATUSES : undefined}
-              balanceFilter={balanceFilter}
-              onBalanceFilterChange={setBalanceFilter}
-              advancedFilter={advancedFilter}
-              onAdvancedFilterChange={setAdvancedFilter}
-              owner={owner}
-              onOwnerChange={setOwner}
-              owners={ownerOptions}
-              destination={destination}
-              onDestinationChange={setDestination}
-              destinations={destinationOptions}
-              onClear={() => {
-                setQuery("");
-                setStatus("all");
-                setFromDate("");
-                setToDate("");
-                setBalanceFilter("all");
-                setAdvancedFilter("all");
-                setOwner("all");
-                setDestination("all");
-                setPage(1);
-              }}
-            >
-              <div className="ml-auto flex items-center gap-2">
+              </NavLink>
+            </nav>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-8"
+                disabled={!selectedRows.length}
+                onClick={handlePrintSelected}
+              >
+                <Printer className="h-4 w-4" />
+                Print
+                {selectedRows.length ? ` (${selectedRows.length})` : ""}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-8"
+                disabled={!selectedRows.length || exporting === "pdf"}
+                onClick={downloadSelectedPdf}
+              >
+                <FileDown className="h-4 w-4" />
+                {exporting === "pdf" && selectedRows.length
+                  ? "PDF..."
+                  : "PDF"}
+                {selectedRows.length && exporting !== "pdf"
+                  ? ` (${selectedRows.length})`
+                  : ""}
+              </Button>
+              {canPay ? (
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
                   className="h-8"
-                  disabled={!selectedRows.length}
-                  onClick={handlePrintSelected}
+                  disabled={!payableSelectedRows.length}
+                  onClick={() => {
+                    setBulkPayDate(todayDateInput());
+                    setIsBulkPayOpen(true);
+                  }}
                 >
-                  <Printer className="h-4 w-4" />
-                  Print
-                  {selectedRows.length ? ` (${selectedRows.length})` : ""}
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-8"
-                  disabled={!selectedRows.length || exporting === "pdf"}
-                  onClick={downloadSelectedPdf}
-                >
-                  <FileDown className="h-4 w-4" />
-                  {exporting === "pdf" && selectedRows.length
-                    ? "PDF..."
-                    : "PDF"}
-                  {selectedRows.length && exporting !== "pdf"
-                    ? ` (${selectedRows.length})`
+                  <Banknote className="h-4 w-4" />
+                  Pay selected
+                  {payableSelectedRows.length
+                    ? ` (${payableSelectedRows.length})`
                     : ""}
                 </Button>
-                {canPay ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="h-8"
-                    disabled={!payableSelectedRows.length}
-                    onClick={() => {
-                      setBulkPayDate(todayDateInput());
-                      setIsBulkPayOpen(true);
-                    }}
-                  >
-                    <Banknote className="h-4 w-4" />
-                    Pay selected
-                    {payableSelectedRows.length
-                      ? ` (${payableSelectedRows.length})`
-                      : ""}
-                  </Button>
-                ) : null}
-                <Badge variant="secondary">{listTotal}</Badge>
-              </div>
-            </AssignmentFilters>
-          </CardHeader>
-          <CardContent className="p-0">
-            <TabsContent value="assignments" className="mt-0">
-              <AssignmentTable
-                assignments={paged}
-                total={filtered.length}
-                hasFilters={hasFilters}
-                page={currentPage}
-                pages={pages}
-                pageSize={pageSize}
-                onPageChange={setPage}
-                selectedIds={selectedIds}
-                onSelect={toggleSelected}
-                onSelectPage={toggleSelectPage}
-              />
-            </TabsContent>
-            <TabsContent value="containers" className="mt-0">
-              <ContainerListTable
-                rows={pagedContainers}
-                total={filteredContainers.length}
-                hasFilters={hasFilters}
-                page={currentPage}
-                pages={pages}
-                pageSize={pageSize}
-                onPageChange={setPage}
-                canSelect
-                selectedIds={selectedIds}
-                onSelect={toggleSelected}
-                onSelectPage={toggleSelectPage}
-              />
-            </TabsContent>
-          </CardContent>
-        </Card>
-      </Tabs>
+              ) : null}
+              <Badge variant="secondary">{listTotal}</Badge>
+            </div>
+          </div>
+          <AssignmentFilters
+            query={query}
+            onQueryChange={setQuery}
+            status={status}
+            onStatusChange={setStatus}
+            fromDate={fromDate}
+            onFromDateChange={setFromDate}
+            toDate={toDate}
+            onToDateChange={setToDate}
+            hasFilters={hasFilters}
+            placeholder={
+              isContainers
+                ? "Search BL, container, VOC, lorry..."
+                : "Search BL, item, exporter..."
+            }
+            statuses={isContainers ? CONTAINER_STATUSES : undefined}
+            balanceFilter={balanceFilter}
+            onBalanceFilterChange={setBalanceFilter}
+            advancedFilter={advancedFilter}
+            onAdvancedFilterChange={setAdvancedFilter}
+            owner={owner}
+            onOwnerChange={setOwner}
+            owners={ownerOptions}
+            destination={destination}
+            onDestinationChange={setDestination}
+            destinations={destinationOptions}
+            onClear={() => {
+              setQuery("");
+              setStatus("all");
+              setFromDate("");
+              setToDate("");
+              setBalanceFilter("all");
+              setAdvancedFilter("all");
+              setOwner("all");
+              setDestination("all");
+              setPage(1);
+            }}
+          />
+        </CardHeader>
+        <CardContent className="p-0">
+          {isContainers ? (
+            <ContainerListTable
+              rows={pagedContainers}
+              total={filteredContainers.length}
+              hasFilters={hasFilters}
+              page={currentPage}
+              pages={pages}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              canSelect
+              selectedIds={selectedIds}
+              onSelect={toggleSelected}
+              onSelectPage={toggleSelectPage}
+            />
+          ) : (
+            <AssignmentTable
+              assignments={paged}
+              total={filtered.length}
+              hasFilters={hasFilters}
+              page={currentPage}
+              pages={pages}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              selectedIds={selectedIds}
+              onSelect={toggleSelected}
+              onSelectPage={toggleSelectPage}
+            />
+          )}
+        </CardContent>
+      </Card>
 
       <Dialog open={isBulkPayOpen} onOpenChange={setIsBulkPayOpen}>
         <DialogContent className="sm:max-w-md">

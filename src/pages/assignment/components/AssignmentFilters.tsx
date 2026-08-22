@@ -69,8 +69,8 @@ function AssignmentFilters({
   children?: ReactNode;
 }) {
   return (
-    <div className={cn("flex min-w-0 flex-1 flex-wrap items-center gap-2", className)}>
-      <div className="relative min-w-[160px] flex-1">
+    <div className={cn("flex w-full min-w-0 flex-wrap items-center gap-2", className)}>
+      <div className="relative min-w-[200px] flex-1 basis-[220px] sm:max-w-sm">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={query}
@@ -80,7 +80,7 @@ function AssignmentFilters({
         />
       </div>
       <Select value={status} onValueChange={onStatusChange}>
-        <SelectTrigger className="h-8 w-[130px] bg-background">
+        <SelectTrigger className="h-8 w-[130px] shrink-0 bg-background">
           <SelectValue placeholder="Status" />
         </SelectTrigger>
         <SelectContent>
@@ -91,23 +91,26 @@ function AssignmentFilters({
           ))}
         </SelectContent>
       </Select>
-      <Input
-        type="date"
-        value={fromDate}
-        onChange={(e) => onFromDateChange(e.target.value)}
-        className="h-8 w-[132px] bg-background"
-        aria-label="From date"
-      />
-      <Input
-        type="date"
-        value={toDate}
-        onChange={(e) => onToDateChange(e.target.value)}
-        className="h-8 w-[132px] bg-background"
-        aria-label="To date"
-      />
+      <div className="flex shrink-0 items-center gap-1.5">
+        <Input
+          type="date"
+          value={fromDate}
+          onChange={(e) => onFromDateChange(e.target.value)}
+          className="h-8 w-[140px] bg-background"
+          aria-label="From date"
+        />
+        <span className="text-xs text-muted-foreground">–</span>
+        <Input
+          type="date"
+          value={toDate}
+          onChange={(e) => onToDateChange(e.target.value)}
+          className="h-8 w-[140px] bg-background"
+          aria-label="To date"
+        />
+      </div>
       {onBalanceFilterChange ? (
         <Select value={balanceFilter} onValueChange={onBalanceFilterChange}>
-          <SelectTrigger className="h-8 w-[140px] bg-background">
+          <SelectTrigger className="h-8 w-[140px] shrink-0 bg-background">
             <SelectValue placeholder="Balance" />
           </SelectTrigger>
           <SelectContent>
@@ -118,7 +121,7 @@ function AssignmentFilters({
       ) : null}
       {onAdvancedFilterChange ? (
         <Select value={advancedFilter} onValueChange={onAdvancedFilterChange}>
-          <SelectTrigger className="h-8 w-[140px] bg-background">
+          <SelectTrigger className="h-8 w-[140px] shrink-0 bg-background">
             <SelectValue placeholder="Advanced" />
           </SelectTrigger>
           <SelectContent>
@@ -129,7 +132,7 @@ function AssignmentFilters({
       ) : null}
       {onOwnerChange ? (
         <Select value={owner} onValueChange={onOwnerChange}>
-          <SelectTrigger className="h-8 w-[160px] bg-background">
+          <SelectTrigger className="h-8 w-[160px] shrink-0 bg-background">
             <SelectValue placeholder="Lorry owner" />
           </SelectTrigger>
           <SelectContent>
@@ -144,7 +147,7 @@ function AssignmentFilters({
       ) : null}
       {onDestinationChange ? (
         <Select value={destination} onValueChange={onDestinationChange}>
-          <SelectTrigger className="h-8 w-[170px] bg-background">
+          <SelectTrigger className="h-8 w-[170px] shrink-0 bg-background">
             <SelectValue placeholder="Destination" />
           </SelectTrigger>
           <SelectContent>
@@ -161,7 +164,7 @@ function AssignmentFilters({
         <Button
           variant="ghost"
           size="sm"
-          className="h-8 px-2 text-muted-foreground"
+          className="h-8 shrink-0 px-2 text-muted-foreground"
           onClick={onClear}
         >
           Clear

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Truck,
@@ -28,6 +28,23 @@ import { getAuthUser, userInitials } from "@/lib/auth";
 import { can, P } from "@/lib/permissions";
 
 const API_URL = import.meta.env.VITE_API_URL;
+const SIDEBAR_STORAGE_KEY = "rg-sidebar-open";
+const DESKTOP_QUERY = "(min-width: 1024px)";
+
+function isDesktopWidth() {
+  return window.matchMedia(DESKTOP_QUERY).matches;
+}
+
+function readSidebarOpen() {
+  try {
+    const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY);
+    if (stored === "true") return true;
+    if (stored === "false") return false;
+  } catch {
+    /* ignore */
+  }
+  return isDesktopWidth();
+}
 
 const allMenuItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/", permission: null },
@@ -73,10 +90,18 @@ export const Layout = () => {
       ),
     [user]
   );
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(readSidebarOpen);
   const [loggingOut, setLoggingOut] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SIDEBAR_STORAGE_KEY, String(sidebarOpen));
+    } catch {
+      /* ignore */
+    }
+  }, [sidebarOpen]);
 
   const handleLogout = async () => {
     if (loggingOut) return;
@@ -98,6 +123,9 @@ export const Layout = () => {
   const currentItem = useMemo(() => {
     if (location.pathname.startsWith("/assignment/")) {
       return { label: "Assignment Details" };
+    }
+    if (location.pathname === "/assignments/containers") {
+      return { label: "Containers" };
     }
     return (
       menuItems.find((item) =>
@@ -122,8 +150,7 @@ export const Layout = () => {
           "fixed inset-y-0 left-0 z-50 flex w-[250px] max-w-[250px] flex-col overflow-hidden print:hidden",
           "bg-sidebar text-sidebar-foreground",
           "transition-transform duration-300 ease-out",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full",
-          "lg:translate-x-0"
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         <div className="pointer-events-none absolute -right-16 top-24 h-56 w-56 rounded-full bg-sidebar-primary/10 blur-3xl" />
@@ -136,7 +163,7 @@ export const Layout = () => {
               alt="RG Brothers"
               className="h-11 w-11 rounded-lg bg-white object-cover ring-1 ring-sidebar-foreground/40"
             />
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <h1 className="truncate text-[17px] font-bold leading-tight tracking-tight text-sidebar-foreground">
                 RG Brothers
               </h1>
@@ -144,6 +171,15 @@ export const Layout = () => {
                 Logistics
               </p>
             </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSidebarOpen(false)}
+              className="hidden h-8 w-8 shrink-0 text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground lg:inline-flex"
+              aria-label="Close sidebar"
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
         </div>
 
@@ -158,7 +194,9 @@ export const Layout = () => {
                 to={item.path}
                 key={item.id}
                 end={item.path === "/"}
-                onClick={() => setSidebarOpen(false)}
+                onClick={() => {
+                  if (!isDesktopWidth()) setSidebarOpen(false);
+                }}
                 className={({ isActive }) =>
                   cn(
                     "group relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-all duration-200",
@@ -218,7 +256,12 @@ export const Layout = () => {
         </div>
       </aside>
 
-      <div className="flex min-h-screen flex-col lg:pl-[250px] print:pl-0">
+      <div
+        className={cn(
+          "flex min-h-screen flex-col transition-[padding] duration-300 ease-out print:pl-0",
+          sidebarOpen ? "lg:pl-[250px]" : "lg:pl-0"
+        )}
+      >
         <header className="sticky top-0 z-30 border-b border-border bg-background/90 text-foreground backdrop-blur-xl print:hidden">
           <div className="flex h-16 items-center justify-between gap-3 px-4 lg:px-8">
             <div className="flex min-w-0 items-center gap-3">
@@ -226,7 +269,7 @@ export const Layout = () => {
                 variant="ghost"
                 size="icon"
                 onClick={() => setSidebarOpen((open) => !open)}
-                className="shrink-0 text-foreground lg:hidden"
+                className="shrink-0 text-foreground"
                 aria-label={sidebarOpen ? "Close menu" : "Open menu"}
               >
                 {sidebarOpen ? (

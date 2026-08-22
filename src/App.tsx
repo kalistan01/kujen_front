@@ -37,7 +37,10 @@ const App = () => (
                       <AssignmentManagement />
                     </RequirePermission>
                   }
-                />
+                >
+                  <Route index element={null} />
+                  <Route path="containers" element={null} />
+                </Route>
                 <Route
                   path="/settings"
                   element={

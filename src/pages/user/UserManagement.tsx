@@ -17,11 +17,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Edit, Search, Users } from "lucide-react";
+import { Plus, Edit, Search, Users, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/apiError";
 import baseUrl from "@/api/baseUrl";
 import AddUser from "./AddUser";
+import {
+  DeviceList,
+  userDevices,
+  ViewUser,
+  formatLastSeen,
+  userInitials,
+  type DirectoryUser,
+} from "./ViewUser";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -30,44 +38,16 @@ import { P } from "@/lib/permissions";
 import { useEntitySync } from "@/hooks/useEntitySync";
 import { upsertById } from "@/lib/socket";
 
-interface User {
+interface User extends DirectoryUser {
   id: string;
-  _id?: string;
-  fullName: string;
-  email: string;
-  status: boolean;
   password: string;
-  roleId: string;
-  roleName: string;
-  createdAt: string;
-  lastSeen?: string | null;
-  online?: boolean;
-}
-
-function formatLastSeen(value?: string | null) {
-  if (!value) return "Never";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Never";
-  const diff = Date.now() - date.getTime();
-  const mins = Math.max(0, Math.floor(diff / 60000));
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins} min ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days} day${days === 1 ? "" : "s"} ago`;
-  return date.toLocaleString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 export const UserManagement = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [viewingUser, setViewingUser] = useState<User | null>(null);
   const [query, setQuery] = useState("");
   const { toast } = useToast();
 
@@ -78,6 +58,27 @@ export const UserManagement = () => {
   const handleEdit = (user: User) => {
     setEditingUser(user);
     setIsDialogOpen(true);
+  };
+  const handleView = (user: User) => {
+    setViewingUser(user);
+    if (!user._id) return;
+    baseUrl
+      .get("/user/" + user._id)
+      .then((response) => {
+        if (response.data?.data) {
+          setViewingUser((current) =>
+            current && current._id === user._id
+              ? { ...current, ...response.data.data }
+              : current
+          );
+          setUsers((prev) =>
+            prev.map((row) =>
+              row._id === user._id ? { ...row, ...response.data.data } : row
+            )
+          );
+        }
+      })
+      .catch(() => {});
   };
 
   useEffect(() => {
@@ -100,6 +101,11 @@ export const UserManagement = () => {
 
   useEntitySync("user", (payload) => {
     setUsers((prev) => upsertById(prev, payload));
+    setViewingUser((current) => {
+      if (!current || String(current._id) !== String(payload.id)) return current;
+      if (payload.action === "deleted" || !payload.data) return current;
+      return { ...current, ...payload.data };
+    });
   });
 
   const toggleStatus = (id: string | undefined, status: boolean) => {
@@ -149,20 +155,16 @@ export const UserManagement = () => {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return users;
-    return users.filter((user) =>
-      [user.fullName, user.email, user.roleName]
+    return users.filter((user) => {
+      const deviceText = userDevices(user)
+        .flatMap((item) => [item.device, item.ip, item.userAgent])
         .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(q))
-    );
+        .join(" ");
+      return [user.fullName, user.email, user.roleName, deviceText]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(q));
+    });
   }, [users, query]);
-
-  const initials = (name?: string) =>
-    (name || "U")
-      .split(" ")
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase())
-      .join("");
 
   return (
     <div className="space-y-6">
@@ -237,6 +239,7 @@ export const UserManagement = () => {
                   <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Devices</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -247,7 +250,7 @@ export const UserManagement = () => {
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-brand text-xs font-bold text-white">
-                          {initials(user.fullName)}
+                          {userInitials(user.fullName)}
                         </span>
                         <span className="font-semibold">{user.fullName}</span>
                       </div>
@@ -286,20 +289,33 @@ export const UserManagement = () => {
                         ) : null}
                       </div>
                     </TableCell>
+                    <TableCell className="max-w-[240px] text-sm text-muted-foreground">
+                      <DeviceList user={user} />
+                    </TableCell>
                     <TableCell className="text-muted-foreground">
                       {new Date(user.createdAt).toLocaleString()}
                     </TableCell>
                     <TableCell className="text-right">
-                      {can(P.USERS_MANAGE) ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEdit(user)}
-                      >
-                        <Edit className="h-4 w-4" />
-                        Edit
-                      </Button>
-                      ) : null}
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleView(user)}
+                        >
+                          <Eye className="h-4 w-4" />
+                          View
+                        </Button>
+                        {can(P.USERS_MANAGE) ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(user)}
+                          >
+                            <Edit className="h-4 w-4" />
+                            Edit
+                          </Button>
+                        ) : null}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -308,6 +324,23 @@ export const UserManagement = () => {
           )}
         </CardContent>
       </Card>
+
+      <Dialog
+        open={Boolean(viewingUser)}
+        onOpenChange={(open) => {
+          if (!open) setViewingUser(null);
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>User details</DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              Account, presence, and last login device.
+            </p>
+          </DialogHeader>
+          {viewingUser ? <ViewUser user={viewingUser} /> : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
