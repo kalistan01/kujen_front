@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/table";
 import { Plus, Edit, MapPin, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { getApiErrorMessage } from "@/lib/apiError";
 import baseUrl from "@/api/baseUrl";
 import AddDistination from "./AddDistination";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +27,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { can } from "@/lib/permissions";
 import { P } from "@/lib/permissions";
+import { useEntitySync } from "@/hooks/useEntitySync";
+import { upsertById } from "@/lib/socket";
 
 interface Destination {
   _id?: string;
@@ -46,7 +49,11 @@ const mockDestinations: Destination[] = [
   },
 ];
 
-export const DestinationManagement = () => {
+export const DestinationManagement = ({
+  embedded = false,
+}: {
+  embedded?: boolean;
+}) => {
   const [destinations, setDestinations] =
     useState<Destination[]>(mockDestinations);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -62,9 +69,20 @@ export const DestinationManagement = () => {
         setDestinations(response.data.data);
       })
       .catch((error) => {
-        console.error(error);
+        toast({
+          title: "Unable to load destinations",
+          description: getApiErrorMessage(
+            error,
+            "Could not load destinations. Please try again."
+          ),
+          variant: "destructive",
+        });
       });
   }, []);
+
+  useEntitySync("destination", (payload) => {
+    setDestinations((prev) => upsertById(prev, payload));
+  });
 
   const handleAdd = () => {
     setEditingDestination(null);
@@ -82,24 +100,46 @@ export const DestinationManagement = () => {
     }
   };
 
-  const toggleStatus = (id: string, currentStatus: boolean) => {
+  const toggleStatus = (id: string | undefined, currentStatus: boolean) => {
+    if (!id) {
+      toast({
+        title: "Unable to update",
+        description: "This destination cannot be updated because it has no ID.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     baseUrl
       .delete(`destination/${id}`, {
         headers: { status: currentStatus ? 0 : 1 },
       })
       .then(async () => {
         setDestinations(
-          destinations.map((role) =>
-            role._id === id ? { ...role, status: !role.status } : role
+          destinations.map((destination) =>
+            destination._id === id
+              ? { ...destination, status: !destination.status }
+              : destination
           )
         );
         toast({
           title: "Success",
-          description: "Destination updated successfully.",
+          description: currentStatus
+            ? "Destination deactivated successfully."
+            : "Destination activated successfully.",
         });
       })
       .catch((error) => {
-        console.error(error);
+        toast({
+          title: currentStatus ? "Deactivate failed" : "Activate failed",
+          description: getApiErrorMessage(
+            error,
+            currentStatus
+              ? "Could not deactivate the destination. Please try again."
+              : "Could not activate the destination. Please try again."
+          ),
+          variant: "destructive",
+        });
       });
   };
 
@@ -113,22 +153,18 @@ export const DestinationManagement = () => {
     );
   }, [destinations, query]);
 
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Destinations"
-        description="Manage routes, locations, and delivery points."
-      >
-        <div className="relative w-full sm:w-64">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search routes..."
-            className="h-10 pl-9"
-          />
-        </div>
-        {can(P.DESTINATIONS_MANAGE) ? (
+  const toolbar = (
+    <>
+      <div className="relative w-full sm:w-64">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search routes..."
+          className="h-10 pl-9"
+        />
+      </div>
+      {can(P.DESTINATIONS_MANAGE) ? (
         <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
           <DialogTrigger asChild>
             <Button
@@ -144,17 +180,39 @@ export const DestinationManagement = () => {
               <DialogTitle>
                 {editingDestination ? "Edit Route" : "Add New Route"}
               </DialogTitle>
+              <p className="text-sm text-muted-foreground">
+                {editingDestination
+                  ? "Update this destination type and location."
+                  : "Add a destination type and location for deliveries."}
+              </p>
             </DialogHeader>
             <AddDistination
               setIsDialogOpen={setIsDialogOpen}
               editingDestination={editingDestination}
+              destinations={destinations}
               setDestinations={setDestinations}
               setEditingDestination={setEditingDestination}
             />
           </DialogContent>
         </Dialog>
-        ) : null}
-      </PageHeader>
+      ) : null}
+    </>
+  );
+
+  return (
+    <div className="space-y-6">
+      {embedded ? (
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-end">
+          {toolbar}
+        </div>
+      ) : (
+        <PageHeader
+          title="Destinations"
+          description="Manage routes, locations, and delivery points."
+        >
+          {toolbar}
+        </PageHeader>
+      )}
 
       <Card className="overflow-hidden">
         <CardHeader className="border-b border-border/70 bg-muted/30 py-4">

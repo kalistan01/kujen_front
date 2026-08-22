@@ -16,6 +16,8 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/PageHeader";
 import { can } from "@/lib/permissions";
 import { P } from "@/lib/permissions";
+import { useEntitySync } from "@/hooks/useEntitySync";
+import { upsertById } from "@/lib/socket";
 
 interface Lorry {
   _id?: string;
@@ -40,6 +42,10 @@ export const LorryOwnerManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingOwner, setEditingOwner] = useState<LorryOwner | null>(null);
   const [query, setQuery] = useState("");
+
+  useEntitySync("lorry", (payload) => {
+    setOwners((prev) => upsertById(prev, payload));
+  });
 
   useEffect(() => {
     baseUrl
@@ -110,6 +116,11 @@ export const LorryOwnerManagement = () => {
               <DialogTitle>
                 {editingOwner ? "Edit Lorry Owner" : "Add New Lorry Owner"}
               </DialogTitle>
+              <p className="text-sm text-muted-foreground">
+                {editingOwner
+                  ? "Update owner details and the vehicles in this fleet."
+                  : "Add an owner, company, and the vehicles in their fleet."}
+              </p>
             </DialogHeader>
             <AddLorryOwner
               owners={owners}

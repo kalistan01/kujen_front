@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import {
   Truck,
   Users,
-  MapPin,
   ClipboardList,
   Shield,
   Menu,
@@ -11,6 +10,7 @@ import {
   LayoutDashboard,
   LogOut,
   ScrollText,
+  Settings,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
@@ -41,10 +41,10 @@ const allMenuItems = [
     permission: [P.LORRIES_VIEW, P.LORRIES_MANAGE],
   },
   {
-    id: "destinations",
-    label: "Destinations",
-    icon: MapPin,
-    path: "/destinations",
+    id: "settings",
+    label: "Settings",
+    icon: Settings,
+    path: "/settings",
     permission: [P.DESTINATIONS_VIEW, P.DESTINATIONS_MANAGE],
   },
   {

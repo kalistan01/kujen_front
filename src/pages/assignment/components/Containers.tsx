@@ -20,6 +20,7 @@ import { Banknote, Edit } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import baseUrl from "@/api/baseUrl";
 import { useToast } from "@/hooks/use-toast";
+import { getApiErrorMessage } from "@/lib/apiError";
 import { useParams } from "react-router-dom";
 import EditContainer from "./EditContainer";
 import {
@@ -54,6 +55,8 @@ interface ContainerType {
   outHire?: number;
   other?: number;
   heldUp?: number;
+  heldUpExtraDays?: number;
+  heldUpRate?: number;
   agentFee?: number;
   transportCommission?: number;
   return?: number;
@@ -107,19 +110,28 @@ function Containers({
   const toggleStatus = (
     containerId: "pending" | "in-progress" | "completed"
   ) => {
+    const previous = status;
     setStatus(containerId);
     baseUrl
       .patch(`assignlorry/${id}/containers/${container?._id}`, {
         status: containerId,
       })
-      .then(async (response) => {
+      .then(async () => {
         toast({
           title: "Success",
-          description: "Role updated successfully.",
+          description: "Container status updated successfully.",
         });
       })
       .catch((error) => {
-        console.error(error);
+        setStatus(previous);
+        toast({
+          title: "Update failed",
+          description: getApiErrorMessage(
+            error,
+            "Could not update the container status. Please try again."
+          ),
+          variant: "destructive",
+        });
       });
   };
   useEffect(() => {
@@ -148,8 +160,10 @@ function Containers({
       .catch((error) => {
         toast({
           title: "Payment failed",
-          description:
-            error?.response?.data?.message || "Could not pay the balance.",
+          description: getApiErrorMessage(
+            error,
+            "Could not pay the balance. Please try again."
+          ),
           variant: "destructive",
         });
       })
@@ -296,6 +310,13 @@ function Containers({
             {label === "Advanced" && canSeeField("advancedDate") ? (
               <p className="text-xs text-muted-foreground">
                 {formatDate(container.advancedDate)}
+              </p>
+            ) : null}
+            {label === "Held Up" && Number(container.heldUpExtraDays) > 0 ? (
+              <p className="text-xs text-muted-foreground">
+                {container.heldUpExtraDays} extra day
+                {Number(container.heldUpExtraDays) === 1 ? "" : "s"} ×{" "}
+                {formatMoney(container.heldUpRate)}
               </p>
             ) : null}
             {label === "Balance Paid" && container.balancePaid && canSeeField("balanceDate") ? (

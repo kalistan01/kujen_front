@@ -25,6 +25,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { can } from "@/lib/permissions";
 import { P } from "@/lib/permissions";
 import TablePagination from "@/components/TablePagination";
+import { useEntitySync } from "@/hooks/useEntitySync";
+import { LogDetails } from "./logDetails";
 
 type ActivityLog = {
   _id: string;
@@ -38,6 +40,7 @@ type ActivityLog = {
   actorEmail?: string;
   actorRole?: string;
   summary?: string;
+  payload?: Record<string, unknown> | null;
   createdAt: string;
 };
 
@@ -113,6 +116,17 @@ export const LogsPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEntitySync("log", (payload) => {
+    if (!payload.data || page !== 1) return;
+    const row = payload.data;
+    if (module !== "all" && row.module !== module) return;
+    setLogs((prev) => {
+      if (prev.some((item) => item._id === row._id)) return prev;
+      return [row, ...prev].slice(0, limit);
+    });
+    setTotal((prev) => prev + 1);
+  });
+
   if (!can(P.LOGS_VIEW)) {
     return <Navigate to="/" replace />;
   }
@@ -152,6 +166,7 @@ export const LogsPage = () => {
                 <SelectItem value="role">role</SelectItem>
                 <SelectItem value="lorry">lorry</SelectItem>
                 <SelectItem value="destination">destination</SelectItem>
+                <SelectItem value="heldup">heldup</SelectItem>
               </SelectContent>
             </Select>
             <Input
@@ -249,8 +264,8 @@ export const LogsPage = () => {
                         {log.statusCode || (log.success ? "OK" : "Failed")}
                       </Badge>
                     </TableCell>
-                    <TableCell className="max-w-[360px] whitespace-normal text-muted-foreground">
-                      {log.summary || log.path}
+                    <TableCell className="max-w-[420px] whitespace-normal text-muted-foreground">
+                      <LogDetails log={log} />
                     </TableCell>
                   </TableRow>
                 ))}

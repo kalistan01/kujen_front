@@ -24,11 +24,14 @@ export const toAmount = (value: unknown) => {
 export const roundMoney = (value: number) =>
   Math.round((value + Number.EPSILON) * 100) / 100;
 
-export const formatMoney = (value?: number) =>
-  `Rs ${toAmount(value).toLocaleString("en-IN", {
-    minimumFractionDigits: 2,
+export const formatMoney = (value?: number) => {
+  const amount = roundMoney(toAmount(value));
+  const hasCents = Math.round(amount * 100) % 100 !== 0;
+  return `Rs ${amount.toLocaleString("en-IN", {
+    minimumFractionDigits: hasCents ? 2 : 0,
     maximumFractionDigits: 2,
   })}`;
+};
 
 export const todayDateInput = () => {
   const d = new Date();
@@ -39,21 +42,102 @@ export const todayDateInput = () => {
   ].join("-");
 };
 
-export const toDateInput = (value?: string | Date | null) => {
-  if (!value) return todayDateInput();
+export const toDateKey = (value?: string | Date | null) => {
+  if (!value) return "";
   if (typeof value === "string") {
     const part = value.substring(0, 10);
-    return /^\d{4}-\d{2}-\d{2}$/.test(part) ? part : todayDateInput();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(part)) return part;
   }
-  if (value instanceof Date && !Number.isNaN(value.getTime())) {
-    return [
-      value.getFullYear(),
-      String(value.getMonth() + 1).padStart(2, "0"),
-      String(value.getDate()).padStart(2, "0"),
-    ].join("-");
-  }
-  return todayDateInput();
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
 };
+
+export const toDateInput = (value?: string | Date | null) =>
+  toDateKey(value) || todayDateInput();
+
+export type HeldUpRateOption = {
+  amount?: number;
+  date?: string;
+  status?: boolean;
+  createdAt?: string;
+};
+
+export const extraHeldUpDays = (
+  loadingDate?: string | Date | null,
+  demountDate?: string | Date | null
+) => {
+  const start = toDateKey(loadingDate);
+  const end = toDateKey(demountDate);
+  if (!start || !end) return 0;
+  const [ay, am, ad] = start.split("-").map(Number);
+  const [by, bm, bd] = end.split("-").map(Number);
+  const diff = Math.round(
+    (Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 86400000
+  );
+  return Math.max(0, diff - 1);
+};
+
+export const pickHeldUpRate = (
+  rates: HeldUpRateOption[] = [],
+  loadingDate?: string | Date | null
+) => {
+  const list = [...rates].sort((a, b) => {
+    const byDate = String(b.date || "").localeCompare(String(a.date || ""));
+    if (byDate) return byDate;
+    return (
+      new Date(b.createdAt || 0).getTime() -
+      new Date(a.createdAt || 0).getTime()
+    );
+  });
+  const key = toDateKey(loadingDate);
+  if (key) {
+    const match = list.find((item) => String(item.date || "") <= key);
+    if (match) return toAmount(match.amount);
+  }
+  const active = list.find((item) => item.status);
+  return toAmount(active?.amount);
+};
+
+export const heldUpFromDates = (
+  loadingDate?: string | Date | null,
+  demountDate?: string | Date | null,
+  rate = 0
+) => {
+  const extraDays = extraHeldUpDays(loadingDate, demountDate);
+  const dailyRate = toAmount(rate);
+  return {
+    extraDays,
+    rate: dailyRate,
+    amount: roundMoney(extraDays * dailyRate),
+  };
+};
+
+export const applyHeldUpToContainer = <T extends Record<string, any>>(
+  container: T,
+  rates: HeldUpRateOption[] = []
+) => {
+  const calc = heldUpFromDates(
+    container?.loadingDate,
+    container?.demoundDate,
+    pickHeldUpRate(rates, container?.loadingDate)
+  );
+  return {
+    ...container,
+    heldUp: calc.amount,
+    heldUpExtraDays: calc.extraDays,
+    heldUpRate: calc.rate,
+  };
+};
+
+export const applyHeldUpToContainers = <T extends Record<string, any>>(
+  containers: T[] = [],
+  rates: HeldUpRateOption[] = []
+) => containers.map((container) => applyHeldUpToContainer(container, rates));
 
 export const containerChargesTotal = (
   container: any = {},

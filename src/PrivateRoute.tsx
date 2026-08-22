@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { Layout } from "./components/Layout";
+import { SocketProvider } from "./context/SocketProvider";
 const API_URL = import.meta.env.VITE_API_URL;
 
 const PrivateRoute: React.FC = () => {
@@ -35,7 +36,13 @@ const PrivateRoute: React.FC = () => {
     return <div>Loading...</div>; // Or a spinner
   }
 
-  return isAuthenticated ? <Layout /> : <Navigate to="/login" />;
+  return isAuthenticated ? (
+    <SocketProvider>
+      <Layout />
+    </SocketProvider>
+  ) : (
+    <Navigate to="/login" />
+  );
 };
 
 export default PrivateRoute;

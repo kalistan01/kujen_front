@@ -13,14 +13,27 @@ import {
   Plus,
   X,
   Package,
+  Loader2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { getApiErrorMessage } from "@/lib/apiError";
 import baseUrl from "@/api/baseUrl";
 import DestinationSelect, {
   type DestinationOption,
 } from "./components/DestinationSelect";
-import { todayDateInput } from "./lib/financials";
+import { todayDateInput, applyHeldUpToContainer, applyHeldUpToContainers, type HeldUpRateOption } from "./lib/financials";
+import { formatVocNo } from "./lib/voc";
 import { canSeeField, omitHiddenContainerFields } from "@/lib/permissions";
+import {
+  firstErrorMessage,
+  mapContainerApiError,
+  validateAssignmentBasic,
+  validateContainer,
+  type AssignmentBasicErrors,
+  type ContainerFieldErrors,
+} from "./lib/validate";
+import { useEntitySync } from "@/hooks/useEntitySync";
+import { upsertById } from "@/lib/socket";
 
 function Field({
   label,
@@ -28,12 +41,14 @@ function Field({
   children,
   className = "",
   field,
+  error,
 }: {
   label: string;
   required?: boolean;
   children: ReactNode;
   className?: string;
   field?: string;
+  error?: string;
 }) {
   if (field && !canSeeField(field)) return null;
   return (
@@ -43,6 +58,9 @@ function Field({
         {required ? <span className="text-destructive"> *</span> : null}
       </Label>
       {children}
+      {error ? (
+        <p className="text-xs font-medium text-destructive">{error}</p>
+      ) : null}
     </div>
   );
 }
@@ -64,6 +82,8 @@ interface Container {
   outHire: number;
   other: number;
   heldUp: number;
+  heldUpExtraDays?: number;
+  heldUpRate?: number;
   agentFee: number;
   transportCommission: number;
   return: number;
@@ -84,6 +104,32 @@ interface Assignment {
   updatedBy: string;
   status?: string;
 }
+
+function emptyContainer(vocNo: string): Omit<Container, "id"> {
+  return {
+    containerNo: "",
+    vocNo,
+    lorryId: "",
+    loadingDate: "",
+    demoundDate: "",
+    destination: "",
+    weight: 0,
+    dayHire: 0,
+    advanced: 0,
+    advancedDate: todayDateInput(),
+    balancePaid: 0,
+    balanceDate: todayDateInput(),
+    outHire: 0,
+    other: 0,
+    heldUp: 0,
+    agentFee: 0,
+    transportCommission: 0,
+    return: 0,
+    ot: 0,
+    status: "pending",
+  };
+}
+
 function AddAssignment({
   setIsDialogOpen,
   editingAssignment,
@@ -98,7 +144,14 @@ function AddAssignment({
   setEditingAssignment: (assignment: Assignment | null) => void;
 }) {
   const [destination, setDestination] = useState<DestinationOption[]>([]);
-  const [lorries, setLorries] = useState([]);
+  const [lorries, setLorries] = useState<any[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<AssignmentBasicErrors>({});
+  const [containerErrors, setContainerErrors] = useState<
+    ContainerFieldErrors[]
+  >([]);
+  const [nextVoc, setNextVoc] = useState(1);
+  const [heldUpRates, setHeldUpRates] = useState<HeldUpRateOption[]>([]);
   const [formData, setFormData] = useState({
     blNo: "",
     cusdecDate: "",
@@ -109,60 +162,28 @@ function AddAssignment({
     importer: "",
   });
   const [containers, setContainers] = useState<Omit<Container, "id">[]>([
-    {
-      containerNo: "",
-      vocNo: "",
-      lorryId: "",
-      loadingDate: "",
-      demoundDate: "",
-      destination: "",
-      weight: 0,
-      dayHire: 0,
-      advanced: 0,
-      advancedDate: todayDateInput(),
-      balancePaid: 0,
-      balanceDate: todayDateInput(),
-      outHire: 0,
-      other: 0,
-      heldUp: 0,
-      agentFee: 0,
-      transportCommission: 0,
-      return: 0,
-      ot: 0,
-      status: "pending" as "pending" | "in-progress" | "completed",
-    },
+    emptyContainer(formatVocNo(1)),
   ]);
   const { toast } = useToast();
+  const assignVocNumbers = (list: Omit<Container, "id">[], start = nextVoc) =>
+    list.map((container, index) => ({
+      ...container,
+      vocNo: formatVocNo(start + index),
+    }));
   const addContainer = () => {
-    setContainers([
-      ...containers,
-      {
-        containerNo: "",
-        vocNo: "",
-        lorryId: "",
-        loadingDate: "",
-        demoundDate: "",
-        destination: "",
-        status: "",
-        weight: 0,
-        dayHire: 0,
-        advanced: 0,
-        advancedDate: todayDateInput(),
-        balancePaid: 0,
-        balanceDate: todayDateInput(),
-        outHire: 0,
-        other: 0,
-        heldUp: 0,
-        agentFee: 0,
-        transportCommission: 0,
-        return: 0,
-        ot: 0,
-      },
-    ]);
+    setContainers((prev) =>
+      assignVocNumbers([
+        ...prev,
+        applyHeldUpToContainer(
+          emptyContainer(formatVocNo(nextVoc + prev.length)),
+          heldUpRates
+        ),
+      ])
+    );
   };
   const removeContainer = (index: number) => {
     if (containers.length > 1) {
-      setContainers(containers.filter((_, i) => i !== index));
+      setContainers(assignVocNumbers(containers.filter((_, i) => i !== index)));
     }
   };
 
@@ -172,9 +193,27 @@ function AddAssignment({
     value: string | number
   ) => {
     const updatedContainers = containers.map((container, i) =>
-      i === index ? { ...container, [field]: value } : container
+      i === index
+        ? applyHeldUpToContainer({ ...container, [field]: value }, heldUpRates)
+        : container
     );
     setContainers(updatedContainers);
+    setContainerErrors((prev) => {
+      if (!prev[index]?.[field as keyof ContainerFieldErrors] && !errors.form) {
+        return prev;
+      }
+      const next = [...prev];
+      next[index] = { ...next[index] };
+      delete next[index][field as keyof ContainerFieldErrors];
+      return next;
+    });
+    if (errors.form) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.form;
+        return next;
+      });
+    }
   };
   useEffect(() => {
     baseUrl
@@ -183,7 +222,14 @@ function AddAssignment({
         setDestination(response.data.data);
       })
       .catch((error) => {
-        console.error(error);
+        toast({
+          title: "Unable to load destinations",
+          description: getApiErrorMessage(
+            error,
+            "Could not load destinations. Please try again."
+          ),
+          variant: "destructive",
+        });
       });
     baseUrl
       .get("/lorry/lorry")
@@ -191,48 +237,111 @@ function AddAssignment({
         setLorries(response.data.data);
       })
       .catch((error) => {
-        console.error(error);
+        toast({
+          title: "Unable to load lorries",
+          description: getApiErrorMessage(
+            error,
+            "Could not load lorries. Please try again."
+          ),
+          variant: "destructive",
+        });
+      });
+    baseUrl
+      .get("/assignlorry/next-voc")
+      .then((response) => {
+        const nextNumber = Number(response.data?.nextNumber) || 1;
+        setNextVoc(nextNumber);
+        setContainers((prev) =>
+          prev.map((container, index) => ({
+            ...container,
+            vocNo: formatVocNo(nextNumber + index),
+          }))
+        );
+      })
+      .catch(() => {
+        setNextVoc(1);
+      });
+    baseUrl
+      .get("/heldup")
+      .then((response) => {
+        setHeldUpRates(response.data?.data || []);
+      })
+      .catch(() => {
+        setHeldUpRates([]);
       });
   }, []);
-  const handleSave = () => {
-    // Validate basic form data
-    if (
-      !formData.blNo ||
-      !formData.cusdecDate ||
-      !formData.cusdecNo ||
-      !formData.regNo
-    ) {
+  useEntitySync("destination", (payload) => {
+    setDestination((prev) => upsertById(prev, payload));
+  });
+  useEntitySync("heldup", (payload) => {
+    setHeldUpRates((prev) => {
+      if (payload.action === "created" && payload.data) {
+        return [
+          payload.data,
+          ...prev.map((item) => ({ ...item, status: false })),
+        ];
+      }
+      return upsertById(prev, payload);
+    });
+  });
+  useEffect(() => {
+    setContainers((prev) => applyHeldUpToContainers(prev, heldUpRates));
+  }, [heldUpRates]);
+  const handleSave = async () => {
+    const basicErrors = validateAssignmentBasic(formData);
+    const blNo = formData.blNo.trim();
+    if (blNo) {
+      const taken = assignments.some(
+        (assignment: any) =>
+          assignment._id !== editingAssignment?._id &&
+          assignment.id !== editingAssignment?.id &&
+          assignment.blNo?.trim().toLowerCase() === blNo.toLowerCase()
+      );
+      if (taken) {
+        basicErrors.blNo = `BL number "${blNo}" already exists.`;
+      }
+    }
+
+    const nextContainerErrors = containers.map((container, index) => {
+      const fieldErrors = validateContainer(container);
+      const number = container.containerNo.trim().toLowerCase();
+      if (number) {
+        const duplicate = containers.some(
+          (other, otherIndex) =>
+            otherIndex !== index &&
+            other.containerNo.trim().toLowerCase() === number
+        );
+        if (duplicate) {
+          fieldErrors.containerNo = `Container number "${container.containerNo.trim()}" is already in this assignment.`;
+        }
+      }
+      return fieldErrors;
+    });
+
+    const hasContainerErrors = nextContainerErrors.some(
+      (item) => Object.keys(item).length > 0
+    );
+    setErrors(basicErrors);
+    setContainerErrors(nextContainerErrors);
+
+    if (Object.keys(basicErrors).length || hasContainerErrors) {
+      const containerMessage = nextContainerErrors
+        .map((item, index) => {
+          const message = firstErrorMessage(item);
+          return message ? `Container ${index + 1}: ${message}` : null;
+        })
+        .find(Boolean);
       toast({
-        title: "Validation Error",
-        description: "Please fill in all required basic fields.",
+        title: "Missing details",
+        description:
+          firstErrorMessage(basicErrors) ||
+          containerMessage ||
+          "Please correct the highlighted fields and try again.",
         variant: "destructive",
       });
       return;
     }
 
-    // Validate containers
-    for (let i = 0; i < containers.length; i++) {
-      const container = containers[i];
-      if (
-        !container.containerNo ||
-        !container.vocNo ||
-        !container.lorryId ||
-        !container.loadingDate ||
-        !container.demoundDate ||
-        container.weight <= 0 ||
-        container.dayHire <= 0 ||
-        container.advanced <= 0
-      ) {
-        toast({
-          title: "Validation Error",
-          description: `Please fill in all required fields for container ${
-            i + 1
-          }.`,
-          variant: "destructive",
-        });
-        return;
-      }
-    }
     const resetForm = () => {
       setFormData({
         blNo: "",
@@ -244,29 +353,10 @@ function AddAssignment({
         importer: "",
       });
       setContainers([
-        {
-          containerNo: "",
-          vocNo: "",
-          lorryId: "",
-          loadingDate: "",
-          demoundDate: "",
-          destination: "",
-          weight: 0,
-          dayHire: 0,
-          advanced: 0,
-          advancedDate: todayDateInput(),
-          balancePaid: 0,
-          balanceDate: todayDateInput(),
-          outHire: 0,
-          other: 0,
-          heldUp: 0,
-          agentFee: 0,
-          transportCommission: 0,
-          ot: 0,
-          return: 0,
-          status: "pending" as "pending" | "in-progress" | "completed",
-        },
+        applyHeldUpToContainer(emptyContainer(formatVocNo(nextVoc)), heldUpRates),
       ]);
+      setErrors({});
+      setContainerErrors([]);
       setEditingAssignment(null);
     };
     const processedContainers: Container[] = containers.map(
@@ -275,103 +365,160 @@ function AddAssignment({
           ? editingAssignment.containers[index]?.id ||
             Date.now().toString() + index
           : Date.now().toString() + index,
-        ...omitHiddenContainerFields(container),
+        ...omitHiddenContainerFields({
+          ...container,
+          destination: container.destination || undefined,
+        }),
       })
     );
 
-    if (editingAssignment) {
-      setAssignments(
-        assignments.map((assignment) =>
-          assignment.id === editingAssignment.id
-            ? {
-                ...assignment,
-                ...formData,
-                containers: processedContainers,
-                ot: containers.map((c) => ({ containerNo: c.containerNo })),
-                updatedBy: "Current User",
-              }
-            : assignment
-        )
-      );
-      toast({
-        title: "Success",
-        description: "Assignment updated successfully.",
-      });
-    } else {
-      const newAssignment: Assignment = {
-        id: Date.now().toString(),
-        ...formData,
-        containers: processedContainers,
-        createdAt: new Date().toISOString().split("T")[0],
-        createdBy: "Current User",
-        updatedBy: "Current User",
-      };
-
-      baseUrl
-        .post("/assignlorry", newAssignment)
-        .then(async (response) => {
-          toast({
-            title: "Success",
-            description: "Lorry owner created successfully.",
-          });
-        })
-        .catch((error) => {
-          console.error(error);
+    setSaving(true);
+    try {
+      if (editingAssignment) {
+        setAssignments(
+          assignments.map((assignment) =>
+            assignment.id === editingAssignment.id
+              ? {
+                  ...assignment,
+                  ...formData,
+                  containers: processedContainers,
+                  ot: containers.map((c) => ({ containerNo: c.containerNo })),
+                  updatedBy: "Current User",
+                }
+              : assignment
+          )
+        );
+        toast({
+          title: "Success",
+          description: "Assignment updated successfully.",
         });
-    }
+      } else {
+        const newAssignment: Assignment = {
+          id: Date.now().toString(),
+          ...formData,
+          blNo,
+          cusdecNo: formData.cusdecNo.trim(),
+          regNo: formData.regNo.trim(),
+          containers: processedContainers,
+          createdAt: new Date().toISOString().split("T")[0],
+          createdBy: "Current User",
+          updatedBy: "Current User",
+        };
 
-    setIsDialogOpen(false);
-    resetForm();
+        await baseUrl.post("/assignlorry", newAssignment);
+        toast({
+          title: "Success",
+          description: "Assignment created successfully.",
+        });
+      }
+
+      setIsDialogOpen(false);
+      resetForm();
+    } catch (error: unknown) {
+      const message = getApiErrorMessage(
+        error,
+        editingAssignment
+          ? "Could not update the assignment. Please try again."
+          : "Could not create the assignment. Please try again."
+      );
+      const containerField = mapContainerApiError(message);
+      if (containerField !== "form") {
+        setContainerErrors((prev) => {
+          const next = [...prev];
+          if (!next[0]) next[0] = {};
+          next[0] = { ...next[0], [containerField]: message };
+          return next;
+        });
+      } else {
+        setErrors({ form: message });
+      }
+      toast({
+        title: editingAssignment ? "Update failed" : "Create failed",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
   };
   return (
     <div className="space-y-5">
+      {errors.form ? (
+        <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
+          {errors.form}
+        </p>
+      ) : null}
       <section className="overflow-hidden rounded-xl border border-border bg-card">
         <div className="border-b border-border bg-muted/40 px-4 py-3">
           <h3 className="text-sm font-semibold tracking-tight text-foreground">Basic information</h3>
         </div>
         <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="BL Number" required>
+          <Field label="BL Number" required error={errors.blNo}>
             <Input
               id="blNo"
               value={formData.blNo}
-              onChange={(e) =>
-                setFormData({ ...formData, blNo: e.target.value })
-              }
+              onChange={(e) => {
+                setFormData({ ...formData, blNo: e.target.value });
+                setErrors((prev) => {
+                  const next = { ...prev };
+                  delete next.blNo;
+                  delete next.form;
+                  return next;
+                });
+              }}
               placeholder="Enter BL number"
-              className="h-10"
+              className={`h-10 ${errors.blNo ? "border-destructive" : ""}`}
             />
           </Field>
-          <Field label="Cusdec Date" required>
+          <Field label="Cusdec Date" required error={errors.cusdecDate}>
             <Input
               id="cusdecDate"
               type="date"
               value={formData.cusdecDate}
-              onChange={(e) =>
-                setFormData({ ...formData, cusdecDate: e.target.value })
-              }
-              className="h-10"
+              onChange={(e) => {
+                setFormData({ ...formData, cusdecDate: e.target.value });
+                setErrors((prev) => {
+                  const next = { ...prev };
+                  delete next.cusdecDate;
+                  delete next.form;
+                  return next;
+                });
+              }}
+              className={`h-10 ${errors.cusdecDate ? "border-destructive" : ""}`}
             />
           </Field>
-          <Field label="Cusdec Number" required>
+          <Field label="Cusdec Number" required error={errors.cusdecNo}>
             <Input
               id="cusdecNo"
               value={formData.cusdecNo}
-              onChange={(e) =>
-                setFormData({ ...formData, cusdecNo: e.target.value })
-              }
+              onChange={(e) => {
+                setFormData({ ...formData, cusdecNo: e.target.value });
+                setErrors((prev) => {
+                  const next = { ...prev };
+                  delete next.cusdecNo;
+                  delete next.form;
+                  return next;
+                });
+              }}
               placeholder="Enter cusdec number"
-              className="h-10"
+              className={`h-10 ${errors.cusdecNo ? "border-destructive" : ""}`}
             />
           </Field>
-          <Field label="Registration Number" required>
+          <Field label="Registration Number" required error={errors.regNo}>
             <Input
               id="regNo"
               value={formData.regNo}
-              onChange={(e) =>
-                setFormData({ ...formData, regNo: e.target.value })
-              }
+              onChange={(e) => {
+                setFormData({ ...formData, regNo: e.target.value });
+                setErrors((prev) => {
+                  const next = { ...prev };
+                  delete next.regNo;
+                  delete next.form;
+                  return next;
+                });
+              }}
               placeholder="Enter registration number"
-              className="h-10"
+              className={`h-10 ${errors.regNo ? "border-destructive" : ""}`}
             />
           </Field>
           <Field label="Item">
@@ -440,41 +587,48 @@ function AddAssignment({
 
             <div className="space-y-4 p-4">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <Field label="Container Number" required>
+                <Field
+                  label="Container Number"
+                  required
+                  error={containerErrors[index]?.containerNo}
+                >
                   <Input
                     value={container.containerNo}
                     onChange={(e) =>
                       updateContainer(index, "containerNo", e.target.value)
                     }
                     placeholder="Enter container number"
-                    className="h-10"
+                    className={`h-10 ${containerErrors[index]?.containerNo ? "border-destructive" : ""}`}
                   />
                 </Field>
-                <Field label="VOC Number" required>
+                <Field label="VOC Number">
                   <Input
                     value={container.vocNo}
-                    onChange={(e) =>
-                      updateContainer(index, "vocNo", e.target.value)
-                    }
-                    placeholder="Enter VOC number"
-                    className="h-10"
+                    readOnly
+                    className="h-10 bg-muted"
                   />
                 </Field>
-                <Field label="Assign Lorry" required>
+                <Field
+                  label="Assign Lorry"
+                  required
+                  error={containerErrors[index]?.lorryId}
+                >
                   <Select
                     value={container.lorryId}
                     onValueChange={(value) =>
                       updateContainer(index, "lorryId", value)
                     }
                   >
-                    <SelectTrigger className="h-10">
+                    <SelectTrigger
+                      className={`h-10 ${containerErrors[index]?.lorryId ? "border-destructive" : ""}`}
+                    >
                       <SelectValue placeholder="Select lorry" />
                     </SelectTrigger>
                     <SelectContent>
                       {lorries.map((lorry) => (
                         <SelectItem key={lorry._id} value={lorry._id}>
                           {lorry.lorryNum} - {lorry.capacity} -{" "}
-                          {lorry.owner.ownerName}
+                          {lorry.owner?.ownerName}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -492,24 +646,32 @@ function AddAssignment({
                     }
                   />
                 </Field>
-                <Field label="Loading Date" required>
+                <Field
+                  label="Loading Date"
+                  required
+                  error={containerErrors[index]?.loadingDate}
+                >
                   <Input
                     type="date"
                     value={container.loadingDate}
                     onChange={(e) =>
                       updateContainer(index, "loadingDate", e.target.value)
                     }
-                    className="h-10"
+                    className={`h-10 ${containerErrors[index]?.loadingDate ? "border-destructive" : ""}`}
                   />
                 </Field>
-                <Field label="Demount Date" required>
+                <Field
+                  label="Demount Date"
+                  required
+                  error={containerErrors[index]?.demoundDate}
+                >
                   <Input
                     type="date"
                     value={container.demoundDate}
                     onChange={(e) =>
                       updateContainer(index, "demoundDate", e.target.value)
                     }
-                    className="h-10"
+                    className={`h-10 ${containerErrors[index]?.demoundDate ? "border-destructive" : ""}`}
                   />
                 </Field>
               </div>
@@ -519,8 +681,6 @@ function AddAssignment({
                 "dayHire",
                 "advanced",
                 "advancedDate",
-                "balancePaid",
-                "balanceDate",
                 "outHire",
                 "other",
                 "heldUp",
@@ -533,7 +693,12 @@ function AddAssignment({
                   Charges
                 </p>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  <Field label="Weight (kg)" required field="weight">
+                  <Field
+                    label="Weight (kg)"
+                    required
+                    field="weight"
+                    error={containerErrors[index]?.weight}
+                  >
                     <Input
                       type="number"
                       value={container.weight || ""}
@@ -545,10 +710,15 @@ function AddAssignment({
                         )
                       }
                       placeholder="Enter weight"
-                      className="h-10"
+                      className={`h-10 ${containerErrors[index]?.weight ? "border-destructive" : ""}`}
                     />
                   </Field>
-                  <Field label="Day Hire (Rs)" required field="dayHire">
+                  <Field
+                    label="Day Hire (Rs)"
+                    required
+                    field="dayHire"
+                    error={containerErrors[index]?.dayHire}
+                  >
                     <Input
                       type="number"
                       value={container.dayHire || ""}
@@ -560,10 +730,15 @@ function AddAssignment({
                         )
                       }
                       placeholder="Enter day hire"
-                      className="h-10"
+                      className={`h-10 ${containerErrors[index]?.dayHire ? "border-destructive" : ""}`}
                     />
                   </Field>
-                  <Field label="Advanced (Rs)" required field="advanced">
+                  <Field
+                    label="Advanced (Rs)"
+                    required
+                    field="advanced"
+                    error={containerErrors[index]?.advanced}
+                  >
                     <Input
                       type="number"
                       value={container.advanced || ""}
@@ -575,7 +750,7 @@ function AddAssignment({
                         )
                       }
                       placeholder="Enter advanced amount"
-                      className="h-10"
+                      className={`h-10 ${containerErrors[index]?.advanced ? "border-destructive" : ""}`}
                     />
                   </Field>
                   <Field label="Advanced Date" required field="advancedDate">
@@ -584,31 +759,6 @@ function AddAssignment({
                       value={container.advancedDate || todayDateInput()}
                       onChange={(e) =>
                         updateContainer(index, "advancedDate", e.target.value)
-                      }
-                      className="h-10"
-                    />
-                  </Field>
-                  <Field label="Balance Paid (Rs)" field="balancePaid">
-                    <Input
-                      type="number"
-                      value={container.balancePaid || ""}
-                      onChange={(e) =>
-                        updateContainer(
-                          index,
-                          "balancePaid",
-                          parseFloat(e.target.value) || 0
-                        )
-                      }
-                      placeholder="Enter balance paid"
-                      className="h-10"
-                    />
-                  </Field>
-                  <Field label="Balance Date" field="balanceDate">
-                    <Input
-                      type="date"
-                      value={container.balanceDate || todayDateInput()}
-                      onChange={(e) =>
-                        updateContainer(index, "balanceDate", e.target.value)
                       }
                       className="h-10"
                     />
@@ -646,17 +796,22 @@ function AddAssignment({
                   <Field label="Held Up (Rs)" field="heldUp">
                     <Input
                       type="number"
+                      readOnly
                       value={container.heldUp || ""}
-                      onChange={(e) =>
-                        updateContainer(
-                          index,
-                          "heldUp",
-                          parseFloat(e.target.value) || 0
-                        )
-                      }
-                      placeholder="Enter held up amount"
-                      className="h-10"
+                      placeholder="Auto from dates"
+                      className="h-10 bg-muted/50"
                     />
+                    {(container.heldUpExtraDays || 0) > 0 ? (
+                      <p className="text-xs text-muted-foreground">
+                        {container.heldUpExtraDays} extra day
+                        {container.heldUpExtraDays === 1 ? "" : "s"} after the
+                        first day
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Charged after one day from loading to demount
+                      </p>
+                    )}
                   </Field>
                   <Field label="Agent Fee (Rs)" field="agentFee">
                     <Input
@@ -740,11 +895,28 @@ function AddAssignment({
       </section>
 
       <div className="sticky bottom-0 -mx-6 -mb-5 flex justify-end gap-2 border-t border-border bg-card/95 px-6 py-4 backdrop-blur">
-        <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+        <Button
+          variant="outline"
+          onClick={() => setIsDialogOpen(false)}
+          disabled={saving}
+        >
           Cancel
         </Button>
-        <Button onClick={handleSave}>
-          {editingAssignment ? "Update" : "Create"}
+        <Button
+          onClick={handleSave}
+          disabled={saving}
+          className="bg-[hsl(var(--brand-navy))] text-white hover:bg-[hsl(var(--brand-navy-muted))]"
+        >
+          {saving ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Saving...
+            </>
+          ) : editingAssignment ? (
+            "Update"
+          ) : (
+            "Create"
+          )}
         </Button>
       </div>
     </div>

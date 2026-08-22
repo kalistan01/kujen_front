@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/table";
 import { Plus, Edit, Search, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { getApiErrorMessage } from "@/lib/apiError";
 import baseUrl from "@/api/baseUrl";
 import AddUser from "./AddUser";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { can } from "@/lib/permissions";
 import { P } from "@/lib/permissions";
+import { useEntitySync } from "@/hooks/useEntitySync";
+import { upsertById } from "@/lib/socket";
 
 interface User {
   id: string;
@@ -37,6 +40,28 @@ interface User {
   roleId: string;
   roleName: string;
   createdAt: string;
+  lastSeen?: string | null;
+  online?: boolean;
+}
+
+function formatLastSeen(value?: string | null) {
+  if (!value) return "Never";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Never";
+  const diff = Date.now() - date.getTime();
+  const mins = Math.max(0, Math.floor(diff / 60000));
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days} day${days === 1 ? "" : "s"} ago`;
+  return date.toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 export const UserManagement = () => {
@@ -62,11 +87,31 @@ export const UserManagement = () => {
         setUsers(response.data.data);
       })
       .catch((error) => {
-        console.error(error);
+        toast({
+          title: "Unable to load users",
+          description: getApiErrorMessage(
+            error,
+            "Could not load users. Please try again."
+          ),
+          variant: "destructive",
+        });
       });
   }, []);
 
-  const toggleStatus = (id: string, status: boolean) => {
+  useEntitySync("user", (payload) => {
+    setUsers((prev) => upsertById(prev, payload));
+  });
+
+  const toggleStatus = (id: string | undefined, status: boolean) => {
+    if (!id) {
+      toast({
+        title: "Unable to update",
+        description: "This user cannot be updated because it has no ID.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     baseUrl
       .delete("/user/" + id, {
         headers: {
@@ -82,11 +127,22 @@ export const UserManagement = () => {
 
         toast({
           title: "Success",
-          description: "User status updated successfully.",
+          description: status
+            ? "User deactivated successfully."
+            : "User activated successfully.",
         });
       })
       .catch((error) => {
-        console.error(error);
+        toast({
+          title: status ? "Deactivate failed" : "Activate failed",
+          description: getApiErrorMessage(
+            error,
+            status
+              ? "Could not deactivate the user. Please try again."
+              : "Could not activate the user. Please try again."
+          ),
+          variant: "destructive",
+        });
       });
   };
 
@@ -134,15 +190,21 @@ export const UserManagement = () => {
               Add User
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>
                 {editingUser ? "Edit User" : "Add New User"}
               </DialogTitle>
+              <p className="text-sm text-muted-foreground">
+                {editingUser
+                  ? "Update this staff member's name, role, and access."
+                  : "Create a staff account and assign a role."}
+              </p>
             </DialogHeader>
             <AddUser
               setEditingUser={setEditingUser}
               editingUser={editingUser}
+              users={users}
               setUsers={setUsers}
               setIsDialogOpen={setIsDialogOpen}
             />
@@ -197,18 +259,32 @@ export const UserManagement = () => {
                       <Badge variant="secondary">{user.roleName}</Badge>
                     </TableCell>
                     <TableCell>
-                      {can(P.USERS_MANAGE) && user?.roleName !== "admin" ? (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-auto p-0 hover:bg-transparent"
-                          onClick={() => toggleStatus(user._id, user.status)}
-                        >
+                      <div className="flex flex-col items-start gap-1">
+                        {can(P.USERS_MANAGE) && user?.roleName !== "admin" ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-auto p-0 hover:bg-transparent"
+                            onClick={() => toggleStatus(user._id, user.status)}
+                          >
+                            <StatusBadge status={user.status} />
+                          </Button>
+                        ) : (
                           <StatusBadge status={user.status} />
-                        </Button>
-                      ) : (
-                        <StatusBadge status={user.status} />
-                      )}
+                        )}
+                        {user.status ? (
+                          user.online ? (
+                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                              Online
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">
+                              Last seen {formatLastSeen(user.lastSeen)}
+                            </span>
+                          )
+                        ) : null}
+                      </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {new Date(user.createdAt).toLocaleString()}

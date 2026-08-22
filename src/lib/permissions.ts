@@ -42,7 +42,7 @@ export const PAGE_PERMISSIONS: PermissionItem[] = [
   { id: P.ROLES_MANAGE, name: "Manage Roles", description: "Create and edit access roles", group: "pages" },
   { id: P.LORRIES_VIEW, name: "View Lorry Owners", description: "Open the lorry owners page", group: "pages" },
   { id: P.LORRIES_MANAGE, name: "Manage Lorry Owners", description: "Add and edit owners and vehicles", group: "pages" },
-  { id: P.DESTINATIONS_VIEW, name: "View Destinations", description: "Open the destinations page", group: "pages" },
+  { id: P.DESTINATIONS_VIEW, name: "View Destinations", description: "Open settings, destinations, and held up rates", group: "pages" },
   { id: P.DESTINATIONS_MANAGE, name: "Manage Destinations", description: "Add, edit, and disable routes", group: "pages" },
   { id: P.ASSIGNMENTS_VIEW, name: "View Assignments", description: "Open assignments and details", group: "pages" },
   { id: P.ASSIGNMENTS_MANAGE, name: "Manage Assignments", description: "Create, edit, pay, and delete assignments", group: "pages" },

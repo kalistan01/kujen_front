@@ -12,7 +12,7 @@ import { LorryOwnerManagement } from "./pages/lorry/LorryOwnerManagement";
 import { RoleManagement } from "./pages/role/RoleManagement";
 import { UserManagement } from "./pages/user/UserManagement";
 import PrivateRoute from "./PrivateRoute";
-import { DestinationManagement } from "./pages/destination/DestinationManagement";
+import { SettingsPage } from "./pages/settings/Settings";
 import { LogsPage } from "./pages/logs/LogsPage";
 import RequirePermission from "./components/RequirePermission";
 import { P } from "./lib/permissions";
@@ -39,10 +39,18 @@ const App = () => (
                   }
                 />
                 <Route
+                  path="/settings"
+                  element={
+                    <RequirePermission ids={[P.DESTINATIONS_VIEW, P.DESTINATIONS_MANAGE]}>
+                      <SettingsPage />
+                    </RequirePermission>
+                  }
+                />
+                <Route
                   path="/destinations"
                   element={
                     <RequirePermission ids={[P.DESTINATIONS_VIEW, P.DESTINATIONS_MANAGE]}>
-                      <DestinationManagement />
+                      <Navigate to="/settings" replace />
                     </RequirePermission>
                   }
                 />

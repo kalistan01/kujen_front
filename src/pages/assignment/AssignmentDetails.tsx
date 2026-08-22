@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Package, Printer, Trash2, Plus, ArrowLeft, FileDown, FileSpreadsheet, Banknote } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { getApiErrorMessage } from "@/lib/apiError";
 import baseUrl from "@/api/baseUrl";
 import Containers from "./components/Containers";
 import Summary from "./components/Summary";
@@ -19,15 +20,20 @@ import BasicInfo from "./components/BasicInfo";
 import AddContainer from "./components/AddContainer";
 import { StatusBadge } from "@/components/StatusBadge";
 import AssignmentPrint from "./components/AssignmentPrint";
+import AssignmentLogs from "./components/AssignmentLogs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  applyHeldUpToContainers,
   containerBalance,
   formatMoney,
   todayDateInput,
+  type HeldUpRateOption,
 } from "./lib/financials";
 import { canManageAssignments, canSeeField } from "@/lib/permissions";
+import { useEntitySync } from "@/hooks/useEntitySync";
+import { upsertById } from "@/lib/socket";
 
 const AssignmentDetails = () => {
   const { id } = useParams();
@@ -38,6 +44,7 @@ const AssignmentDetails = () => {
   const [isBasicDialogOpen, setIsBasicDialogOpen] = useState(false);
   const [open, setOpen] = useState(false);
   const [assignment, setAssignment] = useState<any | null>(null);
+  const [heldUpRates, setHeldUpRates] = useState<HeldUpRateOption[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isBulkPayOpen, setIsBulkPayOpen] = useState(false);
   const [bulkPayDate, setBulkPayDate] = useState(todayDateInput());
@@ -52,13 +59,52 @@ const AssignmentDetails = () => {
         setAssignment(response.data.data);
       })
       .catch((error) => {
-        console.error(error);
+        toast({
+          title: "Unable to load assignment",
+          description: getApiErrorMessage(
+            error,
+            "Could not load this assignment. Please try again."
+          ),
+          variant: "destructive",
+        });
       });
   };
 
   useEffect(() => {
     loadAssignment();
   }, [id, isDialogOpen, isBasicDialogOpen, open]);
+
+  useEffect(() => {
+    baseUrl
+      .get("/heldup")
+      .then((response) => {
+        setHeldUpRates(response.data?.data || []);
+      })
+      .catch(() => {
+        setHeldUpRates([]);
+      });
+  }, []);
+
+  useEntitySync("assignment", (payload) => {
+    if (String(payload.id) !== String(id)) return;
+    if (payload.action === "deleted") {
+      navigate("/assignments", { replace: true });
+      return;
+    }
+    if (payload.data) setAssignment(payload.data);
+  });
+
+  useEntitySync("heldup", (payload) => {
+    setHeldUpRates((prev) => {
+      if (payload.action === "created" && payload.data) {
+        return [
+          payload.data,
+          ...prev.map((item) => ({ ...item, status: false })),
+        ];
+      }
+      return upsertById(prev, payload);
+    });
+  });
 
   const [exporting, setExporting] = useState<"pdf" | "excel" | null>(null);
 
@@ -87,7 +133,10 @@ const AssignmentDetails = () => {
       console.error(error);
       toast({
         title: "Export failed",
-        description: "Could not download the file. Please try again.",
+        description: getApiErrorMessage(
+          error,
+          "Could not download the file. Please try again."
+        ),
         variant: "destructive",
       });
     } finally {
@@ -102,7 +151,18 @@ const AssignmentDetails = () => {
     document.title = previousTitle;
   };
 
-  const containers = assignment?.containers || [];
+  const displayAssignment = useMemo(() => {
+    if (!assignment) return assignment;
+    return {
+      ...assignment,
+      containers: applyHeldUpToContainers(
+        assignment.containers || [],
+        heldUpRates
+      ),
+    };
+  }, [assignment, heldUpRates]);
+
+  const containers = displayAssignment?.containers || [];
   const payableContainers = containers.filter(
     (c: any) => c?._id && containerBalance(c) > 0
   );
@@ -153,8 +213,10 @@ const AssignmentDetails = () => {
       .catch((error) => {
         toast({
           title: "Payment failed",
-          description:
-            error?.response?.data?.message || "Could not pay the balances.",
+          description: getApiErrorMessage(
+            error,
+            "Could not pay the balances. Please try again."
+          ),
           variant: "destructive",
         });
       })
@@ -176,7 +238,14 @@ const AssignmentDetails = () => {
         navigate("/assignments");
       })
       .catch((error) => {
-        console.error(error);
+        toast({
+          title: "Delete failed",
+          description: getApiErrorMessage(
+            error,
+            "Could not delete the assignment. Please try again."
+          ),
+          variant: "destructive",
+        });
       });
   };
 
@@ -308,8 +377,8 @@ const AssignmentDetails = () => {
               </div>
             </CardHeader>
             <CardContent className="space-y-3 pb-4">
-              {assignment?.containers?.length ? (
-                assignment.containers.map((container, index) => (
+              {containers.length ? (
+                containers.map((container: any, index: number) => (
                   <Containers
                     key={container._id || index}
                     container={container}
@@ -334,10 +403,15 @@ const AssignmentDetails = () => {
         </div>
 
         <div className="space-y-4 lg:sticky lg:top-20 lg:z-20 lg:self-start print:static">
-          <Summary assignment={assignment} />
-          <Record assignment={assignment} />
+          <Summary assignment={displayAssignment} />
+          <Record assignment={displayAssignment} />
         </div>
       </div>
+
+      <AssignmentLogs
+        assignmentId={id}
+        refreshKey={assignment?.updatedAt}
+      />
 
       <Dialog open={isBulkPayOpen} onOpenChange={setIsBulkPayOpen}>
         <DialogContent className="sm:max-w-md">
@@ -420,7 +494,7 @@ const AssignmentDetails = () => {
         </DialogContent>
       </Dialog>
     </div>
-    {assignment && <AssignmentPrint assignment={assignment} />}
+    {displayAssignment && <AssignmentPrint assignment={displayAssignment} />}
     </>
   );
 };

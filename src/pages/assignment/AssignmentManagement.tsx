@@ -1,68 +1,53 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import {
-  Plus,
-  Eye,
-  Search,
-  Package,
-  ClipboardList,
-  FileDown,
-  FileSpreadsheet,
-} from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Banknote, FileDown, FileSpreadsheet, Printer } from "lucide-react";
 import baseUrl from "@/api/baseUrl";
-import AddAssignment from "./AddAssignment";
-import { StatusBadge } from "@/components/StatusBadge";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
-import TablePagination from "@/components/TablePagination";
-import { canManageAssignments } from "@/lib/permissions";
+import { getApiErrorMessage } from "@/lib/apiError";
+import { canManageAssignments, canSeeField } from "@/lib/permissions";
+import {
+  containerCapacity,
+  containerDestination,
+  containerDestinationMatches,
+  containerDestinationOption,
+  containerLorry,
+  containerMatchesOwner,
+  containerOwner,
+  containerOwnerKey,
+} from "./lib/containerDisplay";
+import { parseDay } from "./lib/dates";
+import {
+  containerBalance,
+  formatMoney,
+  toAmount,
+  todayDateInput,
+} from "./lib/financials";
+import AddAssignmentDialog from "./components/AddAssignmentDialog";
+import AssignmentFilters from "./components/AssignmentFilters";
+import AssignmentTable from "./components/AssignmentTable";
+import ContainerListPrint from "./components/ContainerListPrint";
+import ContainerListTable from "./components/ContainerListTable";
+import { useEntitySync } from "@/hooks/useEntitySync";
+import { upsertById } from "@/lib/socket";
 
-const formatDate = (value?: string) => {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-};
-
-const parseDay = (value: string, endOfDay = false) => {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  if (endOfDay) date.setHours(23, 59, 59, 999);
-  else date.setHours(0, 0, 0, 0);
-  return date;
-};
+const CONTAINER_STATUSES = [
+  { value: "all", label: "All status" },
+  { value: "pending", label: "Pending" },
+  { value: "in-progress", label: "In Progress" },
+  { value: "completed", label: "Completed" },
+];
 
 export const AssignmentManagement = () => {
   const [assignments, setAssignments] = useState<any[]>([]);
@@ -72,27 +57,118 @@ export const AssignmentManagement = () => {
   const [status, setStatus] = useState("all");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [balanceFilter, setBalanceFilter] = useState("all");
+  const [advancedFilter, setAdvancedFilter] = useState("all");
+  const [owner, setOwner] = useState("all");
+  const [destination, setDestination] = useState("all");
+  const [lorryOwners, setLorryOwners] = useState<any[]>([]);
   const [exporting, setExporting] = useState<"pdf" | "excel" | null>(null);
+  const [tab, setTab] = useState("assignments");
   const [page, setPage] = useState(1);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isBulkPayOpen, setIsBulkPayOpen] = useState(false);
+  const [bulkPayDate, setBulkPayDate] = useState(todayDateInput());
+  const [bulkPaying, setBulkPaying] = useState(false);
   const pageSize = 10;
-  const navigate = useNavigate();
   const { toast } = useToast();
+  const canPay =
+    canManageAssignments() && canSeeField("balancePaid");
 
   const handleAdd = () => {
     setEditingAssignment(null);
     setIsDialogOpen(true);
   };
 
-  useEffect(() => {
+  const loadAssignments = () =>
     baseUrl
       .get("/assignlorry")
-      .then(async (response) => {
+      .then((response) => {
         setAssignments(response.data.data || []);
       })
       .catch((error) => {
-        console.error(error);
+        toast({
+          title: "Unable to load assignments",
+          description: getApiErrorMessage(
+            error,
+            "Could not load assignments. Please try again."
+          ),
+          variant: "destructive",
+        });
       });
+
+  useEffect(() => {
+    loadAssignments();
   }, [isDialogOpen]);
+
+  useEffect(() => {
+    baseUrl
+      .get("/lorry")
+      .then((response) => {
+        setLorryOwners(response.data?.data || []);
+      })
+      .catch(() => {
+        setLorryOwners([]);
+      });
+  }, []);
+
+  useEntitySync("assignment", (payload) => {
+    setAssignments((prev) => upsertById(prev, payload));
+  });
+
+  useEntitySync("lorry", (payload) => {
+    setLorryOwners((prev) => upsertById(prev, payload));
+  });
+
+  const ownerOptions = useMemo(() => {
+    const names = new Map<string, string>();
+    lorryOwners.forEach((item: any) => {
+      const label = item.ownerName || item.companyName;
+      const value = item._id || item.id;
+      if (value && label) names.set(String(value), String(label).toUpperCase());
+    });
+    assignments.forEach((assignment) => {
+      (assignment.containers || []).forEach((container: any) => {
+        const label = containerOwner(container);
+        const value =
+          container.lorryId?.owner?._id ||
+          container.lorryId?.owner ||
+          containerOwnerKey(container);
+        if (value && label) names.set(String(value), String(label).toUpperCase());
+      });
+    });
+    return [...names.entries()]
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([value, label]) => ({ value, label }));
+  }, [assignments, lorryOwners]);
+
+  const destinationOptions = useMemo(() => {
+    const items = new Map<string, string>();
+    assignments.forEach((assignment) => {
+      (assignment.containers || []).forEach((container: any) => {
+        const option = containerDestinationOption(container);
+        if (option?.value) items.set(option.value, option.label);
+      });
+    });
+    return [...items.entries()]
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([value, label]) => ({ value, label }));
+  }, [assignments]);
+
+  const matchesExtraFilters = (container: any) => {
+    if (balanceFilter === "unpaid" && containerBalance(container) <= 0) {
+      return false;
+    }
+    if (advancedFilter === "yes" && toAmount(container?.advanced) <= 0) {
+      return false;
+    }
+    if (owner !== "all" && !containerMatchesOwner(container, owner)) {
+      return false;
+    }
+    if (destination !== "all" && !containerDestinationMatches(container, destination)) {
+      return false;
+    }
+    return true;
+  };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -121,22 +197,217 @@ export const AssignmentManagement = () => {
         if (from && date < from) return false;
         if (to && date > to) return false;
       }
+      const containers = assignment.containers || [];
+      if (
+        (balanceFilter === "unpaid" ||
+          advancedFilter === "yes" ||
+          owner !== "all" ||
+          destination !== "all") &&
+        !containers.some((container: any) => matchesExtraFilters(container))
+      ) {
+        return false;
+      }
       return true;
     });
-  }, [assignments, query, status, fromDate, toDate]);
+  }, [
+    assignments,
+    query,
+    status,
+    fromDate,
+    toDate,
+    balanceFilter,
+    advancedFilter,
+    owner,
+    destination,
+  ]);
+
+  const filteredContainers = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const from = parseDay(fromDate);
+    const to = parseDay(toDate, true);
+
+    return assignments.flatMap((assignment) =>
+      (assignment.containers || [])
+        .filter((container: any) => {
+          if (
+            status !== "all" &&
+            (container.status || "pending") !== status
+          ) {
+            return false;
+          }
+          if (!matchesExtraFilters(container)) return false;
+          if (q) {
+            const match = [
+              assignment.blNo,
+              assignment.item,
+              assignment.exporter,
+              assignment.importer,
+              container.containerNo,
+              container.vocNo,
+              containerLorry(container),
+              containerOwner(container),
+              containerDestination(container),
+              container.status,
+            ]
+              .filter(Boolean)
+              .some((value) => String(value).toLowerCase().includes(q));
+            if (!match) return false;
+          }
+          if (from || to) {
+            const date = container.loadingDate
+              ? new Date(container.loadingDate)
+              : assignment.cusdecDate
+                ? new Date(assignment.cusdecDate)
+                : null;
+            if (!date || Number.isNaN(date.getTime())) return false;
+            if (from && date < from) return false;
+            if (to && date > to) return false;
+          }
+          return true;
+        })
+        .map((container: any) => ({ assignment, container }))
+    );
+  }, [
+    assignments,
+    query,
+    status,
+    fromDate,
+    toDate,
+    balanceFilter,
+    advancedFilter,
+    owner,
+    destination,
+  ]);
 
   useEffect(() => {
     setPage(1);
-  }, [query, status, fromDate, toDate]);
+  }, [
+    query,
+    status,
+    fromDate,
+    toDate,
+    tab,
+    balanceFilter,
+    advancedFilter,
+    owner,
+    destination,
+  ]);
 
-  const pages = Math.max(1, Math.ceil(filtered.length / pageSize) || 1);
+  const isContainersTab = tab === "containers";
+  const listTotal = isContainersTab ? filteredContainers.length : filtered.length;
+  const pages = Math.max(1, Math.ceil(listTotal / pageSize) || 1);
   const currentPage = Math.min(page, pages);
   const paged = filtered.slice(
     (currentPage - 1) * pageSize,
     currentPage * pageSize
   );
+  const pagedContainers = filteredContainers.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
-  const hasFilters = Boolean(query.trim() || status !== "all" || fromDate || toDate);
+  const hasFilters = Boolean(
+    query.trim() ||
+      status !== "all" ||
+      fromDate ||
+      toDate ||
+      balanceFilter !== "all" ||
+      advancedFilter !== "all" ||
+      owner !== "all" ||
+      destination !== "all"
+  );
+
+  const allContainerRows = useMemo(
+    () =>
+      assignments.flatMap((assignment) =>
+        (assignment.containers || []).map((container: any) => ({
+          assignment,
+          container,
+        }))
+      ),
+    [assignments]
+  );
+  const selectedRows = useMemo(
+    () =>
+      allContainerRows.filter((row) =>
+        selectedIds.includes(row.container?._id)
+      ),
+    [allContainerRows, selectedIds]
+  );
+  const payableSelectedRows = selectedRows.filter(
+    (row) => containerBalance(row.container) > 0
+  );
+  const selectedTotal = payableSelectedRows.reduce(
+    (sum, row) => sum + containerBalance(row.container),
+    0
+  );
+
+  const toggleSelected = (containerId: string, checked: boolean) => {
+    setSelectedIds((prev) =>
+      checked
+        ? prev.includes(containerId)
+          ? prev
+          : [...prev, containerId]
+        : prev.filter((id) => id !== containerId)
+    );
+  };
+
+  const toggleSelectPage = (containerIds: string[], checked: boolean) => {
+    setSelectedIds((prev) => {
+      if (checked) {
+        return [...new Set([...prev, ...containerIds])];
+      }
+      return prev.filter((id) => !containerIds.includes(id));
+    });
+  };
+
+  const handleBulkPay = () => {
+    if (bulkPaying || !payableSelectedRows.length) return;
+    const groups = new Map<string, string[]>();
+    payableSelectedRows.forEach((row) => {
+      const assignmentId = row.assignment?._id;
+      const containerId = row.container?._id;
+      if (!assignmentId || !containerId) return;
+      const ids = groups.get(assignmentId) || [];
+      ids.push(containerId);
+      groups.set(assignmentId, ids);
+    });
+    if (!groups.size) return;
+
+    setBulkPaying(true);
+    Promise.all(
+      [...groups.entries()].map(([assignmentId, containerIds]) =>
+        baseUrl.patch(`/assignlorry/${assignmentId}/pay-balances`, {
+          containerIds,
+          balanceDate: bulkPayDate || todayDateInput(),
+        })
+      )
+    )
+      .then(() => {
+        toast({
+          title: "Balances paid",
+          description: `${payableSelectedRows.length} container${
+            payableSelectedRows.length === 1 ? "" : "s"
+          } · ${formatMoney(selectedTotal)}`,
+        });
+        setIsBulkPayOpen(false);
+        setSelectedIds([]);
+        return loadAssignments();
+      })
+      .catch((error) => {
+        toast({
+          title: "Payment failed",
+          description: getApiErrorMessage(
+            error,
+            "Could not pay the balances. Please try again."
+          ),
+          variant: "destructive",
+        });
+      })
+      .finally(() => {
+        setBulkPaying(false);
+      });
+  };
 
   const downloadExport = async (type: "pdf" | "excel") => {
     if (exporting) return;
@@ -169,7 +440,69 @@ export const AssignmentManagement = () => {
       console.error(error);
       toast({
         title: "Export failed",
-        description: "Could not download the file. Please try again.",
+        description: getApiErrorMessage(
+          error,
+          "Could not download the file. Please try again."
+        ),
+        variant: "destructive",
+      });
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const handlePrintSelected = () => {
+    if (!selectedRows.length) {
+      toast({
+        title: "Select containers",
+        description: "Choose one or more rows to print.",
+      });
+      return;
+    }
+    const previousTitle = document.title;
+    document.title = "RG-Brothers-Containers";
+    window.print();
+    document.title = previousTitle;
+  };
+
+  const downloadSelectedPdf = async () => {
+    if (!selectedRows.length || exporting) {
+      if (!selectedRows.length) {
+        toast({
+          title: "Select containers",
+          description: "Choose one or more rows to download as PDF.",
+        });
+      }
+      return;
+    }
+    setExporting("pdf");
+    try {
+      const response = await baseUrl.post(
+        "/assignlorry/export/containers/pdf",
+        { containerIds: selectedRows.map((row) => row.container._id) },
+        { responseType: "blob" }
+      );
+      const contentType = String(response.headers["content-type"] || "");
+      if (contentType.includes("application/json")) {
+        throw new Error("Export failed");
+      }
+      const blob = new Blob([response.data], { type: contentType || "application/pdf" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "RG-Brothers-Containers.pdf";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Export failed",
+        description: getApiErrorMessage(
+          error,
+          "Could not download the PDF. Please try again."
+        ),
         variant: "destructive",
       });
     } finally {
@@ -178,16 +511,18 @@ export const AssignmentManagement = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <>
+    <div className="space-y-3 print:hidden">
       <PageHeader
         title="Assignments"
         description="Track bill of lading records, containers, and shipment status."
+        className="gap-2 sm:items-center"
       >
         <Button
           variant="outline"
           onClick={() => downloadExport("pdf")}
           disabled={exporting === "pdf"}
-          className="h-10"
+          className="h-8"
         >
           <FileDown className="h-4 w-4" />
           {exporting === "pdf" ? "PDF..." : "PDF"}
@@ -196,210 +531,233 @@ export const AssignmentManagement = () => {
           variant="outline"
           onClick={() => downloadExport("excel")}
           disabled={exporting === "excel"}
-          className="h-10"
+          className="h-8"
         >
           <FileSpreadsheet className="h-4 w-4" />
           {exporting === "excel" ? "Excel..." : "Excel"}
         </Button>
         {canManageAssignments() ? (
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button
-              onClick={handleAdd}
-              className="h-10 gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Add Assignment
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden border-border bg-card p-0 text-card-foreground sm:max-w-4xl sm:rounded-xl [&>button]:text-primary-foreground [&>button]:hover:bg-primary-foreground/10 [&>button]:hover:text-primary-foreground">
-            <DialogHeader className="border-b border-primary-foreground/15 bg-primary px-6 py-4 text-left">
-              <DialogTitle className="text-xl tracking-tight text-primary-foreground">
-                {editingAssignment ? "Edit Assignment" : "Add New Assignment"}
-              </DialogTitle>
-              <DialogDescription className="text-primary-foreground/75">
-                Enter BL details, then add containers, lorry, and charges.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="overflow-y-auto bg-card px-6 py-5">
-              <AddAssignment
-                setIsDialogOpen={setIsDialogOpen}
-                setAssignments={setAssignments}
-                assignments={assignments}
-                setEditingAssignment={setEditingAssignment}
-                editingAssignment={editingAssignment}
-              />
-            </div>
-          </DialogContent>
-        </Dialog>
+          <AddAssignmentDialog
+            open={isDialogOpen}
+            onOpenChange={setIsDialogOpen}
+            onAdd={handleAdd}
+            assignments={assignments}
+            setAssignments={setAssignments}
+            editingAssignment={editingAssignment}
+            setEditingAssignment={setEditingAssignment}
+          />
         ) : null}
       </PageHeader>
 
-      <Card className="overflow-hidden">
-        <CardHeader className="space-y-4 border-b border-border/70 bg-muted/30 py-4">
-          <CardTitle className="flex items-center justify-between text-base font-semibold">
-            <span>Shipment directory</span>
-            <Badge variant="secondary">{filtered.length}</Badge>
-          </CardTitle>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative min-w-[180px] flex-1 sm:max-w-xs">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <Tabs
+        value={tab}
+        onValueChange={(value) => {
+          setTab(value);
+          setPage(1);
+          if (value === "assignments" && status === "in-progress") {
+            setStatus("all");
+          }
+        }}
+      >
+        <Card className="overflow-hidden">
+          <CardHeader className="flex flex-row flex-wrap items-center gap-2 space-y-0 border-b border-border/70 bg-muted/30 px-3 py-2">
+            <TabsList className="h-8">
+              <TabsTrigger value="assignments" className="h-6 px-2.5 text-xs">
+                Assignments
+              </TabsTrigger>
+              <TabsTrigger value="containers" className="h-6 px-2.5 text-xs">
+                Containers
+              </TabsTrigger>
+            </TabsList>
+            <AssignmentFilters
+              query={query}
+              onQueryChange={setQuery}
+              status={status}
+              onStatusChange={setStatus}
+              fromDate={fromDate}
+              onFromDateChange={setFromDate}
+              toDate={toDate}
+              onToDateChange={setToDate}
+              hasFilters={hasFilters}
+              placeholder={
+                isContainersTab
+                  ? "Search BL, container, VOC, lorry..."
+                  : "Search BL, item, exporter..."
+              }
+              statuses={isContainersTab ? CONTAINER_STATUSES : undefined}
+              balanceFilter={balanceFilter}
+              onBalanceFilterChange={setBalanceFilter}
+              advancedFilter={advancedFilter}
+              onAdvancedFilterChange={setAdvancedFilter}
+              owner={owner}
+              onOwnerChange={setOwner}
+              owners={ownerOptions}
+              destination={destination}
+              onDestinationChange={setDestination}
+              destinations={destinationOptions}
+              onClear={() => {
+                setQuery("");
+                setStatus("all");
+                setFromDate("");
+                setToDate("");
+                setBalanceFilter("all");
+                setAdvancedFilter("all");
+                setOwner("all");
+                setDestination("all");
+                setPage(1);
+              }}
+            >
+              <div className="ml-auto flex items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8"
+                  disabled={!selectedRows.length}
+                  onClick={handlePrintSelected}
+                >
+                  <Printer className="h-4 w-4" />
+                  Print
+                  {selectedRows.length ? ` (${selectedRows.length})` : ""}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8"
+                  disabled={!selectedRows.length || exporting === "pdf"}
+                  onClick={downloadSelectedPdf}
+                >
+                  <FileDown className="h-4 w-4" />
+                  {exporting === "pdf" && selectedRows.length
+                    ? "PDF..."
+                    : "PDF"}
+                  {selectedRows.length && exporting !== "pdf"
+                    ? ` (${selectedRows.length})`
+                    : ""}
+                </Button>
+                {canPay ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8"
+                    disabled={!payableSelectedRows.length}
+                    onClick={() => {
+                      setBulkPayDate(todayDateInput());
+                      setIsBulkPayOpen(true);
+                    }}
+                  >
+                    <Banknote className="h-4 w-4" />
+                    Pay selected
+                    {payableSelectedRows.length
+                      ? ` (${payableSelectedRows.length})`
+                      : ""}
+                  </Button>
+                ) : null}
+                <Badge variant="secondary">{listTotal}</Badge>
+              </div>
+            </AssignmentFilters>
+          </CardHeader>
+          <CardContent className="p-0">
+            <TabsContent value="assignments" className="mt-0">
+              <AssignmentTable
+                assignments={paged}
+                total={filtered.length}
+                hasFilters={hasFilters}
+                page={currentPage}
+                pages={pages}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                selectedIds={selectedIds}
+                onSelect={toggleSelected}
+                onSelectPage={toggleSelectPage}
+              />
+            </TabsContent>
+            <TabsContent value="containers" className="mt-0">
+              <ContainerListTable
+                rows={pagedContainers}
+                total={filteredContainers.length}
+                hasFilters={hasFilters}
+                page={currentPage}
+                pages={pages}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                canSelect
+                selectedIds={selectedIds}
+                onSelect={toggleSelected}
+                onSelectPage={toggleSelectPage}
+              />
+            </TabsContent>
+          </CardContent>
+        </Card>
+      </Tabs>
+
+      <Dialog open={isBulkPayOpen} onOpenChange={setIsBulkPayOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Pay selected balances</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-border p-2">
+              {payableSelectedRows.map((row) => (
+                <div
+                  key={row.container._id}
+                  className="flex items-center justify-between gap-3 rounded-md bg-muted/40 px-3 py-2 text-sm"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-mono font-semibold">
+                      {row.container.containerNo || "—"}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      BL {row.assignment.blNo || "—"} · Lorry{" "}
+                      {containerLorry(row.container)}
+                      {containerCapacity(row.container)
+                        ? ` · ${containerCapacity(row.container)} ft`
+                        : ""}
+                    </p>
+                  </div>
+                  <span className="shrink-0 font-semibold">
+                    {formatMoney(containerBalance(row.container))}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Total</span>
+              <span className="font-bold">{formatMoney(selectedTotal)}</span>
+            </div>
+            <div>
+              <Label>Date</Label>
               <Input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search BL, item, exporter..."
-                className="h-9 bg-background pl-9"
+                type="date"
+                value={bulkPayDate}
+                onChange={(e) => setBulkPayDate(e.target.value)}
               />
             </div>
-            <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger className="h-9 w-[140px] bg-background">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All status</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-              </SelectContent>
-            </Select>
-            <Input
-              type="date"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              className="h-9 w-[150px] bg-background"
-              aria-label="From date"
-            />
-            <Input
-              type="date"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              className="h-9 w-[150px] bg-background"
-              aria-label="To date"
-            />
-            {hasFilters && (
+            <div className="flex justify-end gap-2">
               <Button
-                variant="ghost"
-                size="sm"
-                className="h-9 px-2 text-muted-foreground"
-                onClick={() => {
-                  setQuery("");
-                  setStatus("all");
-                  setFromDate("");
-                  setToDate("");
-                  setPage(1);
-                }}
+                type="button"
+                variant="outline"
+                onClick={() => setIsBulkPayOpen(false)}
               >
-                Clear
+                Cancel
               </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          {filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
-              <ClipboardList className="mb-3 h-10 w-10 text-muted-foreground/50" />
-              <p className="font-medium">No assignments found</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {hasFilters
-                  ? "Try a different search or filter."
-                  : "Create an assignment to start tracking shipments."}
-              </p>
+              <Button
+                type="button"
+                onClick={handleBulkPay}
+                disabled={
+                  bulkPaying || !payableSelectedRows.length || !bulkPayDate
+                }
+              >
+                {bulkPaying ? "Paying..." : "Pay"}
+              </Button>
             </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/20 hover:bg-muted/20">
-                  <TableHead>BL Number</TableHead>
-                  <TableHead>Cusdec Date</TableHead>
-                  <TableHead>Item</TableHead>
-                  <TableHead>Containers</TableHead>
-                  <TableHead>Exporter</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paged.map((assignment, index: number) => {
-                  const containers = assignment.containers || [];
-                  return (
-                    <TableRow key={assignment._id || index}>
-                      <TableCell>
-                        <span className="inline-flex rounded-md border border-[hsl(var(--brand-navy))]/15 bg-[hsl(var(--brand-navy))]/8 px-2 py-1 font-mono text-xs font-semibold tracking-wide text-[hsl(var(--brand-navy))] dark:border-white/10 dark:bg-white/10 dark:text-white">
-                          {assignment.blNo || "—"}
-                        </span>
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap text-muted-foreground">
-                        {formatDate(assignment.cusdecDate)}
-                      </TableCell>
-                      <TableCell>
-                        <p className="max-w-[180px] truncate font-medium">
-                          {assignment.item || "—"}
-                        </p>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <Package className="h-3.5 w-3.5 text-amber-600" />
-                            <span className="font-medium text-foreground">
-                              {containers.length}
-                            </span>
-                            container{containers.length !== 1 ? "s" : ""}
-                          </div>
-                          <div className="flex flex-wrap gap-1.5">
-                            {containers.slice(0, 3).map((c: any, i: number) => (
-                              <span
-                                key={c._id || i}
-                                className="inline-flex items-center gap-1.5 rounded-md border border-border/80 bg-muted/40 px-2 py-1"
-                              >
-                                <span className="font-mono text-[11px] font-medium">
-                                  {c.containerNo}
-                                </span>
-                                <span className="text-[10px] text-muted-foreground">
-                                  {c.lorryId?.lorryNum || "Unassigned"}
-                                </span>
-                              </span>
-                            ))}
-                            {containers.length > 3 && (
-                              <span className="inline-flex items-center rounded-md px-1.5 text-[11px] text-muted-foreground">
-                                +{containers.length - 3}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="max-w-[160px] truncate text-muted-foreground">
-                        {assignment.exporter || "—"}
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge status={assignment.status} />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            navigate(`/assignment/${assignment._id}`)
-                          }
-                          className="gap-1.5"
-                        >
-                          <Eye className="h-3.5 w-3.5" />
-                          View
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-          <TablePagination
-            page={currentPage}
-            pages={pages}
-            total={filtered.length}
-            limit={pageSize}
-            onPageChange={setPage}
-          />
-        </CardContent>
-      </Card>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
+    <ContainerListPrint rows={selectedRows} />
+    </>
   );
 };

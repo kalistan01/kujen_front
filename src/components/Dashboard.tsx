@@ -13,6 +13,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { can } from "@/lib/permissions";
 import { P } from "@/lib/permissions";
+import { useEntitySync } from "@/hooks/useEntitySync";
 
 type ActivityItem = {
   _id: string;
@@ -60,6 +61,7 @@ const moduleTone: Record<string, string> = {
   role: "bg-indigo-500",
   lorry: "bg-orange-500",
   destination: "bg-emerald-500",
+  heldup: "bg-amber-500",
 };
 
 export const Dashboard = () => {
@@ -93,7 +95,7 @@ export const Dashboard = () => {
       value: "—",
       hint: "Delivery routes",
       icon: MapPin,
-      href: "/destinations",
+      href: "/settings",
       accent: "from-emerald-500 to-teal-600",
       iconWrap: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300",
     },
@@ -112,7 +114,7 @@ export const Dashboard = () => {
     []
   );
 
-  useEffect(() => {
+  const loadDashboard = () => {
     baseUrl
       .get("/dashboard/topcount")
       .then((response) => {
@@ -146,7 +148,18 @@ export const Dashboard = () => {
       .catch((error) => {
         console.error(error);
       });
+  };
+
+  useEffect(() => {
+    loadDashboard();
   }, []);
+
+  useEntitySync(
+    ["assignment", "destination", "lorry", "user", "role", "heldup", "log"],
+    () => {
+      loadDashboard();
+    }
+  );
 
   const actions = [
     {
@@ -167,7 +180,7 @@ export const Dashboard = () => {
       label: "Add Destination",
       hint: "Set a delivery route",
       icon: MapPin,
-      href: "/destinations",
+      href: "/settings",
       tone: "text-emerald-600 bg-emerald-500/10",
     },
     {
@@ -366,7 +379,7 @@ export const Dashboard = () => {
                     return can(P.USERS_MANAGE);
                   case "/lorry-owners":
                     return can(P.LORRIES_MANAGE);
-                  case "/destinations":
+                  case "/settings":
                     return can(P.DESTINATIONS_MANAGE);
                   case "/assignments":
                     return can(P.ASSIGNMENTS_MANAGE);

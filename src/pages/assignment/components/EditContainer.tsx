@@ -9,16 +9,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, X } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { getApiErrorMessage } from "@/lib/apiError";
 import baseUrl from "@/api/baseUrl";
 import { useParams } from "react-router-dom";
 import DestinationSelect, {
   type DestinationOption,
 } from "./DestinationSelect";
-import { todayDateInput, toDateInput, containerChargesTotal, formatMoney, toAmount, CHARGE_FIELDS, roundMoney } from "../lib/financials";
+import { todayDateInput, toDateInput, containerChargesTotal, formatMoney, toAmount, CHARGE_FIELDS, roundMoney, applyHeldUpToContainer, type HeldUpRateOption } from "../lib/financials";
 import { canSeeField, omitHiddenContainerFields } from "@/lib/permissions";
 import { FieldGate } from "@/components/RequirePermission";
+import {
+  firstErrorMessage,
+  mapContainerApiError,
+  validateContainer,
+  type ContainerFieldErrors,
+} from "../lib/validate";
+import { useEntitySync } from "@/hooks/useEntitySync";
+import { upsertById } from "@/lib/socket";
 interface Container {
   _id?: string;
   containerNo?: string;
@@ -44,6 +53,8 @@ interface Container {
   outHire?: number;
   other?: number;
   heldUp?: number;
+  heldUpExtraDays?: number;
+  heldUpRate?: number;
   agentFee?: number;
   transportCommission?: number;
   return?: number;
@@ -61,7 +72,11 @@ function EditContainer({
   const { toast } = useToast();
   const { id } = useParams();
   const [destination, setDestination] = useState<DestinationOption[]>([]);
-  const [lorries, setLorries] = useState([]);
+  const [lorries, setLorries] = useState<any[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<ContainerFieldErrors>({});
+  const [formError, setFormError] = useState("");
+  const [heldUpRates, setHeldUpRates] = useState<HeldUpRateOption[]>([]);
   const [containers, setContainers] = useState<Container>({
     containerNo: "",
     vocNo: "",
@@ -87,12 +102,17 @@ function EditContainer({
 
   useEffect(() => {
     if (!editingAssignment) return;
-    setContainers({
-      ...editingAssignment,
-      advancedDate: toDateInput(editingAssignment.advancedDate),
-      balanceDate: toDateInput(editingAssignment.balanceDate),
-    });
-  }, [editingAssignment]);
+    setContainers(
+      applyHeldUpToContainer(
+        {
+          ...editingAssignment,
+          advancedDate: toDateInput(editingAssignment.advancedDate),
+          balanceDate: toDateInput(editingAssignment.balanceDate),
+        },
+        heldUpRates
+      )
+    );
+  }, [editingAssignment, heldUpRates]);
 
   const resetForm = () => {
     setContainers({
@@ -121,10 +141,16 @@ function EditContainer({
     
   };
   const updateContainer = (field: string, value: string | number) => {
-    setContainers((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+    setContainers((prev) =>
+      applyHeldUpToContainer({ ...prev, [field]: value }, heldUpRates)
+    );
+    setErrors((prev) => {
+      if (!prev[field as keyof ContainerFieldErrors]) return prev;
+      const next = { ...prev };
+      delete next[field as keyof ContainerFieldErrors];
+      return next;
+    });
+    if (formError) setFormError("");
   };
   useEffect(() => {
     baseUrl
@@ -133,7 +159,14 @@ function EditContainer({
         setDestination(response.data.data);
       })
       .catch((error) => {
-        console.error(error);
+        toast({
+          title: "Unable to load destinations",
+          description: getApiErrorMessage(
+            error,
+            "Could not load destinations. Please try again."
+          ),
+          variant: "destructive",
+        });
       });
     baseUrl
       .get("/lorry/lorry")
@@ -141,25 +174,101 @@ function EditContainer({
         setLorries(response.data.data);
       })
       .catch((error) => {
-        console.error(error);
+        toast({
+          title: "Unable to load lorries",
+          description: getApiErrorMessage(
+            error,
+            "Could not load lorries. Please try again."
+          ),
+          variant: "destructive",
+        });
+      });
+    baseUrl
+      .get("/heldup")
+      .then((response) => {
+        setHeldUpRates(response.data?.data || []);
+      })
+      .catch(() => {
+        setHeldUpRates([]);
       });
   }, []);
-  const handleSave = () => {
-
-    baseUrl
-      .put(`assignlorry/${id}/containers/${containers?._id}`, omitHiddenContainerFields(containers))
-      .then(async (response) => {
-        toast({
-          title: "Success",
-          description: "Role updated successfully.",
-        });
-      })
-      .catch((error) => {
-        console.error(error);
+  useEntitySync("destination", (payload) => {
+    setDestination((prev) => upsertById(prev, payload));
+  });
+  useEntitySync("heldup", (payload) => {
+    setHeldUpRates((prev) => {
+      if (payload.action === "created" && payload.data) {
+        return [
+          payload.data,
+          ...prev.map((item) => ({ ...item, status: false })),
+        ];
+      }
+      return upsertById(prev, payload);
+    });
+  });
+  const handleSave = async () => {
+    if (!id || !containers?._id) {
+      const message = !id
+        ? "This assignment cannot be updated because it has no ID."
+        : "This container cannot be updated because it has no ID.";
+      setFormError(message);
+      toast({
+        title: "Unable to update",
+        description: message,
+        variant: "destructive",
       });
+      return;
+    }
 
-    setIsDialogOpen(false);
-    resetForm();
+    const lorryId =
+      typeof containers.lorryId === "string"
+        ? containers.lorryId
+        : (containers.lorryId as any)?._id;
+    const nextErrors = validateContainer({ ...containers, lorryId });
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length) {
+      toast({
+        title: "Missing details",
+        description:
+          firstErrorMessage(nextErrors) ||
+          "Please correct the highlighted fields and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await baseUrl.put(
+        `assignlorry/${id}/containers/${containers._id}`,
+        omitHiddenContainerFields({
+          ...containers,
+          lorryId,
+          destination: containers.destination || undefined,
+        })
+      );
+      toast({
+        title: "Success",
+        description: "Container updated successfully.",
+      });
+      setIsDialogOpen(false);
+      resetForm();
+    } catch (error: unknown) {
+      const message = getApiErrorMessage(
+        error,
+        "Could not update the container. Please try again."
+      );
+      const field = mapContainerApiError(message);
+      if (field === "form") setFormError(message);
+      else setErrors({ [field]: message });
+      toast({
+        title: "Update failed",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const visibleCharges = CHARGE_FIELDS.filter((field) => canSeeField(field.key));
@@ -176,46 +285,68 @@ function EditContainer({
 
   return (
     <div className="space-y-6">
+      {formError ? (
+        <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
+          {formError}
+        </p>
+      ) : null}
       <div className="space-y-4">
         <div className="border rounded-lg p-4 space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <div>
+            <div className="space-y-1.5">
               <Label>Container Number *</Label>
               <Input
                 value={containers.containerNo}
                 onChange={(e) => updateContainer("containerNo", e.target.value)}
                 placeholder="Enter container number"
+                className={errors.containerNo ? "border-destructive" : ""}
               />
+              {errors.containerNo ? (
+                <p className="text-xs font-medium text-destructive">
+                  {errors.containerNo}
+                </p>
+              ) : null}
             </div>
-            <div>
-              <Label>VOC Number *</Label>
+            <div className="space-y-1.5">
+              <Label>VOC Number</Label>
               <Input
                 value={containers.vocNo}
-                onChange={(e) => updateContainer("vocNo", e.target.value)}
-                placeholder="Enter VOC number"
+                readOnly
+                className="bg-muted"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
+            <div className="space-y-1.5">
               <Label>Assign Lorry *</Label>
               <Select
-                value={containers.lorryId}
+                value={
+                  typeof containers.lorryId === "string"
+                    ? containers.lorryId
+                    : (containers.lorryId as any)?._id || ""
+                }
                 onValueChange={(value) => updateContainer("lorryId", value)}
               >
-                <SelectTrigger>
+                <SelectTrigger
+                  className={errors.lorryId ? "border-destructive" : ""}
+                >
                   <SelectValue placeholder="Select lorry" />
                 </SelectTrigger>
                 <SelectContent>
                   {lorries.map((lorry) => (
                     <SelectItem key={lorry._id} value={lorry._id}>
                       {lorry.lorryNum} - {lorry.capacity} -{" "}
-                      {lorry.owner.ownerName}
+                      {lorry.owner?.ownerName}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {errors.lorryId ? (
+                <p className="text-xs font-medium text-destructive">
+                  {errors.lorryId}
+                </p>
+              ) : null}
             </div>
             <div>
               <Label>Destination</Label>
@@ -231,7 +362,7 @@ function EditContainer({
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
+            <div className="space-y-1.5">
               <Label>Loading Date *</Label>
               <Input
                 type="date"
@@ -241,10 +372,16 @@ function EditContainer({
                     : ""
                 }
                 onChange={(e) => updateContainer("loadingDate", e.target.value)}
+                className={errors.loadingDate ? "border-destructive" : ""}
               />
+              {errors.loadingDate ? (
+                <p className="text-xs font-medium text-destructive">
+                  {errors.loadingDate}
+                </p>
+              ) : null}
             </div>
-            <div>
-              <Label>Demound Date *</Label>
+            <div className="space-y-1.5">
+              <Label>Demount Date *</Label>
               <Input
                 type="date"
                 value={
@@ -253,13 +390,19 @@ function EditContainer({
                     : ""
                 }
                 onChange={(e) => updateContainer("demoundDate", e.target.value)}
+                className={errors.demoundDate ? "border-destructive" : ""}
               />
+              {errors.demoundDate ? (
+                <p className="text-xs font-medium text-destructive">
+                  {errors.demoundDate}
+                </p>
+              ) : null}
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-4">
             <FieldGate field="weight">
-              <div>
+              <div className="space-y-1.5">
                 <Label>Weight (kg) *</Label>
                 <Input
                   type="number"
@@ -268,11 +411,17 @@ function EditContainer({
                     updateContainer("weight", parseFloat(e.target.value) || 0)
                   }
                   placeholder="Enter weight"
+                  className={errors.weight ? "border-destructive" : ""}
                 />
+                {errors.weight ? (
+                  <p className="text-xs font-medium text-destructive">
+                    {errors.weight}
+                  </p>
+                ) : null}
               </div>
             </FieldGate>
             <FieldGate field="dayHire">
-              <div>
+              <div className="space-y-1.5">
                 <Label>Day Hire (Rs) *</Label>
                 <Input
                   type="number"
@@ -281,11 +430,17 @@ function EditContainer({
                     updateContainer("dayHire", parseFloat(e.target.value) || 0)
                   }
                   placeholder="Enter day hire"
+                  className={errors.dayHire ? "border-destructive" : ""}
                 />
+                {errors.dayHire ? (
+                  <p className="text-xs font-medium text-destructive">
+                    {errors.dayHire}
+                  </p>
+                ) : null}
               </div>
             </FieldGate>
             <FieldGate field="advanced">
-              <div>
+              <div className="space-y-1.5">
                 <Label>Advanced (Rs) *</Label>
                 <Input
                   type="number"
@@ -294,7 +449,13 @@ function EditContainer({
                     updateContainer("advanced", parseFloat(e.target.value) || 0)
                   }
                   placeholder="Enter advanced amount"
+                  className={errors.advanced ? "border-destructive" : ""}
                 />
+                {errors.advanced ? (
+                  <p className="text-xs font-medium text-destructive">
+                    {errors.advanced}
+                  </p>
+                ) : null}
               </div>
             </FieldGate>
             <FieldGate field="advancedDate">
@@ -390,12 +551,22 @@ function EditContainer({
                 <Label>Held Up (Rs)</Label>
                 <Input
                   type="number"
+                  readOnly
                   value={containers.heldUp || ""}
-                  onChange={(e) =>
-                    updateContainer("heldUp", parseFloat(e.target.value) || 0)
-                  }
-                  placeholder="Enter held up amount"
+                  placeholder="Auto from dates"
+                  className="bg-muted/50"
                 />
+                {(containers.heldUpExtraDays || 0) > 0 ? (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {containers.heldUpExtraDays} extra day
+                    {containers.heldUpExtraDays === 1 ? "" : "s"} after the first
+                    day
+                  </p>
+                ) : (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Charged after one day from loading to demount
+                  </p>
+                )}
               </div>
             </FieldGate>
             <FieldGate field="agentFee">
@@ -482,10 +653,27 @@ function EditContainer({
       ) : null}
 
       <div className="flex justify-end gap-2 pt-4">
-        <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+        <Button
+          variant="outline"
+          onClick={() => setIsDialogOpen(false)}
+          disabled={saving}
+        >
           Cancel
         </Button>
-        <Button onClick={handleSave}>Update</Button>
+        <Button
+          onClick={handleSave}
+          disabled={saving}
+          className="bg-[hsl(var(--brand-navy))] text-white hover:bg-[hsl(var(--brand-navy-muted))]"
+        >
+          {saving ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            "Update"
+          )}
+        </Button>
       </div>
     </div>
   );

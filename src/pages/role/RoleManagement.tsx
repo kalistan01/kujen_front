@@ -19,12 +19,15 @@ import {
 } from "@/components/ui/table";
 import { Plus, Edit, Shield, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { getApiErrorMessage } from "@/lib/apiError";
 import baseUrl from "@/api/baseUrl";
 import AddRole from "./AddRole";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ALL_PERMISSIONS } from "@/lib/permissions";
+import { useEntitySync } from "@/hooks/useEntitySync";
+import { upsertById } from "@/lib/socket";
 
 interface Role {
   id: string;
@@ -77,16 +80,36 @@ export const RoleManagement = () => {
         setRoles(response.data.data);
       })
       .catch((error) => {
-        console.error(error);
+        toast({
+          title: "Unable to load roles",
+          description: getApiErrorMessage(
+            error,
+            "Could not load roles. Please try again."
+          ),
+          variant: "destructive",
+        });
       });
   }, []);
+
+  useEntitySync("role", (payload) => {
+    setRoles((prev) => upsertById(prev, payload));
+  });
 
   const handleEdit = (role: Role) => {
     setEditingRole(role);
     setIsDialogOpen(true);
   };
 
-  const toggleStatus = (id: string, currentStatus: boolean) => {
+  const toggleStatus = (id: string | undefined, currentStatus: boolean) => {
+    if (!id) {
+      toast({
+        title: "Unable to update",
+        description: "This role cannot be updated because it has no ID.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     baseUrl
       .patch(
         `${currentStatus ? "role/deactivateRole" : "role/activateRole"}`,
@@ -103,11 +126,22 @@ export const RoleManagement = () => {
         );
         toast({
           title: "Success",
-          description: "Role updated successfully.",
+          description: currentStatus
+            ? "Role deactivated successfully."
+            : "Role activated successfully.",
         });
       })
       .catch((error) => {
-        console.error(error);
+        toast({
+          title: currentStatus ? "Deactivate failed" : "Activate failed",
+          description: getApiErrorMessage(
+            error,
+            currentStatus
+              ? "Could not deactivate the role. Please try again."
+              : "Could not activate the role. Please try again."
+          ),
+          variant: "destructive",
+        });
       });
   };
 
@@ -152,6 +186,7 @@ export const RoleManagement = () => {
             </DialogHeader>
             <AddRole
               editingRole={editingRole}
+              roles={roles}
               setRoles={setRoles}
               setIsDialogOpen={setIsDialogOpen}
             />

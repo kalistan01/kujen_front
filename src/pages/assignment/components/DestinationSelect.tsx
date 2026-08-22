@@ -15,6 +15,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
+import { getApiErrorMessage } from "@/lib/apiError";
 import baseUrl from "@/api/baseUrl";
 import { cn } from "@/lib/utils";
 
@@ -91,11 +92,13 @@ function DestinationSelect({
       onChange(created._id);
       setOpen(false);
       setSearch("");
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
-        title: "Error",
-        description:
-          error?.response?.data?.message || "Failed to add destination.",
+        title: "Could not add destination",
+        description: getApiErrorMessage(
+          error,
+          "Could not add the destination. Please try again."
+        ),
         variant: "destructive",
       });
     } finally {
