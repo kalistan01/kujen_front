@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Eye, EyeOff, Loader2, Shield, UserRound } from "lucide-react";
 import baseUrl from "@/api/baseUrl";
+import { asList } from "@/lib/utils";
 
 function Field({
   label,
@@ -127,7 +128,7 @@ function AddUser({
         fullName: editingUser.fullName || "",
         email: editingUser.email || "",
         password: "",
-        roleId: editingUser.roleId || "",
+        roleId: String(editingUser.roleId || ""),
         status: editingUser.status,
       });
       setErrors({});
@@ -143,7 +144,11 @@ function AddUser({
     baseUrl
       .get("/role/findRole")
       .then(async (response) => {
-        setRoles(response.data.data || []);
+        setRoles(
+          asList<Role>(response.data?.data).filter(
+            (role) => role.status !== false && role._id
+          )
+        );
       })
       .catch((error) => {
         const message = getApiErrorMessage(
@@ -207,7 +212,8 @@ function AddUser({
     }
 
     const roleName =
-      roles.find((role) => role._id === formData.roleId)?.roleName ||
+      roles.find((role) => String(role._id) === String(formData.roleId))
+        ?.roleName ||
       editingUser?.roleName ||
       "";
 
@@ -402,7 +408,7 @@ function AddUser({
                   {roles
                     .filter((role) => role._id)
                     .map((role) => (
-                      <SelectItem key={role._id} value={role._id!}>
+                      <SelectItem key={String(role._id)} value={String(role._id)}>
                         {role.roleName}
                       </SelectItem>
                     ))}

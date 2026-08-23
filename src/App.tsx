@@ -21,7 +21,7 @@ const queryClient = new QueryClient();
 const token: string | null = localStorage.getItem("token");
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <ThemeProvider defaultTheme="system" storageKey="logistics-ui-theme">
+    <ThemeProvider defaultTheme="light" storageKey="logistics-ui-theme">
       <TooltipProvider>
         <Toaster />
         <Sonner />

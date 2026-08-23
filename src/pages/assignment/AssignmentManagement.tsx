@@ -12,7 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Banknote, FileDown, FileSpreadsheet, Printer } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { asList, cn } from "@/lib/utils";
 import baseUrl from "@/api/baseUrl";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
@@ -85,7 +85,7 @@ export const AssignmentManagement = () => {
     baseUrl
       .get("/assignlorry")
       .then((response) => {
-        setAssignments(response.data.data || []);
+        setAssignments(asList(response.data?.data));
       })
       .catch((error) => {
         toast({
@@ -106,7 +106,7 @@ export const AssignmentManagement = () => {
     baseUrl
       .get("/lorry")
       .then((response) => {
-        setLorryOwners(response.data?.data || []);
+        setLorryOwners(asList(response.data?.data));
       })
       .catch(() => {
         setLorryOwners([]);

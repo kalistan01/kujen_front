@@ -27,6 +27,7 @@ import { P } from "@/lib/permissions";
 import TablePagination from "@/components/TablePagination";
 import { useEntitySync } from "@/hooks/useEntitySync";
 import { LogDetails } from "./logDetails";
+import { asList } from "@/lib/utils";
 
 type ActivityLog = {
   _id: string;
@@ -97,7 +98,7 @@ export const LogsPage = () => {
         },
       })
       .then((response) => {
-        setLogs(response.data.data || []);
+        setLogs(asList<ActivityLog>(response.data?.data));
         setTotal(response.data.total || 0);
         setPages(response.data.pages || 1);
         setPage(response.data.page || nextPage);

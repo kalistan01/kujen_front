@@ -14,6 +14,7 @@ import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/apiError";
 import baseUrl from "@/api/baseUrl";
+import { asList } from "@/lib/utils";
 import { useParams } from "react-router-dom";
 import DestinationSelect, {
   type DestinationOption,
@@ -121,7 +122,7 @@ function AddContainer({
     baseUrl
       .get("/destination")
       .then(async (response) => {
-        setDestination(response.data.data);
+        setDestination(asList<DestinationOption>(response.data?.data));
       })
       .catch((error) => {
         toast({
@@ -136,7 +137,7 @@ function AddContainer({
     baseUrl
       .get("/lorry/lorry")
       .then(async (response) => {
-        setLorries(response.data.data);
+        setLorries(asList(response.data?.data));
       })
       .catch((error) => {
         toast({
@@ -160,7 +161,7 @@ function AddContainer({
     baseUrl
       .get("/heldup")
       .then((response) => {
-        setHeldUpRates(response.data?.data || []);
+        setHeldUpRates(asList<HeldUpRateOption>(response.data?.data));
       })
       .catch(() => {
         setHeldUpRates([]);

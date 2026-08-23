@@ -17,7 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Edit, Shield, Search } from "lucide-react";
+import { Plus, Edit, Shield, Search, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/apiError";
 import baseUrl from "@/api/baseUrl";
@@ -25,9 +25,12 @@ import AddRole from "./AddRole";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
-import { ALL_PERMISSIONS } from "@/lib/permissions";
+import { PAGE_PERMISSIONS } from "@/lib/permissions";
 import { useEntitySync } from "@/hooks/useEntitySync";
 import { upsertById } from "@/lib/socket";
+import TablePagination from "@/components/TablePagination";
+import { Skeleton } from "@/components/ui/skeleton";
+import { asList } from "@/lib/utils";
 
 interface Role {
   id: string;
@@ -40,32 +43,28 @@ interface Role {
   createdAt: string;
 }
 
-const mockRoles: Role[] = [
-  {
-    id: "1",
-    roleName: "Admin",
-    permission: ALL_PERMISSIONS.map((item) => item.id),
-    denied: [],
-    status: true,
-    admin: true,
-    createdAt: "2024-01-01",
-  },
-  {
-    id: "2",
-    roleName: "Manager",
-    permission: [1, 2, 3, 6, 8],
-    denied: [4, 5, 7, 9, 10],
-    status: true,
-    admin: false,
-    createdAt: "2024-01-05",
-  },
-];
+const PAGE_SIZE = 10;
+
+function formatCreatedAt(value?: string) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 export const RoleManagement = () => {
-  const [roles, setRoles] = useState<Role[]>(mockRoles);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
   const { toast } = useToast();
 
   const handleAdd = () => {
@@ -73,13 +72,20 @@ export const RoleManagement = () => {
     setIsDialogOpen(true);
   };
 
-  useEffect(() => {
-    baseUrl
+  const handleDialogChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) setEditingRole(null);
+  };
+
+  const loadRoles = () => {
+    setLoading(true);
+    return baseUrl
       .get("/role/findRole")
-      .then(async (response) => {
-        setRoles(response.data.data);
+      .then((response) => {
+        setRoles(asList<Role>(response.data?.data));
       })
       .catch((error) => {
+        setRoles([]);
         toast({
           title: "Unable to load roles",
           description: getApiErrorMessage(
@@ -88,7 +94,13 @@ export const RoleManagement = () => {
           ),
           variant: "destructive",
         });
-      });
+      })
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadRoles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEntitySync("role", (payload) => {
@@ -118,9 +130,9 @@ export const RoleManagement = () => {
           headers: { roleid: id },
         }
       )
-      .then(async () => {
-        setRoles(
-          roles.map((role) =>
+      .then(() => {
+        setRoles((prev) =>
+          prev.map((role) =>
             role._id === id ? { ...role, status: !role.status } : role
           )
         );
@@ -148,10 +160,15 @@ export const RoleManagement = () => {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return roles;
-    return roles.filter((role) =>
-      role.roleName?.toLowerCase().includes(q)
-    );
+    return roles.filter((role) => role.roleName?.toLowerCase().includes(q));
   }, [roles, query]);
+
+  const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE) || 1);
+  const currentPage = Math.min(page, pages);
+  const paged = filtered.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
 
   return (
     <div className="space-y-6">
@@ -163,12 +180,15 @@ export const RoleManagement = () => {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setPage(1);
+            }}
             placeholder="Search roles..."
             className="h-10 pl-9"
           />
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
           <DialogTrigger asChild>
             <Button
               onClick={handleAdd}
@@ -184,12 +204,14 @@ export const RoleManagement = () => {
                 {editingRole ? "Edit Role" : "Add New Role"}
               </DialogTitle>
             </DialogHeader>
-            <AddRole
-              editingRole={editingRole}
-              roles={roles}
-              setRoles={setRoles}
-              setIsDialogOpen={setIsDialogOpen}
-            />
+            {isDialogOpen ? (
+              <AddRole
+                editingRole={editingRole}
+                roles={roles}
+                setRoles={setRoles}
+                setIsDialogOpen={setIsDialogOpen}
+              />
+            ) : null}
           </DialogContent>
         </Dialog>
       </PageHeader>
@@ -202,108 +224,136 @@ export const RoleManagement = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          {filtered.length === 0 ? (
+          {loading ? (
+            <div className="space-y-3 px-4 py-6">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="flex items-center gap-3">
+                  <Skeleton className="h-9 w-9 rounded-lg" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-56" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
               <Shield className="mb-3 h-10 w-10 text-muted-foreground/50" />
               <p className="font-medium">No roles found</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Create a role to define staff permissions.
+                {query.trim()
+                  ? "Try a different search."
+                  : "Create a role to define staff permissions."}
               </p>
+              {!query.trim() ? (
+                <Button variant="outline" className="mt-4" onClick={loadRoles}>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Reload
+                </Button>
+              ) : null}
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/20 hover:bg-muted/20">
-                  <TableHead>Role Name</TableHead>
-                  <TableHead>Permissions</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((role, index) => {
-                  const namedPermissions = (role.permission || [])
-                    .map((permId) =>
-                      ALL_PERMISSIONS.find((p) => p.id === permId)
-                    )
-                    .filter((perm) => perm && perm.group === "pages");
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/20 hover:bg-muted/20">
+                    <TableHead>Role Name</TableHead>
+                    <TableHead>Permissions</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paged.map((role, index) => {
+                    const allowed = new Set(role.permission || []);
+                    const namedPermissions = PAGE_PERMISSIONS.filter((perm) =>
+                      allowed.has(perm.id)
+                    );
 
-                  return (
-                    <TableRow key={role._id || index}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[hsl(var(--brand-navy))] text-white">
-                            <Shield className="h-4 w-4" />
-                          </span>
-                          <span className="font-semibold">{role.roleName}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {role.admin || namedPermissions.length === 0 ? (
-                          <Badge variant="secondary">
-                            {role.admin
-                              ? "Full access"
-                              : `${(role.permission || []).length} permissions`}
-                          </Badge>
-                        ) : (
-                          <div className="flex flex-wrap gap-1">
-                            {namedPermissions.map((perm) => (
-                              <Badge
-                                key={perm!.id}
-                                variant="outline"
-                                className="text-xs"
-                              >
-                                {perm!.name}
-                              </Badge>
-                            ))}
+                    return (
+                      <TableRow key={role._id || role.id || index}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[hsl(var(--brand-navy))] text-white">
+                              <Shield className="h-4 w-4" />
+                            </span>
+                            <span className="font-semibold">{role.roleName}</span>
                           </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="secondary"
-                          className="gap-1 capitalize"
-                        >
-                          <Shield className="h-3 w-3" />
-                          {role.admin ? "Admin" : "Staff"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {!role.admin ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-auto p-0 hover:bg-transparent"
-                            onClick={() => toggleStatus(role._id, role.status)}
+                        </TableCell>
+                        <TableCell>
+                          {role.admin || namedPermissions.length === 0 ? (
+                            <Badge variant="secondary">
+                              {role.admin
+                                ? "Full access"
+                                : `${(role.permission || []).length} permissions`}
+                            </Badge>
+                          ) : (
+                            <div className="flex flex-wrap gap-1">
+                              {namedPermissions.map((perm) => (
+                                <Badge
+                                  key={perm.id}
+                                  variant="outline"
+                                  className="text-xs"
+                                >
+                                  {perm.name}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="secondary"
+                            className="gap-1 capitalize"
                           >
+                            <Shield className="h-3 w-3" />
+                            {role.admin ? "Admin" : "Staff"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {!role.admin ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-auto p-0 hover:bg-transparent"
+                              onClick={() => toggleStatus(role._id, role.status)}
+                            >
+                              <StatusBadge status={role.status} />
+                            </Button>
+                          ) : (
                             <StatusBadge status={role.status} />
-                          </Button>
-                        ) : (
-                          <StatusBadge status={role.status} />
-                        )}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {new Date(role.createdAt).toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {!role.admin && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEdit(role)}
-                          >
-                            <Edit className="h-4 w-4" />
-                            Edit
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {formatCreatedAt(role.createdAt)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {!role.admin && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEdit(role)}
+                            >
+                              <Edit className="h-4 w-4" />
+                              Edit
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+              <TablePagination
+                page={currentPage}
+                pages={pages}
+                total={filtered.length}
+                limit={PAGE_SIZE}
+                onPageChange={setPage}
+              />
+            </>
           )}
         </CardContent>
       </Card>

@@ -28,6 +28,8 @@ import { can } from "@/lib/permissions";
 import { P } from "@/lib/permissions";
 import { useEntitySync } from "@/hooks/useEntitySync";
 import { upsertById } from "@/lib/socket";
+import { asList } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const formatAmount = (value?: number) =>
   `Rs ${Number(value || 0).toLocaleString("en-IN", {
@@ -57,15 +59,17 @@ const formatDate = (value?: string) => {
 
 export const HeldUpManagement = () => {
   const [heldUps, setHeldUps] = useState<HeldUpRate[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [query, setQuery] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
+    setLoading(true);
     baseUrl
       .get("/heldup")
       .then((response) => {
-        setHeldUps(response.data.data || []);
+        setHeldUps(asList<HeldUpRate>(response.data?.data));
       })
       .catch((error) => {
         toast({
@@ -76,8 +80,10 @@ export const HeldUpManagement = () => {
           ),
           variant: "destructive",
         });
-      });
-  }, []);
+        setHeldUps([]);
+      })
+      .finally(() => setLoading(false));
+  }, [toast]);
 
   useEntitySync("heldup", (payload) => {
     setHeldUps((prev) => {
@@ -145,7 +151,13 @@ export const HeldUpManagement = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          {filtered.length === 0 ? (
+          {loading ? (
+            <div className="space-y-3 px-4 py-6">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <Skeleton key={index} className="h-10 w-full" />
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
               <CircleDollarSign className="mb-3 h-10 w-10 text-muted-foreground/50" />
               <p className="font-medium">No held up rates found</p>

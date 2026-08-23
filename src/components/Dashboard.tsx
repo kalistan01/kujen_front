@@ -14,6 +14,7 @@ import { useNavigate } from "react-router-dom";
 import { can } from "@/lib/permissions";
 import { P } from "@/lib/permissions";
 import { useEntitySync } from "@/hooks/useEntitySync";
+import { asList } from "@/lib/utils";
 
 type ActivityItem = {
   _id: string;
@@ -142,8 +143,10 @@ export const Dashboard = () => {
             }
           })
         );
-        setActivities(response.data.recentActivity || []);
-        setRecentAssignments(response.data.recentAssignments || []);
+        setActivities(asList<ActivityItem>(response.data?.recentActivity));
+        setRecentAssignments(
+          asList<RecentAssignment>(response.data?.recentAssignments)
+        );
       })
       .catch((error) => {
         console.error(error);

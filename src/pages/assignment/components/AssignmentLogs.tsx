@@ -13,6 +13,7 @@ import { ScrollText } from "lucide-react";
 import baseUrl from "@/api/baseUrl";
 import TablePagination from "@/components/TablePagination";
 import { LogDetails } from "@/pages/logs/logDetails";
+import { asList } from "@/lib/utils";
 
 type ActivityLog = {
   _id: string;
@@ -62,7 +63,7 @@ function AssignmentLogs({
         params: { page: nextPage, limit },
       })
       .then((response) => {
-        setLogs(response.data.data || []);
+        setLogs(asList<ActivityLog>(response.data?.data));
         setTotal(response.data.total || 0);
         setPages(response.data.pages || 1);
         setPage(response.data.page || nextPage);

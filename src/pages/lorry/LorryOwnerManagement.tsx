@@ -18,6 +18,10 @@ import { can } from "@/lib/permissions";
 import { P } from "@/lib/permissions";
 import { useEntitySync } from "@/hooks/useEntitySync";
 import { upsertById } from "@/lib/socket";
+import { asList } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
+import { getApiErrorMessage } from "@/lib/apiError";
 
 interface Lorry {
   _id?: string;
@@ -39,24 +43,37 @@ interface LorryOwner {
 
 export const LorryOwnerManagement = () => {
   const [owners, setOwners] = useState<LorryOwner[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingOwner, setEditingOwner] = useState<LorryOwner | null>(null);
   const [query, setQuery] = useState("");
+  const { toast } = useToast();
+  const canManage = can(P.LORRIES_MANAGE);
 
   useEntitySync("lorry", (payload) => {
     setOwners((prev) => upsertById(prev, payload));
   });
 
   useEffect(() => {
+    setLoading(true);
     baseUrl
       .get("/lorry")
-      .then(async (response) => {
-        setOwners(response.data.data);
+      .then((response) => {
+        setOwners(asList<LorryOwner>(response.data?.data));
       })
       .catch((error) => {
-        console.error(error);
-      });
-  }, []);
+        setOwners([]);
+        toast({
+          title: "Unable to load lorry owners",
+          description: getApiErrorMessage(
+            error,
+            "Could not load lorry owners. Please try again."
+          ),
+          variant: "destructive",
+        });
+      })
+      .finally(() => setLoading(false));
+  }, [toast]);
 
   const handleAdd = () => {
     setEditingOwner(null);
@@ -100,7 +117,7 @@ export const LorryOwnerManagement = () => {
             className="h-10 pl-9"
           />
         </div>
-        {can(P.LORRIES_MANAGE) ? (
+        {canManage ? (
         <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
           <DialogTrigger asChild>
             <Button
@@ -122,19 +139,33 @@ export const LorryOwnerManagement = () => {
                   : "Add an owner, company, and the vehicles in their fleet."}
               </p>
             </DialogHeader>
-            <AddLorryOwner
-              owners={owners}
-              setOwners={setOwners}
-              setIsDialogOpen={setIsDialogOpen}
-              editingOwner={editingOwner}
-              setEditingOwner={setEditingOwner}
-            />
+            {isDialogOpen ? (
+              <AddLorryOwner
+                owners={owners}
+                setOwners={setOwners}
+                setIsDialogOpen={setIsDialogOpen}
+                editingOwner={editingOwner}
+                setEditingOwner={setEditingOwner}
+              />
+            ) : null}
           </DialogContent>
         </Dialog>
         ) : null}
       </PageHeader>
 
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div className="grid gap-5 xl:grid-cols-2">
+          {Array.from({ length: 2 }).map((_, index) => (
+            <Card key={index}>
+              <CardContent className="space-y-3 p-6">
+                <Skeleton className="h-11 w-11 rounded-xl" />
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="h-4 w-56" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center px-6 py-16 text-center">
             <Truck className="mb-3 h-10 w-10 text-muted-foreground/50" />
@@ -164,7 +195,7 @@ export const LorryOwnerManagement = () => {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    {can(P.LORRIES_MANAGE) ? (
+                    {canManage ? (
                     <Button
                       variant="outline"
                       size="sm"

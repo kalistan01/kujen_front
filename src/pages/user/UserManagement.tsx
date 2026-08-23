@@ -17,15 +17,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Edit, Search, Users, Eye } from "lucide-react";
+import { Plus, Edit, Search, Users, Eye, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/apiError";
 import baseUrl from "@/api/baseUrl";
 import AddUser from "./AddUser";
 import {
-  DeviceList,
-  userDevices,
+  DeviceLabel,
   ViewUser,
+  formatDateTime,
   formatLastSeen,
   userInitials,
   type DirectoryUser,
@@ -33,23 +33,51 @@ import {
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
-import { can } from "@/lib/permissions";
-import { P } from "@/lib/permissions";
+import { can, P } from "@/lib/permissions";
 import { useEntitySync } from "@/hooks/useEntitySync";
 import { upsertById } from "@/lib/socket";
+import TablePagination from "@/components/TablePagination";
+import { Skeleton } from "@/components/ui/skeleton";
+import { asList } from "@/lib/utils";
 
 interface User extends DirectoryUser {
   id: string;
   password: string;
 }
 
+const PAGE_SIZE = 10;
+
 export const UserManagement = () => {
   const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [viewingUser, setViewingUser] = useState<User | null>(null);
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
   const { toast } = useToast();
+  const canManage = can(P.USERS_MANAGE);
+
+  const loadUsers = () => {
+    setLoading(true);
+    return baseUrl
+      .get("/user")
+      .then((response) => {
+        setUsers(asList<User>(response.data?.data));
+      })
+      .catch((error) => {
+        setUsers([]);
+        toast({
+          title: "Unable to load users",
+          description: getApiErrorMessage(
+            error,
+            "Could not load users. Please try again."
+          ),
+          variant: "destructive",
+        });
+      })
+      .finally(() => setLoading(false));
+  };
 
   const handleAdd = () => {
     setEditingUser(null);
@@ -65,38 +93,29 @@ export const UserManagement = () => {
     baseUrl
       .get("/user/" + user._id)
       .then((response) => {
-        if (response.data?.data) {
-          setViewingUser((current) =>
-            current && current._id === user._id
-              ? { ...current, ...response.data.data }
-              : current
-          );
-          setUsers((prev) =>
-            prev.map((row) =>
-              row._id === user._id ? { ...row, ...response.data.data } : row
-            )
-          );
-        }
+        if (!response.data?.data) return;
+        setViewingUser((current) =>
+          current && current._id === user._id
+            ? { ...current, ...response.data.data }
+            : current
+        );
+        setUsers((prev) =>
+          prev.map((row) =>
+            row._id === user._id ? { ...row, ...response.data.data } : row
+          )
+        );
       })
       .catch(() => {});
   };
 
+  const handleDialogChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) setEditingUser(null);
+  };
+
   useEffect(() => {
-    baseUrl
-      .get("/user")
-      .then(async (response) => {
-        setUsers(response.data.data);
-      })
-      .catch((error) => {
-        toast({
-          title: "Unable to load users",
-          description: getApiErrorMessage(
-            error,
-            "Could not load users. Please try again."
-          ),
-          variant: "destructive",
-        });
-      });
+    loadUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEntitySync("user", (payload) => {
@@ -124,13 +143,12 @@ export const UserManagement = () => {
           status: status ? 0 : 1,
         },
       })
-      .then(async () => {
-        setUsers(
-          users.map((user) =>
+      .then(() => {
+        setUsers((prev) =>
+          prev.map((user) =>
             user._id === id ? { ...user, status: !user.status } : user
           )
         );
-
         toast({
           title: "Success",
           description: status
@@ -155,16 +173,19 @@ export const UserManagement = () => {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return users;
-    return users.filter((user) => {
-      const deviceText = userDevices(user)
-        .flatMap((item) => [item.device, item.ip, item.userAgent])
+    return users.filter((user) =>
+      [user.fullName, user.email, user.roleName, user.lastLoginDevice, user.lastLoginIp]
         .filter(Boolean)
-        .join(" ");
-      return [user.fullName, user.email, user.roleName, deviceText]
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(q));
-    });
+        .some((value) => String(value).toLowerCase().includes(q))
+    );
   }, [users, query]);
+
+  const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE) || 1);
+  const currentPage = Math.min(page, pages);
+  const paged = filtered.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
 
   return (
     <div className="space-y-6">
@@ -176,42 +197,47 @@ export const UserManagement = () => {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setPage(1);
+            }}
             placeholder="Search users..."
             className="h-10 pl-9"
           />
         </div>
-        {can(P.USERS_MANAGE) ? (
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button
-              onClick={handleAdd}
-              className="gap-2 bg-[hsl(var(--brand-navy))] text-white hover:bg-[hsl(var(--brand-navy-muted))]"
-            >
-              <Plus className="h-4 w-4" />
-              Add User
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>
-                {editingUser ? "Edit User" : "Add New User"}
-              </DialogTitle>
-              <p className="text-sm text-muted-foreground">
-                {editingUser
-                  ? "Update this staff member's name, role, and access."
-                  : "Create a staff account and assign a role."}
-              </p>
-            </DialogHeader>
-            <AddUser
-              setEditingUser={setEditingUser}
-              editingUser={editingUser}
-              users={users}
-              setUsers={setUsers}
-              setIsDialogOpen={setIsDialogOpen}
-            />
-          </DialogContent>
-        </Dialog>
+        {canManage ? (
+          <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
+            <DialogTrigger asChild>
+              <Button
+                onClick={handleAdd}
+                className="gap-2 bg-[hsl(var(--brand-navy))] text-white hover:bg-[hsl(var(--brand-navy-muted))]"
+              >
+                <Plus className="h-4 w-4" />
+                Add User
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingUser ? "Edit User" : "Add New User"}
+                </DialogTitle>
+                <p className="text-sm text-muted-foreground">
+                  {editingUser
+                    ? "Update this staff member's name, role, and access."
+                    : "Create a staff account and assign a role."}
+                </p>
+              </DialogHeader>
+              {isDialogOpen ? (
+                <AddUser
+                  setEditingUser={setEditingUser}
+                  editingUser={editingUser}
+                  users={users}
+                  setUsers={setUsers}
+                  setIsDialogOpen={setIsDialogOpen}
+                />
+              ) : null}
+            </DialogContent>
+          </Dialog>
         ) : null}
       </PageHeader>
 
@@ -223,104 +249,136 @@ export const UserManagement = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          {filtered.length === 0 ? (
+          {loading ? (
+            <div className="space-y-3 px-4 py-6">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <div key={index} className="flex items-center gap-3">
+                  <Skeleton className="h-9 w-9 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-3 w-64" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
               <Users className="mb-3 h-10 w-10 text-muted-foreground/50" />
               <p className="font-medium">No users found</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Add a staff member to get started.
+                {query.trim()
+                  ? "Try a different search."
+                  : "Add a staff member to get started."}
               </p>
+              {!query.trim() ? (
+                <Button variant="outline" className="mt-4" onClick={loadUsers}>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Reload
+                </Button>
+              ) : null}
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/20 hover:bg-muted/20">
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Devices</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((user, index) => (
-                  <TableRow key={user._id || index}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-brand text-xs font-bold text-white">
-                          {userInitials(user.fullName)}
-                        </span>
-                        <span className="font-semibold">{user.fullName}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {user.email}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{user.roleName}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col items-start gap-1">
-                        {can(P.USERS_MANAGE) && user?.roleName !== "admin" ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-auto p-0 hover:bg-transparent"
-                            onClick={() => toggleStatus(user._id, user.status)}
-                          >
-                            <StatusBadge status={user.status} />
-                          </Button>
-                        ) : (
-                          <StatusBadge status={user.status} />
-                        )}
-                        {user.status ? (
-                          user.online ? (
-                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                              Online
-                            </span>
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/20 hover:bg-muted/20">
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Device</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paged.map((user, index) => (
+                    <TableRow key={user._id || user.id || index}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-brand text-xs font-bold text-white">
+                            {userInitials(user.fullName)}
+                          </span>
+                          <span className="font-semibold">{user.fullName}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {user.email}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{user.roleName || "—"}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col items-start gap-1">
+                          {canManage && user?.roleName !== "admin" ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-auto p-0 hover:bg-transparent"
+                              onClick={() => toggleStatus(user._id, user.status)}
+                            >
+                              <StatusBadge status={user.status} />
+                            </Button>
                           ) : (
-                            <span className="text-xs text-muted-foreground">
-                              Last seen {formatLastSeen(user.lastSeen)}
-                            </span>
-                          )
-                        ) : null}
-                      </div>
-                    </TableCell>
-                    <TableCell className="max-w-[240px] text-sm text-muted-foreground">
-                      <DeviceList user={user} />
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {new Date(user.createdAt).toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleView(user)}
-                        >
-                          <Eye className="h-4 w-4" />
-                          View
-                        </Button>
-                        {can(P.USERS_MANAGE) ? (
+                            <StatusBadge status={user.status} />
+                          )}
+                          {user.status ? (
+                            user.online ? (
+                              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                Online
+                              </span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">
+                                Last seen {formatLastSeen(user.lastSeen)}
+                              </span>
+                            )
+                          ) : null}
+                        </div>
+                      </TableCell>
+                      <TableCell className="max-w-[220px] text-sm text-muted-foreground">
+                        <DeviceLabel
+                          device={user.lastLoginDevice}
+                          empty="No login yet"
+                        />
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {formatDateTime(user.createdAt)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleEdit(user)}
+                            onClick={() => handleView(user)}
                           >
-                            <Edit className="h-4 w-4" />
-                            Edit
+                            <Eye className="h-4 w-4" />
+                            View
                           </Button>
-                        ) : null}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                          {canManage ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEdit(user)}
+                            >
+                              <Edit className="h-4 w-4" />
+                              Edit
+                            </Button>
+                          ) : null}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <TablePagination
+                page={currentPage}
+                pages={pages}
+                total={filtered.length}
+                limit={PAGE_SIZE}
+                onPageChange={setPage}
+              />
+            </>
           )}
         </CardContent>
       </Card>

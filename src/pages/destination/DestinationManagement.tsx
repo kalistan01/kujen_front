@@ -29,6 +29,8 @@ import { can } from "@/lib/permissions";
 import { P } from "@/lib/permissions";
 import { useEntitySync } from "@/hooks/useEntitySync";
 import { upsertById } from "@/lib/socket";
+import { asList } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Destination {
   _id?: string;
@@ -39,36 +41,42 @@ interface Destination {
   status: boolean;
 }
 
-const mockDestinations: Destination[] = [
-  {
-    id: "1",
-    type: "Air",
-    location: "Mumbai",
-    createdAt: "2023-10-01",
-    status: true,
-  },
-];
+function formatCreatedAt(value?: string) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 export const DestinationManagement = ({
   embedded = false,
 }: {
   embedded?: boolean;
 }) => {
-  const [destinations, setDestinations] =
-    useState<Destination[]>(mockDestinations);
+  const [destinations, setDestinations] = useState<Destination[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingDestination, setEditingDestination] =
     useState<Destination | null>(null);
   const [query, setQuery] = useState("");
   const { toast } = useToast();
+  const canManage = can(P.DESTINATIONS_MANAGE);
 
   useEffect(() => {
+    setLoading(true);
     baseUrl
       .get("/destination")
-      .then(async (response) => {
-        setDestinations(response.data.data);
+      .then((response) => {
+        setDestinations(asList<Destination>(response.data?.data));
       })
       .catch((error) => {
+        setDestinations([]);
         toast({
           title: "Unable to load destinations",
           description: getApiErrorMessage(
@@ -77,8 +85,9 @@ export const DestinationManagement = ({
           ),
           variant: "destructive",
         });
-      });
-  }, []);
+      })
+      .finally(() => setLoading(false));
+  }, [toast]);
 
   useEntitySync("destination", (payload) => {
     setDestinations((prev) => upsertById(prev, payload));
@@ -114,9 +123,9 @@ export const DestinationManagement = ({
       .delete(`destination/${id}`, {
         headers: { status: currentStatus ? 0 : 1 },
       })
-      .then(async () => {
-        setDestinations(
-          destinations.map((destination) =>
+      .then(() => {
+        setDestinations((prev) =>
+          prev.map((destination) =>
             destination._id === id
               ? { ...destination, status: !destination.status }
               : destination
@@ -164,7 +173,7 @@ export const DestinationManagement = ({
           className="h-10 pl-9"
         />
       </div>
-      {can(P.DESTINATIONS_MANAGE) ? (
+      {canManage ? (
         <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
           <DialogTrigger asChild>
             <Button
@@ -186,13 +195,15 @@ export const DestinationManagement = ({
                   : "Add a destination type and location for deliveries."}
               </p>
             </DialogHeader>
-            <AddDistination
-              setIsDialogOpen={setIsDialogOpen}
-              editingDestination={editingDestination}
-              destinations={destinations}
-              setDestinations={setDestinations}
-              setEditingDestination={setEditingDestination}
-            />
+            {isDialogOpen ? (
+              <AddDistination
+                setIsDialogOpen={setIsDialogOpen}
+                editingDestination={editingDestination}
+                destinations={destinations}
+                setDestinations={setDestinations}
+                setEditingDestination={setEditingDestination}
+              />
+            ) : null}
           </DialogContent>
         </Dialog>
       ) : null}
@@ -222,7 +233,19 @@ export const DestinationManagement = ({
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          {filtered.length === 0 ? (
+          {loading ? (
+            <div className="space-y-3 px-4 py-6">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="flex items-center gap-3">
+                  <Skeleton className="h-8 w-8 rounded-lg" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-48" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
               <MapPin className="mb-3 h-10 w-10 text-muted-foreground/50" />
               <p className="font-medium">No destinations found</p>
@@ -254,7 +277,7 @@ export const DestinationManagement = ({
                     </TableCell>
                     <TableCell>{destination.location}</TableCell>
                     <TableCell>
-                      {can(P.DESTINATIONS_MANAGE) ? (
+                      {canManage ? (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -270,10 +293,10 @@ export const DestinationManagement = ({
                       )}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {new Date(destination.createdAt).toLocaleString()}
+                      {formatCreatedAt(destination.createdAt)}
                     </TableCell>
                     <TableCell className="text-right">
-                      {can(P.DESTINATIONS_MANAGE) ? (
+                      {canManage ? (
                       <Button
                         variant="outline"
                         size="sm"
