@@ -117,10 +117,36 @@ export const heldUpFromDates = (
   };
 };
 
+export const containerPaid = (container: any = {}) =>
+  roundMoney(toAmount(container.advanced) + toAmount(container.balancePaid));
+
+export const containerChargesTotal = (
+  container: any = {},
+  fields: readonly { key: string }[] = CHARGE_FIELDS
+) =>
+  roundMoney(
+    fields.reduce((sum, field) => sum + toAmount(container[field.key]), 0)
+  );
+
+export const containerBalance = (container: any = {}) =>
+  roundMoney(containerChargesTotal(container) - containerPaid(container));
+
+export const shouldSkipHeldUpCalc = (container: Record<string, any> = {}) =>
+  container?.status === "completed" ||
+  (containerPaid(container) > 0 && containerBalance(container) <= 0);
+
 export const applyHeldUpToContainer = <T extends Record<string, any>>(
   container: T,
   rates: HeldUpRateOption[] = []
 ) => {
+  if (shouldSkipHeldUpCalc(container)) {
+    return {
+      ...container,
+      heldUp: toAmount(container?.heldUp),
+      heldUpExtraDays: 0,
+      heldUpRate: 0,
+    };
+  }
   const calc = heldUpFromDates(
     container?.loadingDate,
     container?.demoundDate,
@@ -138,14 +164,6 @@ export const applyHeldUpToContainers = <T extends Record<string, any>>(
   containers: T[] = [],
   rates: HeldUpRateOption[] = []
 ) => containers.map((container) => applyHeldUpToContainer(container, rates));
-
-export const containerChargesTotal = (
-  container: any = {},
-  fields: readonly { key: string }[] = CHARGE_FIELDS
-) =>
-  roundMoney(
-    fields.reduce((sum, field) => sum + toAmount(container[field.key]), 0)
-  );
 
 export const getAssignmentFinancials = (
   containers: any[] = [],
@@ -208,9 +226,3 @@ export const getAssignmentFinancials = (
     remaining: roundMoney(total - paid),
   };
 };
-
-export const containerPaid = (container: any = {}) =>
-  roundMoney(toAmount(container.advanced) + toAmount(container.balancePaid));
-
-export const containerBalance = (container: any = {}) =>
-  roundMoney(containerChargesTotal(container) - containerPaid(container));
