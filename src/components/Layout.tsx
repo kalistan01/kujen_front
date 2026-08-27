@@ -7,10 +7,12 @@ import {
   Shield,
   Menu,
   X,
+  ChevronLeft,
   LayoutDashboard,
   LogOut,
   ScrollText,
   Settings,
+  BarChart3,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
@@ -72,6 +74,18 @@ const allMenuItems = [
     permission: [P.ASSIGNMENTS_VIEW, P.ASSIGNMENTS_MANAGE],
   },
   {
+    id: "reports",
+    label: "Reports",
+    icon: BarChart3,
+    path: "/reports",
+    permission: [
+      P.ASSIGNMENTS_VIEW,
+      P.ASSIGNMENTS_MANAGE,
+      P.LORRIES_VIEW,
+      P.LORRIES_MANAGE,
+    ],
+  },
+  {
     id: "logs",
     label: "Logs",
     icon: ScrollText,
@@ -127,6 +141,9 @@ export const Layout = () => {
     if (location.pathname === "/assignments/containers") {
       return { label: "Containers" };
     }
+    if (location.pathname.startsWith("/reports")) {
+      return { label: "Reports" };
+    }
     return (
       menuItems.find((item) =>
         item.path === "/"
@@ -137,129 +154,182 @@ export const Layout = () => {
   }, [location.pathname, menuItems]);
 
   return (
-    <div className="min-h-screen bg-background">
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-slate-950/50 backdrop-blur-sm lg:hidden print:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      <aside
+    <div className="min-h-screen bg-background print:min-h-0 print:h-auto">
+      <div
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-[250px] max-w-[250px] flex-col overflow-hidden print:hidden",
-          "bg-sidebar text-sidebar-foreground",
-          "transition-transform duration-300 ease-out",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          "fixed inset-0 z-40 bg-slate-950/50 backdrop-blur-sm transition-opacity duration-300 lg:hidden print:hidden",
+          sidebarOpen ? "opacity-100" : "pointer-events-none opacity-0"
         )}
-      >
-        <div className="pointer-events-none absolute -right-16 top-24 h-56 w-56 rounded-full bg-sidebar-primary/10 blur-3xl" />
-        <div className="pointer-events-none absolute -left-10 bottom-16 h-40 w-40 rounded-full bg-primary/15 blur-3xl" />
-
-        <div className="relative border-b border-sidebar-border px-3 py-5">
-          <div className="flex items-center gap-3">
-            <img
-              src="/logo.png"
-              alt="RG Brothers"
-              className="h-11 w-11 rounded-lg bg-white object-cover ring-1 ring-sidebar-foreground/40"
-            />
-            <div className="min-w-0 flex-1">
-              <h1 className="truncate text-[17px] font-bold leading-tight tracking-tight text-sidebar-foreground">
-                RG Brothers
-              </h1>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sidebar-foreground/80">
-                Logistics
-              </p>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setSidebarOpen(false)}
-              className="hidden h-8 w-8 shrink-0 text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground lg:inline-flex"
-              aria-label="Close sidebar"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-
-        <nav className="relative flex-1 space-y-1 overflow-y-auto px-2 py-4">
-          <p className="mb-3 px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-sidebar-foreground/75">
-            Operations
-          </p>
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <NavLink
-                to={item.path}
-                key={item.id}
-                end={item.path === "/"}
-                onClick={() => {
-                  if (!isDesktopWidth()) setSidebarOpen(false);
-                }}
-                className={({ isActive }) =>
-                  cn(
-                    "group relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-all duration-200",
-                    isActive
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-inner"
-                      : "text-sidebar-foreground/85 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground"
-                  )
-                }
-              >
-                {({ isActive }) => (
-                  <>
-                    {isActive && (
-                      <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-full bg-sidebar-primary" />
-                    )}
-                    <span
-                      className={cn(
-                        "flex h-8 w-8 items-center justify-center rounded-lg transition-colors",
-                        isActive
-                          ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                          : "bg-sidebar-foreground/10 text-sidebar-foreground group-hover:bg-sidebar-foreground/15"
-                      )}
-                    >
-                      <Icon className="h-4 w-4" />
-                    </span>
-                    {item.label}
-                  </>
-                )}
-              </NavLink>
-            );
-          })}
-        </nav>
-
-        <div className="relative border-t border-sidebar-border p-2.5">
-          <div className="flex items-center gap-2 rounded-xl bg-sidebar-accent px-2 py-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-sidebar-primary text-xs font-bold text-sidebar-primary-foreground">
-              {userInitials(user?.fullName || "AD")}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-sidebar-foreground">
-                {user?.fullName || "Administrator"}
-              </p>
-              <p className="truncate text-xs text-sidebar-foreground/75">
-                {user?.roleName || "RG Brothers"}
-              </p>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleLogout}
-              disabled={loggingOut}
-              className="h-8 w-8 shrink-0 text-sidebar-foreground/80 hover:bg-destructive/15 hover:text-destructive"
-              aria-label="Logout"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </aside>
+        onClick={() => setSidebarOpen(false)}
+      />
 
       <div
         className={cn(
-          "flex min-h-screen flex-col transition-[padding] duration-300 ease-out print:pl-0",
-          sidebarOpen ? "lg:pl-[250px]" : "lg:pl-0"
+          "fixed inset-y-0 left-0 z-50 print:hidden",
+          "transition-[width,transform] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] will-change-[width,transform]",
+          sidebarOpen
+            ? "w-[250px] translate-x-0"
+            : "w-[250px] -translate-x-full lg:w-[72px] lg:translate-x-0"
+        )}
+      >
+        <aside className="relative h-full w-full overflow-hidden bg-sidebar text-sidebar-foreground">
+          <div className="pointer-events-none absolute -right-16 top-24 h-56 w-56 rounded-full bg-sidebar-primary/10 blur-3xl" />
+          <div className="pointer-events-none absolute -left-10 bottom-16 h-40 w-40 rounded-full bg-primary/15 blur-3xl" />
+
+          <div className="relative flex h-full w-[250px] min-w-[250px] flex-col">
+            <div className="relative border-b border-sidebar-border px-3 py-5">
+              <div className="flex items-center gap-3">
+                <img
+                  src="/logo.png"
+                  alt="RG Brothers"
+                  title="RG Brothers"
+                  className="h-11 w-11 shrink-0 rounded-lg bg-white object-cover ring-1 ring-sidebar-foreground/40"
+                />
+                <div
+                  className={cn(
+                    "min-w-0 flex-1 overflow-hidden whitespace-nowrap transition-opacity duration-200",
+                    sidebarOpen ? "opacity-100 delay-100" : "opacity-0 duration-150"
+                  )}
+                >
+                  <h1 className="truncate text-[17px] font-bold leading-tight tracking-tight text-sidebar-foreground">
+                    RG Brothers
+                  </h1>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sidebar-foreground/80">
+                    Logistics
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setSidebarOpen(false)}
+                  className="h-8 w-8 shrink-0 text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground lg:hidden"
+                  aria-label="Close sidebar"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            <nav className="relative flex-1 space-y-1 overflow-y-auto px-2 py-4">
+              <p
+                className={cn(
+                  "mb-3 overflow-hidden px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-sidebar-foreground/75 transition-opacity duration-200",
+                  sidebarOpen ? "opacity-100 delay-100" : "opacity-0 duration-150"
+                )}
+              >
+                Operations
+              </p>
+              {menuItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <NavLink
+                    to={item.path}
+                    key={item.id}
+                    end={item.path === "/"}
+                    title={item.label}
+                    onClick={() => {
+                      if (!isDesktopWidth()) setSidebarOpen(false);
+                    }}
+                    className={({ isActive }) =>
+                      cn(
+                        "group relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors duration-200",
+                        isActive
+                          ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-inner"
+                          : "text-sidebar-foreground/85 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground"
+                      )
+                    }
+                  >
+                    {({ isActive }) => (
+                      <>
+                        {isActive && (
+                          <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-full bg-sidebar-primary" />
+                        )}
+                        <span
+                          className={cn(
+                            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors",
+                            isActive
+                              ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                              : "bg-sidebar-foreground/10 text-sidebar-foreground group-hover:bg-sidebar-foreground/15"
+                          )}
+                        >
+                          <Icon className="h-4 w-4" />
+                        </span>
+                        <span
+                          className={cn(
+                            "truncate whitespace-nowrap transition-opacity duration-200",
+                            sidebarOpen ? "opacity-100 delay-100" : "opacity-0 duration-150"
+                          )}
+                        >
+                          {item.label}
+                        </span>
+                      </>
+                    )}
+                  </NavLink>
+                );
+              })}
+            </nav>
+
+            <div className="relative border-t border-sidebar-border p-2.5">
+              <div className="flex items-center gap-2 rounded-xl bg-sidebar-accent px-2 py-2">
+                <div
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sidebar-primary text-xs font-bold text-sidebar-primary-foreground"
+                  title={user?.fullName || "Administrator"}
+                >
+                  {userInitials(user?.fullName || "AD")}
+                </div>
+                <div
+                  className={cn(
+                    "min-w-0 flex-1 overflow-hidden whitespace-nowrap transition-opacity duration-200",
+                    sidebarOpen ? "opacity-100 delay-100" : "opacity-0 duration-150"
+                  )}
+                >
+                  <p className="truncate text-sm font-semibold text-sidebar-foreground">
+                    {user?.fullName || "Administrator"}
+                  </p>
+                  <p className="truncate text-xs text-sidebar-foreground/75">
+                    {user?.roleName || "RG Brothers"}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleLogout}
+                  disabled={loggingOut}
+                  className={cn(
+                    "h-8 w-8 shrink-0 text-sidebar-foreground/80 hover:bg-destructive/15 hover:text-destructive transition-opacity duration-200",
+                    sidebarOpen ? "opacity-100 delay-100" : "opacity-0 duration-150"
+                  )}
+                  aria-label="Logout"
+                  tabIndex={sidebarOpen ? 0 : -1}
+                >
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <button
+          type="button"
+          onClick={() => setSidebarOpen((open) => !open)}
+          className="absolute top-[30px] -right-3 z-[60] hidden h-6 w-6 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-md transition duration-300 hover:scale-105 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:flex"
+          aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+          title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+        >
+          <ChevronLeft
+            className={cn(
+              "h-3.5 w-3.5 transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
+              !sidebarOpen && "rotate-180"
+            )}
+          />
+        </button>
+      </div>
+
+      <div
+        className={cn(
+          "flex min-h-screen flex-col print:block print:min-h-0 print:h-auto print:pl-0",
+          "transition-[padding] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
+          sidebarOpen ? "lg:pl-[250px]" : "lg:pl-[72px]"
         )}
       >
         <header className="sticky top-0 z-30 border-b border-border bg-background/90 text-foreground backdrop-blur-xl print:hidden">
@@ -269,7 +339,7 @@ export const Layout = () => {
                 variant="ghost"
                 size="icon"
                 onClick={() => setSidebarOpen((open) => !open)}
-                className="shrink-0 text-foreground"
+                className="shrink-0 text-foreground lg:hidden"
                 aria-label={sidebarOpen ? "Close menu" : "Open menu"}
               >
                 {sidebarOpen ? (
@@ -328,7 +398,7 @@ export const Layout = () => {
           </div>
         </header>
 
-        <main className="flex-1 p-4 lg:p-5 print:p-0">
+        <main className="flex-1 p-4 lg:p-5 print:block print:h-auto print:p-0">
           <div className="w-full">
             <Outlet />
           </div>

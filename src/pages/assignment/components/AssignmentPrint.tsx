@@ -1,34 +1,6 @@
-import {
-  CHARGE_FIELDS,
-  COMMISSION_FIELDS,
-  containerChargesTotal,
-  formatMoney as money,
-  getAssignmentFinancials,
-  toAmount,
-} from "../lib/financials";
-import { canSeeField } from "@/lib/permissions";
-
-const formatDate = (value?: string | Date) => {
-  if (!value) return "—";
-  if (typeof value === "string") {
-    const part = value.substring(0, 10);
-    if (/^\d{4}-\d{2}-\d{2}$/.test(part)) {
-      const [y, m, d] = part.split("-").map(Number);
-      return new Date(y, m - 1, d).toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      });
-    }
-  }
-  const date = typeof value === "string" ? new Date(value) : value;
-  if (Number.isNaN(date.getTime())) return String(value);
-  return date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-};
+import PrintBlTable from "./PrintBlTable";
+import PrintContainersTable from "./PrintContainersTable";
+import PrintSummaryTable from "./PrintSummaryTable";
 
 const formatDateTime = (value?: string) => {
   if (!value) return "—";
@@ -50,16 +22,10 @@ function AssignmentPrint({ assignment }: { assignment: any }) {
   const containers = (assignment?.containers || []).filter(
     (c: any) => c && (c.containerNo || c._id)
   );
-  const chargeFields = CHARGE_FIELDS.filter((field) => canSeeField(field.key));
-  const commissionFields = COMMISSION_FIELDS.filter((field) =>
-    canSeeField(field.key)
-  );
-  const { charges, commissions, total, advanced, balancePaid, remaining } =
-    getAssignmentFinancials(containers, { chargeFields, commissionFields });
   const status = (assignment?.status || "pending").replace(/-/g, " ");
 
   return (
-    <div className="hidden print:block print-document">
+    <div className="hidden print:block print-document print-wide">
       <header className="print-hero">
         <div className="print-brand">
           <div className="print-mark">RG</div>
@@ -76,227 +42,41 @@ function AssignmentPrint({ assignment }: { assignment: any }) {
       </header>
 
       <section>
-        <h2>Assignment details</h2>
-        <div className="print-info">
-          <div>
-            <span>Cusdec Date</span>
-            <b>{formatDate(assignment?.cusdecDate)}</b>
-          </div>
-          <div>
-            <span>Cusdec Number</span>
-            <b>{assignment?.cusdecNo || "—"}</b>
-          </div>
-          <div>
-            <span>Registration No.</span>
-            <b>{assignment?.regNo || "—"}</b>
-          </div>
-          <div>
-            <span>Item</span>
-            <b>{assignment?.item || "N/A"}</b>
-          </div>
-          <div>
-            <span>Exporter</span>
-            <b>{assignment?.exporter || "N/A"}</b>
-          </div>
-          <div>
-            <span>Importer</span>
-            <b>{assignment?.importer || "N/A"}</b>
-          </div>
+        <h2>BL details</h2>
+        <PrintBlTable assignments={[assignment]} />
+      </section>
+
+      <section>
+        <h2>
+          Containers ({containers.length})
+          {containers.length ? " · amounts in Rs" : ""}
+        </h2>
+        {containers.length === 0 ? (
+          <p className="print-empty">No containers added.</p>
+        ) : (
+          <PrintContainersTable containers={containers} />
+        )}
+      </section>
+
+      <section>
+        <h2>Record</h2>
+        <div className="print-record">
+          <p>
+            <span>Created by</span>
+            {nameOf(assignment?.createdBy)}
+            <small>{formatDateTime(assignment?.createdAt)}</small>
+          </p>
+          <p>
+            <span>Updated by</span>
+            {nameOf(assignment?.updatedBy)}
+            <small>{formatDateTime(assignment?.updatedAt)}</small>
+          </p>
         </div>
       </section>
 
       <section>
-        <h2>Containers ({containers.length})</h2>
-        {containers.length === 0 ? (
-          <p className="print-empty">No containers added.</p>
-        ) : (
-          containers.map((c: any, index: number) => {
-            const tot = containerChargesTotal(c, chargeFields);
-            const paid =
-              (canSeeField("advanced") ? toAmount(c.advanced) : 0) +
-              (canSeeField("balancePaid") ? toAmount(c.balancePaid) : 0);
-            const chargeRows = [
-              canSeeField("weight") ? ["Weight", toAmount(c.weight)] : null,
-              canSeeField("dayHire") ? ["Day Hire", toAmount(c.dayHire)] : null,
-              canSeeField("advanced")
-                ? [
-                    c.advancedDate
-                      ? `Advanced (${formatDate(c.advancedDate)})`
-                      : "Advanced",
-                    toAmount(c.advanced),
-                  ]
-                : null,
-              canSeeField("balancePaid")
-                ? [
-                    c.balanceDate
-                      ? `Balance Paid (${formatDate(c.balanceDate)})`
-                      : "Balance Paid",
-                    toAmount(c.balancePaid),
-                  ]
-                : null,
-              canSeeField("outHire") ? ["Out Hire", toAmount(c.outHire)] : null,
-              canSeeField("other") ? ["Other", toAmount(c.other)] : null,
-              canSeeField("heldUp") ? ["Held Up", toAmount(c.heldUp)] : null,
-              canSeeField("agentFee") ? ["Agent Fee", toAmount(c.agentFee)] : null,
-              canSeeField("transportCommission")
-                ? ["Transport Commission", toAmount(c.transportCommission)]
-                : null,
-              canSeeField("return") ? ["Return", toAmount(c.return)] : null,
-            ].filter(Boolean) as [string, number][];
-            return (
-              <article key={c._id || index} className="print-box">
-                <div className="print-box-head">
-                  <h3>
-                    {index + 1}. {c.containerNo || "—"}
-                  </h3>
-                  <span>{(c.status || "pending").replace(/-/g, " ")}</span>
-                </div>
-                <div className="print-info print-info-sm">
-                  <div>
-                    <span>VOC No.</span>
-                    <b>{c.vocNo || "—"}</b>
-                  </div>
-                  <div>
-                    <span>Lorry</span>
-                    <b>
-                      {c.lorryNum || c.lorryId?.lorryNum || "Unassigned"}
-                      {c.capacity || c.lorryId?.capacity
-                        ? ` / ${c.capacity || c.lorryId?.capacity} ft`
-                        : ""}
-                    </b>
-                  </div>
-                  <div>
-                    <span>Owner</span>
-                    <b>
-                      {(
-                        c.lorryOwner ||
-                        c.lorryId?.owner?.ownerName ||
-                        "—"
-                      ).toString().toUpperCase()}
-                    </b>
-                  </div>
-                  <div>
-                    <span>Destination</span>
-                    <b>
-                      {c.destinationlocation ||
-                        c.destination?.location ||
-                        "—"}
-                    </b>
-                  </div>
-                  <div>
-                    <span>Loading</span>
-                    <b>{formatDate(c.loadingDate)}</b>
-                  </div>
-                  <div>
-                    <span>Demount</span>
-                    <b>{formatDate(c.demoundDate)}</b>
-                  </div>
-                </div>
-                {chargeRows.length ? (
-                <table className="print-charges">
-                  <tbody>
-                    {Array.from({
-                      length: Math.ceil(chargeRows.length / 2),
-                    }).map((_, i) => {
-                      const left = chargeRows[i * 2];
-                      const right = chargeRows[i * 2 + 1];
-                      return (
-                        <tr key={String(left[0])}>
-                          <th>{left[0]}</th>
-                          <td>{money(left[1] as number)}</td>
-                          <th>{right?.[0] || ""}</th>
-                          <td>
-                            {right ? money(right[1] as number) : ""}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-                ) : null}
-                {canSeeField("totals") ? (
-                <div className="print-totals">
-                  <div>
-                    <span>Total</span>
-                    <b>{money(tot)}</b>
-                  </div>
-                  <div>
-                    <span>Paid</span>
-                    <b>{money(paid)}</b>
-                  </div>
-                  <div className="print-balance">
-                    <span>Balance</span>
-                    <b>{money(tot - paid)}</b>
-                  </div>
-                </div>
-                ) : null}
-              </article>
-            );
-          })
-        )}
-      </section>
-
-      <section className="print-footer-grid">
-        <div>
-          <h2>Record</h2>
-          <div className="print-record">
-            <p>
-              <span>Created by</span>
-              {nameOf(assignment?.createdBy)}
-              <small>{formatDateTime(assignment?.createdAt)}</small>
-            </p>
-            <p>
-              <span>Updated by</span>
-              {nameOf(assignment?.updatedBy)}
-              <small>{formatDateTime(assignment?.updatedAt)}</small>
-            </p>
-          </div>
-        </div>
-        {chargeFields.length || commissionFields.length || canSeeField("totals") ? (
-        <div>
-          <h2>Financial summary</h2>
-          <table className="print-summary">
-            <tbody>
-              {chargeFields.map((field) => (
-                <tr key={field.key}>
-                  <th>{field.label}</th>
-                  <td>{money(charges[field.key])}</td>
-                </tr>
-              ))}
-              {canSeeField("totals") ? (
-                <>
-                  <tr>
-                    <th>Total</th>
-                    <td>{money(total)}</td>
-                  </tr>
-                  {canSeeField("advanced") ? (
-                    <tr>
-                      <th>Advanced</th>
-                      <td>{money(advanced)}</td>
-                    </tr>
-                  ) : null}
-                  {canSeeField("balancePaid") ? (
-                    <tr>
-                      <th>Balance Paid</th>
-                      <td>{money(balancePaid)}</td>
-                    </tr>
-                  ) : null}
-                  <tr className="print-remain">
-                    <th>Remaining</th>
-                    <td>{money(remaining)}</td>
-                  </tr>
-                </>
-              ) : null}
-              {commissionFields.map((field) => (
-                <tr key={field.key}>
-                  <th>{field.label}</th>
-                  <td>{money(commissions[field.key])}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        ) : null}
+        <h2>Total summary</h2>
+        <PrintSummaryTable containers={containers} />
       </section>
 
       <p className="print-note">

@@ -26,7 +26,7 @@ import {
 import { formatDate } from "../lib/dates";
 import { formatMoney } from "../lib/financials";
 
-const COLUMN_COUNT = 8;
+const COLUMN_COUNT = 9;
 
 function AssignmentEmptyState({ hasFilters }: { hasFilters: boolean }) {
   return (
@@ -205,8 +205,11 @@ function AssignmentRow({
         </TableCell>
         <TableCell>
           <span className="inline-flex rounded-md border border-[hsl(var(--brand-navy))]/15 bg-[hsl(var(--brand-navy))]/8 px-2 py-1 font-mono text-xs font-semibold tracking-wide text-[hsl(var(--brand-navy))] dark:border-white/10 dark:bg-white/10 dark:text-white">
-            {assignment.blNo || "—"}
+            {assignment.regNo || "—"}
           </span>
+        </TableCell>
+        <TableCell className="font-mono text-xs font-semibold">
+          {assignment.blNo || "—"}
         </TableCell>
         <TableCell className="whitespace-nowrap text-muted-foreground">
           {formatDate(assignment.cusdecDate)}
@@ -381,6 +384,7 @@ function AssignmentTable({
               <TableHead className="w-10 pr-0">
                 <span className="sr-only">Expand</span>
               </TableHead>
+              <TableHead>Registration Number</TableHead>
               <TableHead>BL Number</TableHead>
               <TableHead>Cusdec Date</TableHead>
               <TableHead>Item</TableHead>

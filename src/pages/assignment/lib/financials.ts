@@ -33,6 +33,19 @@ export const formatMoney = (value?: number) => {
   })}`;
 };
 
+export const formatMoneyCompact = (
+  value?: number,
+  options?: { dashZero?: boolean }
+) => {
+  const amount = roundMoney(toAmount(value));
+  if (options?.dashZero !== false && !amount) return "—";
+  const hasCents = Math.round(amount * 100) % 100 !== 0;
+  return amount.toLocaleString("en-IN", {
+    minimumFractionDigits: hasCents ? 2 : 0,
+    maximumFractionDigits: 2,
+  });
+};
+
 export const todayDateInput = () => {
   const d = new Date();
   return [

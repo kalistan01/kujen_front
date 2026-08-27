@@ -468,8 +468,22 @@ export const AssignmentManagement = () => {
     }
     const previousTitle = document.title;
     document.title = "RG-Brothers-Containers";
+    const style = document.createElement("style");
+    style.setAttribute("data-print-page", "");
+    style.textContent =
+      "@media print { @page { size: A4 landscape; margin: 8mm; } }";
+    document.head.appendChild(style);
+    let cleaned = false;
+    const cleanup = () => {
+      if (cleaned) return;
+      cleaned = true;
+      document.title = previousTitle;
+      style.remove();
+      window.removeEventListener("afterprint", cleanup);
+    };
+    window.addEventListener("afterprint", cleanup);
     window.print();
-    document.title = previousTitle;
+    window.setTimeout(cleanup, 1500);
   };
 
   const downloadSelectedPdf = async () => {

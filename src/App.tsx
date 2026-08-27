@@ -14,6 +14,7 @@ import { UserManagement } from "./pages/user/UserManagement";
 import PrivateRoute from "./PrivateRoute";
 import { SettingsPage } from "./pages/settings/Settings";
 import { LogsPage } from "./pages/logs/LogsPage";
+import { ReportsPage } from "./pages/reports/ReportsPage";
 import RequirePermission from "./components/RequirePermission";
 import { P } from "./lib/permissions";
 
@@ -89,6 +90,24 @@ const App = () => (
                     </RequirePermission>
                   }
                 />
+                <Route
+                  path="/reports"
+                  element={
+                    <RequirePermission
+                      ids={[
+                        P.ASSIGNMENTS_VIEW,
+                        P.ASSIGNMENTS_MANAGE,
+                        P.LORRIES_VIEW,
+                        P.LORRIES_MANAGE,
+                      ]}
+                    >
+                      <ReportsPage />
+                    </RequirePermission>
+                  }
+                >
+                  <Route index element={null} />
+                  <Route path="lorries" element={null} />
+                </Route>
                 <Route
                   path="/assignment/:id"
                   element={
