@@ -48,7 +48,8 @@ const AssignmentDetails = () => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isBulkPayOpen, setIsBulkPayOpen] = useState(false);
   const [bulkPayDate, setBulkPayDate] = useState(todayDateInput());
-  const [bulkPaying, setBulkPaying] = useState(false);
+  const [bulkPaying, setBulkPaying] = useState<"pay" | "print" | false>(false);
+  const [printOnlyIds, setPrintOnlyIds] = useState<string[] | null>(null);
   const canManage = canManageAssignments();
 
   const loadAssignment = () => {
@@ -124,7 +125,7 @@ const AssignmentDetails = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `RG-Brothers-BL-${assignment?.blNo || id}.${ext}`;
+      link.download = `RG-Business-transport-BL-${assignment?.blNo || id}.${ext}`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -144,25 +145,34 @@ const AssignmentDetails = () => {
     }
   };
 
-  const handlePrint = () => {
+  const handlePrint = (onDone?: () => void) => {
     const previousTitle = document.title;
-    document.title = `RG Brothers - BL ${assignment?.blNo || ""}`.trim();
+    document.title = `RG Business transport - BL ${assignment?.blNo || ""}`.trim();
     const style = document.createElement("style");
     style.setAttribute("data-print-page", "");
     style.textContent =
       "@media print { @page { size: A4 landscape; margin: 8mm; } }";
     document.head.appendChild(style);
-    let cleaned = false;
-    const cleanup = () => {
-      if (cleaned) return;
-      cleaned = true;
+    let restored = false;
+    const restorePage = () => {
+      if (restored) return;
+      restored = true;
       document.title = previousTitle;
       style.remove();
-      window.removeEventListener("afterprint", cleanup);
     };
-    window.addEventListener("afterprint", cleanup);
+    let finished = false;
+    const finishPrint = () => {
+      if (finished) return;
+      finished = true;
+      restorePage();
+      window.removeEventListener("afterprint", finishPrint);
+      setPrintOnlyIds(null);
+      onDone?.();
+    };
+    window.addEventListener("afterprint", finishPrint);
     window.print();
-    window.setTimeout(cleanup, 1500);
+    window.setTimeout(restorePage, 1500);
+    window.setTimeout(finishPrint, 120000);
   };
 
   const displayAssignment = useMemo(() => {
@@ -205,15 +215,18 @@ const AssignmentDetails = () => {
     setSelectedIds(checked ? payableContainers.map((c: any) => c._id) : []);
   };
 
-  const handleBulkPay = () => {
+  const handleBulkPay = (andPrint = false) => {
     if (!id || bulkPaying || !selectedContainers.length) return;
-    setBulkPaying(true);
+    const paidIds = selectedContainers.map((c: any) => String(c._id));
+    setBulkPaying(andPrint ? "print" : "pay");
     baseUrl
       .patch(`/assignlorry/${id}/pay-balances`, {
-        containerIds: selectedContainers.map((c: any) => c._id),
+        containerIds: paidIds,
         balanceDate: bulkPayDate || todayDateInput(),
       })
-      .then(() => {
+      .then((response) => {
+        const paidAssignment = response.data?.data;
+        if (paidAssignment) setAssignment(paidAssignment);
         toast({
           title: "Balances paid",
           description: `${selectedContainers.length} container${
@@ -222,7 +235,14 @@ const AssignmentDetails = () => {
         });
         setIsBulkPayOpen(false);
         setSelectedIds([]);
-        loadAssignment();
+        if (andPrint) {
+          setPrintOnlyIds(paidIds);
+          window.setTimeout(() => {
+            handlePrint(() => loadAssignment());
+          }, 250);
+        } else {
+          loadAssignment();
+        }
       })
       .catch((error) => {
         toast({
@@ -466,20 +486,37 @@ const AssignmentDetails = () => {
                 onChange={(e) => setBulkPayDate(e.target.value)}
               />
             </div>
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setIsBulkPayOpen(false)}
+                disabled={Boolean(bulkPaying)}
               >
                 Cancel
               </Button>
               <Button
                 type="button"
-                onClick={handleBulkPay}
-                disabled={bulkPaying || !selectedContainers.length || !bulkPayDate}
+                onClick={() => handleBulkPay(false)}
+                disabled={
+                  Boolean(bulkPaying) ||
+                  !selectedContainers.length ||
+                  !bulkPayDate
+                }
               >
-                {bulkPaying ? "Paying..." : "Pay"}
+                {bulkPaying === "pay" ? "Paying..." : "Pay"}
+              </Button>
+              <Button
+                type="button"
+                onClick={() => handleBulkPay(true)}
+                disabled={
+                  Boolean(bulkPaying) ||
+                  !selectedContainers.length ||
+                  !bulkPayDate
+                }
+              >
+                <Printer className="h-4 w-4" />
+                {bulkPaying === "print" ? "Paying..." : "Pay and Print"}
               </Button>
             </div>
           </div>
@@ -508,7 +545,13 @@ const AssignmentDetails = () => {
         </DialogContent>
       </Dialog>
     </div>
-    {displayAssignment && <AssignmentPrint assignment={displayAssignment} />}
+    {displayAssignment && (
+      <AssignmentPrint
+        assignment={displayAssignment}
+        containerIds={printOnlyIds}
+        title={printOnlyIds?.length ? "Balance payment" : undefined}
+      />
+    )}
     </>
   );
 };

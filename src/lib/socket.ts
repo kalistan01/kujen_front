@@ -34,7 +34,14 @@ export function createSocket(): Socket {
   return io(socketOrigin(), {
     withCredentials: true,
     transports: ["websocket", "polling"],
+    query: {
+      active: tabIsVisible() ? "1" : "0",
+    },
   });
+}
+
+function tabIsVisible() {
+  return typeof document === "undefined" || document.visibilityState === "visible";
 }
 
 export function entityId(item: { _id?: unknown; id?: unknown } | null | undefined) {

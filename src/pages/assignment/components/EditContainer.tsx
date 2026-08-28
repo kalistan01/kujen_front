@@ -18,7 +18,7 @@ import { useParams } from "react-router-dom";
 import DestinationSelect, {
   type DestinationOption,
 } from "./DestinationSelect";
-import { todayDateInput, toDateInput, containerChargesTotal, formatMoney, toAmount, CHARGE_FIELDS, roundMoney, applyHeldUpToContainer, type HeldUpRateOption } from "../lib/financials";
+import { todayDateInput, toDateInput, toDateKey, containerChargesTotal, formatMoney, toAmount, CHARGE_FIELDS, roundMoney, applyHeldUpToContainer, applyAdvancedDate, type HeldUpRateOption } from "../lib/financials";
 import { canSeeField, omitHiddenContainerFields } from "@/lib/permissions";
 import { FieldGate } from "@/components/RequirePermission";
 import {
@@ -88,7 +88,7 @@ function EditContainer({
     weight: 0,
     dayHire: 0,
     advanced: 0,
-    advancedDate: todayDateInput(),
+    advancedDate: "",
     balancePaid: 0,
     balanceDate: todayDateInput(),
     outHire: 0,
@@ -104,13 +104,15 @@ function EditContainer({
   useEffect(() => {
     if (!editingAssignment) return;
     setContainers(
-      applyHeldUpToContainer(
-        {
-          ...editingAssignment,
-          advancedDate: toDateInput(editingAssignment.advancedDate),
-          balanceDate: toDateInput(editingAssignment.balanceDate),
-        },
-        heldUpRates
+      applyAdvancedDate(
+        applyHeldUpToContainer(
+          {
+            ...editingAssignment,
+            advancedDate: toDateKey(editingAssignment.advancedDate),
+            balanceDate: toDateInput(editingAssignment.balanceDate),
+          },
+          heldUpRates
+        )
       )
     );
   }, [editingAssignment, heldUpRates]);
@@ -126,7 +128,7 @@ function EditContainer({
       weight: 0,
       dayHire: 0,
       advanced: 0,
-      advancedDate: todayDateInput(),
+      advancedDate: "",
       balancePaid: 0,
       balanceDate: todayDateInput(),
       outHire: 0,
@@ -143,7 +145,9 @@ function EditContainer({
   };
   const updateContainer = (field: string, value: string | number) => {
     setContainers((prev) =>
-      applyHeldUpToContainer({ ...prev, [field]: value }, heldUpRates)
+      applyAdvancedDate(
+        applyHeldUpToContainer({ ...prev, [field]: value }, heldUpRates)
+      )
     );
     setErrors((prev) => {
       if (!prev[field as keyof ContainerFieldErrors]) return prev;
@@ -240,10 +244,13 @@ function EditContainer({
 
     setSaving(true);
     try {
+      const { fcl: _fcl, ...containerFields } = containers as typeof containers & {
+        fcl?: unknown;
+      };
       await baseUrl.put(
         `assignlorry/${id}/containers/${containers._id}`,
         omitHiddenContainerFields({
-          ...containers,
+          ...applyAdvancedDate(containerFields),
           lorryId,
           destination: containers.destination || undefined,
         })
@@ -404,7 +411,7 @@ function EditContainer({
           <div className="grid grid-cols-3 gap-4">
             <FieldGate field="weight">
               <div className="space-y-1.5">
-                <Label>Weight (kg) *</Label>
+                <Label>Weight (kg)</Label>
                 <Input
                   type="number"
                   value={containers.weight || ""}
@@ -423,7 +430,7 @@ function EditContainer({
             </FieldGate>
             <FieldGate field="dayHire">
               <div className="space-y-1.5">
-                <Label>Day Hire (Rs) *</Label>
+                <Label>Day Hire (Rs)</Label>
                 <Input
                   type="number"
                   value={containers.dayHire || ""}
@@ -442,7 +449,7 @@ function EditContainer({
             </FieldGate>
             <FieldGate field="advanced">
               <div className="space-y-1.5">
-                <Label>Advanced (Rs) *</Label>
+                <Label>Advanced (Rs)</Label>
                 <Input
                   type="number"
                   value={containers.advanced || ""}
@@ -461,13 +468,14 @@ function EditContainer({
             </FieldGate>
             <FieldGate field="advancedDate">
               <div>
-                <Label>Advanced Date *</Label>
+                <Label>Advanced Date</Label>
                 <Input
                   type="date"
-                  value={toDateInput(containers.advancedDate)}
+                  value={toDateKey(containers.advancedDate)}
                   onChange={(e) =>
                     updateContainer("advancedDate", e.target.value)
                   }
+                  disabled={!(Number(containers.advanced) > 0)}
                 />
               </div>
             </FieldGate>

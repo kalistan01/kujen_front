@@ -23,6 +23,28 @@ function isInactiveStatus(value: unknown) {
   );
 }
 
+function isPresenceOnly(data: unknown) {
+  if (!data || typeof data !== "object") return false;
+  const record = data as Record<string, unknown>;
+  const keys = Object.keys(record).filter((key) => record[key] !== undefined);
+  if (!keys.length) return false;
+  return keys.every(
+    (key) => key === "_id" || key === "id" || key === "online" || key === "lastSeen"
+  );
+}
+
+function tabIsVisible() {
+  return document.visibilityState === "visible";
+}
+
+function syncPresence(socket: Socket, visible: boolean) {
+  const query = (socket.io?.opts?.query || {}) as Record<string, string>;
+  if (socket.io?.opts) {
+    socket.io.opts.query = { ...query, active: visible ? "1" : "0" };
+  }
+  socket.emit(visible ? "presence:active" : "presence:idle");
+}
+
 async function refreshAuthUser() {
   const response = await fetch(`${API_URL}/auth/check`, {
     method: "GET",
@@ -62,6 +84,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
           forceLogout();
           return;
         }
+        if (isPresenceOnly(payload.data)) return;
         refreshAuthUser().catch(() => {});
         return;
       }
@@ -75,10 +98,25 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       }
     };
 
+    const reportVisibility = () => {
+      syncPresence(next, tabIsVisible());
+    };
+
+    const onHidden = () => {
+      syncPresence(next, false);
+    };
+
     next.on("data:changed", onChanged);
+    next.on("connect", reportVisibility);
+    if (next.connected) reportVisibility();
+    document.addEventListener("visibilitychange", reportVisibility);
+    window.addEventListener("pagehide", onHidden);
 
     return () => {
       next.off("data:changed", onChanged);
+      next.off("connect", reportVisibility);
+      document.removeEventListener("visibilitychange", reportVisibility);
+      window.removeEventListener("pagehide", onHidden);
       next.disconnect();
       setSocket(null);
     };

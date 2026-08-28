@@ -15,6 +15,7 @@ import TablePagination from "@/components/TablePagination";
 import { canSeeField } from "@/lib/permissions";
 import { formatDate } from "../lib/dates";
 import { formatMoney } from "../lib/financials";
+import FclStatusBadge from "./FclStatusBadge";
 import {
   containerCapacity,
   containerDestination,
@@ -120,7 +121,10 @@ function ContainerRow({
           >
             {formatMoney(container[field.key])}
           </p>
-          {field.key === "advanced" && canSeeField("advancedDate") ? (
+          {field.key === "advanced" &&
+          canSeeField("advancedDate") &&
+          Number(container.advanced) > 0 &&
+          container.advancedDate ? (
             <p className="text-xs text-muted-foreground">
               {formatDate(container.advancedDate)}
             </p>
@@ -156,6 +160,9 @@ function ContainerRow({
       ) : null}
       <TableCell>
         <StatusBadge status={container?.status} />
+      </TableCell>
+      <TableCell>
+        <FclStatusBadge fcl={container?.fcl} />
       </TableCell>
       <TableCell className="text-right">
         <Button
@@ -256,6 +263,7 @@ function ContainerListTable({
                 </>
               ) : null}
               <TableHead>Status</TableHead>
+              <TableHead>FCL Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>

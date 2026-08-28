@@ -70,7 +70,8 @@ export const AssignmentManagement = () => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isBulkPayOpen, setIsBulkPayOpen] = useState(false);
   const [bulkPayDate, setBulkPayDate] = useState(todayDateInput());
-  const [bulkPaying, setBulkPaying] = useState(false);
+  const [bulkPaying, setBulkPaying] = useState<"pay" | "print" | false>(false);
+  const [printTitle, setPrintTitle] = useState<string | undefined>();
   const pageSize = 10;
   const { toast } = useToast();
   const canPay =
@@ -368,7 +369,44 @@ export const AssignmentManagement = () => {
     });
   };
 
-  const handleBulkPay = () => {
+  const handlePrintSelected = (onDone?: () => void) => {
+    if (!selectedRows.length) {
+      toast({
+        title: "Select containers",
+        description: "Choose one or more rows to print.",
+      });
+      return;
+    }
+    const previousTitle = document.title;
+    document.title = "RG-Business-transport-Containers";
+    const style = document.createElement("style");
+    style.setAttribute("data-print-page", "");
+    style.textContent =
+      "@media print { @page { size: A4 landscape; margin: 8mm; } }";
+    document.head.appendChild(style);
+    let restored = false;
+    const restorePage = () => {
+      if (restored) return;
+      restored = true;
+      document.title = previousTitle;
+      style.remove();
+    };
+    let finished = false;
+    const finishPrint = () => {
+      if (finished) return;
+      finished = true;
+      restorePage();
+      window.removeEventListener("afterprint", finishPrint);
+      setPrintTitle(undefined);
+      onDone?.();
+    };
+    window.addEventListener("afterprint", finishPrint);
+    window.print();
+    window.setTimeout(restorePage, 1500);
+    window.setTimeout(finishPrint, 120000);
+  };
+
+  const handleBulkPay = (andPrint = false) => {
     if (bulkPaying || !payableSelectedRows.length) return;
     const groups = new Map<string, string[]>();
     payableSelectedRows.forEach((row) => {
@@ -381,7 +419,7 @@ export const AssignmentManagement = () => {
     });
     if (!groups.size) return;
 
-    setBulkPaying(true);
+    setBulkPaying(andPrint ? "print" : "pay");
     Promise.all(
       [...groups.entries()].map(([assignmentId, containerIds]) =>
         baseUrl.patch(`/assignlorry/${assignmentId}/pay-balances`, {
@@ -390,7 +428,22 @@ export const AssignmentManagement = () => {
         })
       )
     )
-      .then(() => {
+      .then((responses) => {
+        const paidAssignments = responses
+          .map((response) => response.data?.data)
+          .filter(Boolean);
+        if (paidAssignments.length) {
+          setAssignments((prev) => {
+            const next = [...prev];
+            paidAssignments.forEach((updated: any) => {
+              const index = next.findIndex(
+                (item) => String(item?._id) === String(updated?._id)
+              );
+              if (index >= 0) next[index] = updated;
+            });
+            return next;
+          });
+        }
         toast({
           title: "Balances paid",
           description: `${payableSelectedRows.length} container${
@@ -398,8 +451,18 @@ export const AssignmentManagement = () => {
           } · ${formatMoney(selectedTotal)}`,
         });
         setIsBulkPayOpen(false);
-        setSelectedIds([]);
-        return loadAssignments();
+        if (andPrint) {
+          setPrintTitle("Balance payment");
+          window.setTimeout(() => {
+            handlePrintSelected(() => {
+              setSelectedIds([]);
+              loadAssignments();
+            });
+          }, 250);
+        } else {
+          setSelectedIds([]);
+          return loadAssignments();
+        }
       })
       .catch((error) => {
         toast({
@@ -438,7 +501,7 @@ export const AssignmentManagement = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `RG-Brothers-Assignments.${ext}`;
+      link.download = `RG-Business-transport-Assignments.${ext}`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -456,34 +519,6 @@ export const AssignmentManagement = () => {
     } finally {
       setExporting(null);
     }
-  };
-
-  const handlePrintSelected = () => {
-    if (!selectedRows.length) {
-      toast({
-        title: "Select containers",
-        description: "Choose one or more rows to print.",
-      });
-      return;
-    }
-    const previousTitle = document.title;
-    document.title = "RG-Brothers-Containers";
-    const style = document.createElement("style");
-    style.setAttribute("data-print-page", "");
-    style.textContent =
-      "@media print { @page { size: A4 landscape; margin: 8mm; } }";
-    document.head.appendChild(style);
-    let cleaned = false;
-    const cleanup = () => {
-      if (cleaned) return;
-      cleaned = true;
-      document.title = previousTitle;
-      style.remove();
-      window.removeEventListener("afterprint", cleanup);
-    };
-    window.addEventListener("afterprint", cleanup);
-    window.print();
-    window.setTimeout(cleanup, 1500);
   };
 
   const downloadSelectedPdf = async () => {
@@ -511,7 +546,7 @@ export const AssignmentManagement = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "RG-Brothers-Containers.pdf";
+      link.download = "RG-Business-transport-Containers.pdf";
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -729,7 +764,7 @@ export const AssignmentManagement = () => {
       </Card>
 
       <Dialog open={isBulkPayOpen} onOpenChange={setIsBulkPayOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Pay selected balances</DialogTitle>
           </DialogHeader>
@@ -770,29 +805,44 @@ export const AssignmentManagement = () => {
                 onChange={(e) => setBulkPayDate(e.target.value)}
               />
             </div>
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setIsBulkPayOpen(false)}
+                disabled={Boolean(bulkPaying)}
               >
                 Cancel
               </Button>
               <Button
                 type="button"
-                onClick={handleBulkPay}
+                onClick={() => handleBulkPay(false)}
                 disabled={
-                  bulkPaying || !payableSelectedRows.length || !bulkPayDate
+                  Boolean(bulkPaying) ||
+                  !payableSelectedRows.length ||
+                  !bulkPayDate
                 }
               >
-                {bulkPaying ? "Paying..." : "Pay"}
+                {bulkPaying === "pay" ? "Paying..." : "Pay"}
+              </Button>
+              <Button
+                type="button"
+                onClick={() => handleBulkPay(true)}
+                disabled={
+                  Boolean(bulkPaying) ||
+                  !payableSelectedRows.length ||
+                  !bulkPayDate
+                }
+              >
+                <Printer className="h-4 w-4" />
+                {bulkPaying === "print" ? "Paying..." : "Pay and Print"}
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
     </div>
-    <ContainerListPrint rows={selectedRows} />
+    <ContainerListPrint rows={selectedRows} title={printTitle} />
     </>
   );
 };

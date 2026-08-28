@@ -25,6 +25,7 @@ import {
 } from "../lib/containerDisplay";
 import { formatDate } from "../lib/dates";
 import { formatMoney } from "../lib/financials";
+import FclStatusBadge from "./FclStatusBadge";
 
 const COLUMN_COUNT = 9;
 
@@ -110,7 +111,10 @@ function ContainerDetailRow({
           >
             {formatMoney(container[field.key])}
           </p>
-          {field.key === "advanced" && canSeeField("advancedDate") ? (
+          {field.key === "advanced" &&
+          canSeeField("advancedDate") &&
+          Number(container.advanced) > 0 &&
+          container.advancedDate ? (
             <p className="text-xs text-muted-foreground">
               {formatDate(container.advancedDate)}
             </p>
@@ -144,8 +148,11 @@ function ContainerDetailRow({
           </td>
         </>
       ) : null}
-      <td className="px-3 py-2.5 last:pr-4">
+      <td className="px-3 py-2.5">
         <StatusBadge status={container?.status} />
+      </td>
+      <td className="px-3 py-2.5 last:pr-4">
+        <FclStatusBadge fcl={container?.fcl} />
       </td>
     </tr>
   );
@@ -325,8 +332,11 @@ function AssignmentRow({
                       </th>
                     </>
                   ) : null}
-                  <th className="h-10 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground last:pr-4">
+                  <th className="h-10 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                     Status
+                  </th>
+                  <th className="h-10 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground last:pr-4">
+                    FCL Status
                   </th>
                 </tr>
               </thead>

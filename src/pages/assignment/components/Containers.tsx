@@ -32,6 +32,8 @@ import {
   toAmount,
 } from "../lib/financials";
 import { canSeeField, canManageAssignments } from "@/lib/permissions";
+import { parseFcl, type FclState } from "../lib/fcl";
+import FclRecord from "./FclRecord";
 interface ContainerType {
   _id?: string;
   containerNo?: string;
@@ -61,6 +63,7 @@ interface ContainerType {
   transportCommission?: number;
   return?: number;
   status?: "pending" | "in-progress" | "completed";
+  fcl?: unknown;
 }
 
 export const formatDate = (date?: string | Date) => {
@@ -107,6 +110,13 @@ function Containers({
   const [status, setStatus] = useState<"pending" | "in-progress" | "completed">(
     container?.status || "pending"
   );
+  const [fcl, setFcl] = useState<FclState>(() => parseFcl(container?.fcl));
+
+  useEffect(() => {
+    setStatus(container?.status || "pending");
+    setFcl(parseFcl(container?.fcl));
+  }, [container?.status, container?.fcl]);
+
   const toggleStatus = (
     containerId: "pending" | "in-progress" | "completed"
   ) => {
@@ -129,6 +139,24 @@ function Containers({
           description: getApiErrorMessage(
             error,
             "Could not update the container status. Please try again."
+          ),
+          variant: "destructive",
+        });
+      });
+  };
+  const saveFcl = (next: FclState) => {
+    if (!id || !container?._id) return;
+    const previous = fcl;
+    setFcl(next);
+    baseUrl
+      .patch(`assignlorry/${id}/containers/${container._id}`, { fcl: next })
+      .catch((error) => {
+        setFcl(previous);
+        toast({
+          title: "Update failed",
+          description: getApiErrorMessage(
+            error,
+            "Could not update the FCL record. Please try again."
           ),
           variant: "destructive",
         });
@@ -277,6 +305,14 @@ function Containers({
         </div>
       </div>
 
+      {canManage || parseFcl(fcl).enabled ? (
+        <FclRecord
+          fcl={fcl}
+          onChange={canManage ? saveFcl : undefined}
+          formatStepDate={formatDate}
+        />
+      ) : null}
+
       <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-4">
         {[
           canSeeField("weight") ? ["Weight", container.weight, "weight"] : null,
@@ -307,7 +343,10 @@ function Containers({
             >
               {formatMoney(value)}
             </p>
-            {label === "Advanced" && canSeeField("advancedDate") ? (
+            {label === "Advanced" &&
+            canSeeField("advancedDate") &&
+            Number(container.advanced) > 0 &&
+            container.advancedDate ? (
               <p className="text-xs text-muted-foreground">
                 {formatDate(container.advancedDate)}
               </p>

@@ -1,5 +1,3 @@
-import { canSeeField } from "@/lib/permissions";
-
 export type AssignmentBasicErrors = {
   blNo?: string;
   cusdecDate?: string;
@@ -65,15 +63,6 @@ export function validateContainer(container: {
   }
   if (!hasDate(container.demoundDate)) {
     errors.demoundDate = "Demount date is required.";
-  }
-  if (canSeeField("weight") && !(Number(container.weight) > 0)) {
-    errors.weight = "Weight must be greater than 0.";
-  }
-  if (canSeeField("dayHire") && !(Number(container.dayHire) > 0)) {
-    errors.dayHire = "Day hire must be greater than 0.";
-  }
-  if (canSeeField("advanced") && !(Number(container.advanced) > 0)) {
-    errors.advanced = "Advanced amount must be greater than 0.";
   }
   return errors;
 }

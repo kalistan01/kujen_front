@@ -55,7 +55,7 @@ const monthChartConfig = {
 } satisfies ChartConfig;
 
 function printTitle(view: string) {
-  return `RG-Brothers-Assignment-${view}-Report`;
+  return `RG-Business-transport-Assignment-${view}-Report`;
 }
 
 export function AssignmentReports({
@@ -79,7 +79,7 @@ export function AssignmentReports({
   const exportCsv = () => {
     if (view === "outstanding") {
       downloadCsv(
-        "RG-Brothers-Outstanding",
+        "RG-Business-transport-Outstanding",
         ["BL", "Container", "VOC", "Lorry", "Owner", "Destination", "Status", "Total", "Paid", "Balance"],
         outstanding.map((row) => {
           const item = containerMoney(row.container);
@@ -101,7 +101,7 @@ export function AssignmentReports({
     }
     if (view === "destinations") {
       downloadCsv(
-        "RG-Brothers-Destinations",
+        "RG-Business-transport-Destinations",
         ["Destination", "BLs", "Containers", "Total", "Paid", "Remaining"],
         destinations.map((item) => [
           item.label,
@@ -116,7 +116,7 @@ export function AssignmentReports({
     }
     if (view === "parties") {
       downloadCsv(
-        "RG-Brothers-Exporters",
+        "RG-Business-transport-Exporters",
         ["Exporter", "BLs", "Containers", "Total", "Paid", "Remaining"],
         exporters.map((item) => [
           item.label,
@@ -131,7 +131,7 @@ export function AssignmentReports({
     }
     if (view === "heldup") {
       downloadCsv(
-        "RG-Brothers-HeldUp",
+        "RG-Business-transport-HeldUp",
         ["BL", "Container", "Lorry", "Loading", "Demount", "Extra days", "Held up", "Status"],
         heldUp.map((row) => [
           row.assignment?.blNo || "",
@@ -148,7 +148,7 @@ export function AssignmentReports({
     }
     if (view === "monthly") {
       downloadCsv(
-        "RG-Brothers-Monthly",
+        "RG-Business-transport-Monthly",
         ["Month", "BLs", "Containers", "Total", "Paid", "Remaining"],
         monthly.map((item) => [
           item.label,
@@ -162,7 +162,7 @@ export function AssignmentReports({
       return;
     }
     downloadCsv(
-      "RG-Brothers-Assignment-Overview",
+      "RG-Business-transport-Assignment-Overview",
       ["Metric", "Value"],
       [
         ["Assignments", overview.assignments],

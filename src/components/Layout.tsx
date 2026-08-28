@@ -181,18 +181,18 @@ export const Layout = () => {
               <div className="flex items-center gap-3">
                 <img
                   src="/logo.png"
-                  alt="RG Brothers"
-                  title="RG Brothers"
+                  alt="RG Business transport"
+                  title="RG Business transport"
                   className="h-11 w-11 shrink-0 rounded-lg bg-white object-cover ring-1 ring-sidebar-foreground/40"
                 />
                 <div
                   className={cn(
-                    "min-w-0 flex-1 overflow-hidden whitespace-nowrap transition-opacity duration-200",
+                    "min-w-0 flex-1 overflow-hidden transition-opacity duration-200",
                     sidebarOpen ? "opacity-100 delay-100" : "opacity-0 duration-150"
                   )}
                 >
-                  <h1 className="truncate text-[17px] font-bold leading-tight tracking-tight text-sidebar-foreground">
-                    RG Brothers
+                  <h1 className="text-[15px] font-bold leading-tight tracking-tight text-sidebar-foreground">
+                    RG Business transport
                   </h1>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sidebar-foreground/80">
                     Logistics
@@ -287,7 +287,7 @@ export const Layout = () => {
                     {user?.fullName || "Administrator"}
                   </p>
                   <p className="truncate text-xs text-sidebar-foreground/75">
-                    {user?.roleName || "RG Brothers"}
+                    {user?.roleName || "RG Business transport"}
                   </p>
                 </div>
                 <Button
@@ -350,7 +350,7 @@ export const Layout = () => {
               </Button>
               <div className="min-w-0">
                 <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                  RG Brothers
+                  RG Business transport
                 </p>
                 <h2 className="truncate text-lg font-semibold leading-tight tracking-tight text-foreground">
                   {currentItem.label}
@@ -380,7 +380,7 @@ export const Layout = () => {
                       {user?.fullName || "Administrator"}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {user?.roleName || user?.email || "RG Brothers"}
+                      {user?.roleName || user?.email || "RG Business transport"}
                     </p>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />

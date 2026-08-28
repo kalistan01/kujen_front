@@ -1,7 +1,6 @@
 import { canSeeField } from "@/lib/permissions";
 import {
   CHARGE_FIELDS,
-  COMMISSION_FIELDS,
   formatMoney,
   getAssignmentFinancials,
 } from "../lib/financials";
@@ -14,14 +13,11 @@ function PrintSummaryTable({
   blCount?: number;
 }) {
   const chargeFields = CHARGE_FIELDS.filter((field) => canSeeField(field.key));
-  const commissionFields = COMMISSION_FIELDS.filter((field) =>
-    canSeeField(field.key)
-  );
   const showTotals = canSeeField("totals");
-  const { charges, commissions, total, advanced, balancePaid, remaining } =
-    getAssignmentFinancials(containers, { chargeFields, commissionFields });
+  const { charges, total, advanced, balancePaid, remaining } =
+    getAssignmentFinancials(containers, { chargeFields, commissionFields: [] });
 
-  if (!chargeFields.length && !commissionFields.length && !showTotals) {
+  if (!chargeFields.length && !showTotals) {
     return null;
   }
 
@@ -48,11 +44,6 @@ function PrintSummaryTable({
               <th className="num">Remaining</th>
             </>
           ) : null}
-          {commissionFields.map((field) => (
-            <th key={field.key} className="num">
-              {field.label}
-            </th>
-          ))}
         </tr>
       </thead>
       <tbody>
@@ -76,11 +67,6 @@ function PrintSummaryTable({
               <td className="num remain">{formatMoney(remaining)}</td>
             </>
           ) : null}
-          {commissionFields.map((field) => (
-            <td key={field.key} className="num">
-              {formatMoney(commissions[field.key])}
-            </td>
-          ))}
         </tr>
       </tbody>
     </table>

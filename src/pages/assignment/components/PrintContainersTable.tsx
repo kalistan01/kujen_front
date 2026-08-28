@@ -1,6 +1,7 @@
 import { canSeeField } from "@/lib/permissions";
 import { formatDate } from "../lib/dates";
 import { formatMoneyCompact, roundMoney, toAmount } from "../lib/financials";
+import { formatFclRecord } from "../lib/fcl";
 import {
   containerCapacity,
   containerDestination,
@@ -19,8 +20,6 @@ const SHORT_LABELS: Record<string, string> = {
   other: "Other",
   heldUp: "Held Up",
   return: "Return",
-  agentFee: "Agent",
-  transportCommission: "T.Comm",
 };
 
 function statusLabel(value?: string) {
@@ -34,7 +33,9 @@ function PrintContainersTable({
   containers: any[];
   showTotalsRow?: boolean;
 }) {
-  const chargeColumns = visibleChargeColumns();
+  const chargeColumns = visibleChargeColumns().filter(
+    (field) => field.key !== "agentFee" && field.key !== "transportCommission"
+  );
   const showTotals = canSeeField("totals");
 
   const sums = containers.reduce(
@@ -78,6 +79,7 @@ function PrintContainersTable({
             </>
           ) : null}
           <th>Status</th>
+          <th>FCL Status</th>
         </tr>
       </thead>
       <tbody>
@@ -111,6 +113,7 @@ function PrintContainersTable({
                 </>
               ) : null}
               <td className="status">{statusLabel(container?.status)}</td>
+              <td className="status">{formatFclRecord(container?.fcl)}</td>
             </tr>
           );
         })}
@@ -140,6 +143,7 @@ function PrintContainersTable({
                 </td>
               </>
             ) : null}
+            <td />
             <td />
           </tr>
         </tfoot>

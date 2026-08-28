@@ -20,7 +20,13 @@ function groupedRows(rows: ContainerListRow[]) {
   return groups;
 }
 
-function ContainerListPrint({ rows }: { rows: ContainerListRow[] }) {
+function ContainerListPrint({
+  rows,
+  title,
+}: {
+  rows: ContainerListRow[];
+  title?: string;
+}) {
   if (!rows.length) return null;
 
   const groups = groupedRows(rows);
@@ -31,12 +37,12 @@ function ContainerListPrint({ rows }: { rows: ContainerListRow[] }) {
         <div className="print-brand">
           <div className="print-mark">RG</div>
           <div>
-            <h1>RG Brothers</h1>
+            <h1>RG Business transport</h1>
             <p>Logistics</p>
           </div>
         </div>
         <div className="print-bl">
-          <span>Selected containers</span>
+          <span>{title || "Selected containers"}</span>
           <strong>
             {rows.length} container{rows.length === 1 ? "" : "s"}
           </strong>
@@ -68,7 +74,7 @@ function ContainerListPrint({ rows }: { rows: ContainerListRow[] }) {
       </section>
 
       <p className="print-note">
-        Printed on {formatDate(new Date())} · RG Brothers Logistics
+        Printed on {formatDate(new Date())} · RG Business transport
       </p>
     </div>
   );

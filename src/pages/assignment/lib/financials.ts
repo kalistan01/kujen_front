@@ -73,6 +73,18 @@ export const toDateKey = (value?: string | Date | null) => {
 export const toDateInput = (value?: string | Date | null) =>
   toDateKey(value) || todayDateInput();
 
+export const applyAdvancedDate = <T extends Record<string, any>>(container: T): T => {
+  const advanced = toAmount(container?.advanced);
+  if (advanced > 0) {
+    if (toDateKey(container?.advancedDate)) return container;
+    return { ...container, advancedDate: todayDateInput() };
+  }
+  if (!container?.advancedDate) return container;
+  const next = { ...container };
+  delete next.advancedDate;
+  return next;
+};
+
 export type HeldUpRateOption = {
   amount?: number;
   date?: string;

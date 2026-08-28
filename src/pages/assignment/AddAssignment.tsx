@@ -22,7 +22,9 @@ import { asList } from "@/lib/utils";
 import DestinationSelect, {
   type DestinationOption,
 } from "./components/DestinationSelect";
-import { todayDateInput, applyHeldUpToContainer, applyHeldUpToContainers, type HeldUpRateOption } from "./lib/financials";
+import { todayDateInput, applyHeldUpToContainer, applyHeldUpToContainers, applyAdvancedDate, type HeldUpRateOption } from "./lib/financials";
+import { emptyFcl, parseFcl, type FclState } from "./lib/fcl";
+import FclRecord from "./components/FclRecord";
 import { formatVocNo } from "./lib/voc";
 import { canSeeField, omitHiddenContainerFields } from "@/lib/permissions";
 import {
@@ -89,6 +91,7 @@ interface Container {
   transportCommission: number;
   return: number;
   ot: number;
+  fcl: FclState;
 }
 interface Assignment {
   id: string;
@@ -117,7 +120,7 @@ function emptyContainer(vocNo: string): Omit<Container, "id"> {
     weight: 0,
     dayHire: 0,
     advanced: 0,
-    advancedDate: todayDateInput(),
+    advancedDate: "",
     balancePaid: 0,
     balanceDate: todayDateInput(),
     outHire: 0,
@@ -128,6 +131,7 @@ function emptyContainer(vocNo: string): Omit<Container, "id"> {
     return: 0,
     ot: 0,
     status: "pending",
+    fcl: emptyFcl(),
   };
 }
 
@@ -191,11 +195,13 @@ function AddAssignment({
   const updateContainer = (
     index: number,
     field: string,
-    value: string | number
+    value: string | number | FclState
   ) => {
     const updatedContainers = containers.map((container, i) =>
       i === index
-        ? applyHeldUpToContainer({ ...container, [field]: value }, heldUpRates)
+        ? applyAdvancedDate(
+            applyHeldUpToContainer({ ...container, [field]: value }, heldUpRates)
+          )
         : container
     );
     setContainers(updatedContainers);
@@ -367,7 +373,7 @@ function AddAssignment({
             Date.now().toString() + index
           : Date.now().toString() + index,
         ...omitHiddenContainerFields({
-          ...container,
+          ...applyAdvancedDate(container),
           destination: container.destination || undefined,
         }),
       })
@@ -696,7 +702,6 @@ function AddAssignment({
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   <Field
                     label="Weight (kg)"
-                    required
                     field="weight"
                     error={containerErrors[index]?.weight}
                   >
@@ -716,7 +721,6 @@ function AddAssignment({
                   </Field>
                   <Field
                     label="Day Hire (Rs)"
-                    required
                     field="dayHire"
                     error={containerErrors[index]?.dayHire}
                   >
@@ -736,7 +740,6 @@ function AddAssignment({
                   </Field>
                   <Field
                     label="Advanced (Rs)"
-                    required
                     field="advanced"
                     error={containerErrors[index]?.advanced}
                   >
@@ -754,13 +757,14 @@ function AddAssignment({
                       className={`h-10 ${containerErrors[index]?.advanced ? "border-destructive" : ""}`}
                     />
                   </Field>
-                  <Field label="Advanced Date" required field="advancedDate">
+                  <Field label="Advanced Date" field="advancedDate">
                     <Input
                       type="date"
-                      value={container.advancedDate || todayDateInput()}
+                      value={container.advancedDate || ""}
                       onChange={(e) =>
                         updateContainer(index, "advancedDate", e.target.value)
                       }
+                      disabled={!(Number(container.advanced) > 0)}
                       className="h-10"
                     />
                   </Field>
@@ -876,6 +880,12 @@ function AddAssignment({
                       </SelectContent>
                     </Select>
                   </Field>
+                  <div className="sm:col-span-2 lg:col-span-3">
+                    <FclRecord
+                      fcl={parseFcl(container.fcl)}
+                      onChange={(next) => updateContainer(index, "fcl", next)}
+                    />
+                  </div>
                 </div>
               </div>
               ) : null}

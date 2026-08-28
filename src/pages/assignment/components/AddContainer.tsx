@@ -19,7 +19,7 @@ import { useParams } from "react-router-dom";
 import DestinationSelect, {
   type DestinationOption,
 } from "./DestinationSelect";
-import { todayDateInput, applyHeldUpToContainer, type HeldUpRateOption } from "../lib/financials";
+import { todayDateInput, applyHeldUpToContainer, applyAdvancedDate, type HeldUpRateOption } from "../lib/financials";
 import { formatVocNo } from "../lib/voc";
 import { omitHiddenContainerFields } from "@/lib/permissions";
 import { FieldGate } from "@/components/RequirePermission";
@@ -87,7 +87,7 @@ function AddContainer({
     weight: 0,
     dayHire: 0,
     advanced: 0,
-    advancedDate: todayDateInput(),
+    advancedDate: "",
     balancePaid: 0,
     balanceDate: todayDateInput(),
     outHire: 0,
@@ -108,7 +108,9 @@ function AddContainer({
   };
   const updateContainer = (field: string, value: string | number) => {
     setContainers((prev) =>
-      applyHeldUpToContainer({ ...prev, [field]: value }, heldUpRates)
+      applyAdvancedDate(
+        applyHeldUpToContainer({ ...prev, [field]: value }, heldUpRates)
+      )
     );
     setErrors((prev) => {
       if (!prev[field as keyof ContainerFieldErrors]) return prev;
@@ -214,7 +216,7 @@ function AddContainer({
       await baseUrl.post(
         `assignlorry/${id}/containers`,
         omitHiddenContainerFields({
-          ...containers,
+          ...applyAdvancedDate(containers),
           destination: containers.destination || undefined,
         })
       );
@@ -358,7 +360,7 @@ function AddContainer({
           <div className="grid grid-cols-3 gap-4">
             <FieldGate field="weight">
               <div className="space-y-1.5">
-                <Label>Weight (kg) *</Label>
+                <Label>Weight (kg)</Label>
                 <Input
                   type="number"
                   value={containers.weight || ""}
@@ -377,7 +379,7 @@ function AddContainer({
             </FieldGate>
             <FieldGate field="dayHire">
               <div className="space-y-1.5">
-                <Label>Day Hire (Rs) *</Label>
+                <Label>Day Hire (Rs)</Label>
                 <Input
                   type="number"
                   value={containers.dayHire || ""}
@@ -396,7 +398,7 @@ function AddContainer({
             </FieldGate>
             <FieldGate field="advanced">
               <div className="space-y-1.5">
-                <Label>Advanced (Rs) *</Label>
+                <Label>Advanced (Rs)</Label>
                 <Input
                   type="number"
                   value={containers.advanced || ""}
@@ -415,13 +417,14 @@ function AddContainer({
             </FieldGate>
             <FieldGate field="advancedDate">
               <div>
-                <Label>Advanced Date *</Label>
+                <Label>Advanced Date</Label>
                 <Input
                   type="date"
-                  value={containers.advancedDate || todayDateInput()}
+                  value={containers.advancedDate || ""}
                   onChange={(e) =>
                     updateContainer("advancedDate", e.target.value)
                   }
+                  disabled={!(Number(containers.advanced) > 0)}
                 />
               </div>
             </FieldGate>
