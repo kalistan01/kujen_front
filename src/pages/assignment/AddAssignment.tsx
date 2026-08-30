@@ -22,7 +22,7 @@ import { asList } from "@/lib/utils";
 import DestinationSelect, {
   type DestinationOption,
 } from "./components/DestinationSelect";
-import { todayDateInput, applyHeldUpToContainer, applyHeldUpToContainers, applyAdvancedDate, type HeldUpRateOption } from "./lib/financials";
+import { todayDateInput, applyAdvancedDate } from "./lib/financials";
 import { emptyFcl, parseFcl, type FclState } from "./lib/fcl";
 import FclRecord from "./components/FclRecord";
 import { formatVocNo } from "./lib/voc";
@@ -156,7 +156,6 @@ function AddAssignment({
     ContainerFieldErrors[]
   >([]);
   const [nextVoc, setNextVoc] = useState(1);
-  const [heldUpRates, setHeldUpRates] = useState<HeldUpRateOption[]>([]);
   const [formData, setFormData] = useState({
     blNo: "",
     cusdecDate: "",
@@ -179,10 +178,7 @@ function AddAssignment({
     setContainers((prev) =>
       assignVocNumbers([
         ...prev,
-        applyHeldUpToContainer(
-          emptyContainer(formatVocNo(nextVoc + prev.length)),
-          heldUpRates
-        ),
+        emptyContainer(formatVocNo(nextVoc + prev.length)),
       ])
     );
   };
@@ -199,9 +195,7 @@ function AddAssignment({
   ) => {
     const updatedContainers = containers.map((container, i) =>
       i === index
-        ? applyAdvancedDate(
-            applyHeldUpToContainer({ ...container, [field]: value }, heldUpRates)
-          )
+        ? applyAdvancedDate({ ...container, [field]: value })
         : container
     );
     setContainers(updatedContainers);
@@ -268,32 +262,10 @@ function AddAssignment({
       .catch(() => {
         setNextVoc(1);
       });
-    baseUrl
-      .get("/heldup")
-      .then((response) => {
-        setHeldUpRates(asList<HeldUpRateOption>(response.data?.data));
-      })
-      .catch(() => {
-        setHeldUpRates([]);
-      });
   }, []);
   useEntitySync("destination", (payload) => {
     setDestination((prev) => upsertById(prev, payload));
   });
-  useEntitySync("heldup", (payload) => {
-    setHeldUpRates((prev) => {
-      if (payload.action === "created" && payload.data) {
-        return [
-          payload.data,
-          ...prev.map((item) => ({ ...item, status: false })),
-        ];
-      }
-      return upsertById(prev, payload);
-    });
-  });
-  useEffect(() => {
-    setContainers((prev) => applyHeldUpToContainers(prev, heldUpRates));
-  }, [heldUpRates]);
   const handleSave = async () => {
     const basicErrors = validateAssignmentBasic(formData);
     const blNo = formData.blNo.trim();
@@ -359,9 +331,7 @@ function AddAssignment({
         exporter: "",
         importer: "",
       });
-      setContainers([
-        applyHeldUpToContainer(emptyContainer(formatVocNo(nextVoc)), heldUpRates),
-      ]);
+      setContainers([emptyContainer(formatVocNo(nextVoc))]);
       setErrors({});
       setContainerErrors([]);
       setEditingAssignment(null);
@@ -690,7 +660,6 @@ function AddAssignment({
                 "advancedDate",
                 "outHire",
                 "other",
-                "heldUp",
                 "agentFee",
                 "transportCommission",
                 "return",
@@ -797,26 +766,6 @@ function AddAssignment({
                       placeholder="Enter other amount"
                       className="h-10"
                     />
-                  </Field>
-                  <Field label="Held Up (Rs)" field="heldUp">
-                    <Input
-                      type="number"
-                      readOnly
-                      value={container.heldUp || ""}
-                      placeholder="Auto from dates"
-                      className="h-10 bg-muted/50"
-                    />
-                    {(container.heldUpExtraDays || 0) > 0 ? (
-                      <p className="text-xs text-muted-foreground">
-                        {container.heldUpExtraDays} extra day
-                        {container.heldUpExtraDays === 1 ? "" : "s"} after the
-                        first day
-                      </p>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">
-                        Charged after one day from loading to demount
-                      </p>
-                    )}
                   </Field>
                   <Field label="Agent Fee (Rs)" field="agentFee">
                     <Input

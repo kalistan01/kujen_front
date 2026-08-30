@@ -9,6 +9,7 @@ import {
 import { parseDay } from "@/pages/assignment/lib/dates";
 import {
   applyHeldUpToContainers,
+  CHARGE_FIELDS,
   extraHeldUpDays,
   formatMoney,
   toAmount,
@@ -491,7 +492,12 @@ export function idleLorries(lorryStats: LorryStat[]) {
 }
 
 export function showMoney() {
-  return canSeeField("totals");
+  if (!canSeeField("totals")) return false;
+  return (
+    CHARGE_FIELDS.some((field) => canSeeField(field.key)) ||
+    canSeeField("advanced") ||
+    canSeeField("balancePaid")
+  );
 }
 
 export function downloadCsv(

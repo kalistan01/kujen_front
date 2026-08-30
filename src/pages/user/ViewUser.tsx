@@ -19,6 +19,7 @@ export type DirectoryUser = {
   status: boolean;
   roleId?: string;
   roleName: string;
+  roleStatus?: boolean;
   createdAt?: string;
   updatedAt?: string;
   lastSeen?: string | null;
@@ -165,7 +166,12 @@ export function ViewUser({ user }: { user: DirectoryUser }) {
       </div>
 
       <Row label="Role">
-        <Badge variant="secondary">{user.roleName || "—"}</Badge>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Badge variant="secondary">{user.roleName || "—"}</Badge>
+          {user.roleName ? (
+            <StatusBadge status={user.roleStatus !== false} />
+          ) : null}
+        </div>
       </Row>
       <Row label="Account">
         <StatusBadge status={user.status} />

@@ -18,7 +18,7 @@ import { useParams } from "react-router-dom";
 import DestinationSelect, {
   type DestinationOption,
 } from "./DestinationSelect";
-import { todayDateInput, toDateInput, toDateKey, containerChargesTotal, formatMoney, toAmount, CHARGE_FIELDS, roundMoney, applyHeldUpToContainer, applyAdvancedDate, type HeldUpRateOption } from "../lib/financials";
+import { todayDateInput, toDateInput, toDateKey, containerChargesTotal, formatMoney, toAmount, CHARGE_FIELDS, roundMoney, applyAdvancedDate } from "../lib/financials";
 import { canSeeField, omitHiddenContainerFields } from "@/lib/permissions";
 import { FieldGate } from "@/components/RequirePermission";
 import {
@@ -77,7 +77,6 @@ function EditContainer({
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<ContainerFieldErrors>({});
   const [formError, setFormError] = useState("");
-  const [heldUpRates, setHeldUpRates] = useState<HeldUpRateOption[]>([]);
   const [containers, setContainers] = useState<Container>({
     containerNo: "",
     vocNo: "",
@@ -104,18 +103,13 @@ function EditContainer({
   useEffect(() => {
     if (!editingAssignment) return;
     setContainers(
-      applyAdvancedDate(
-        applyHeldUpToContainer(
-          {
-            ...editingAssignment,
-            advancedDate: toDateKey(editingAssignment.advancedDate),
-            balanceDate: toDateInput(editingAssignment.balanceDate),
-          },
-          heldUpRates
-        )
-      )
+      applyAdvancedDate({
+        ...editingAssignment,
+        advancedDate: toDateKey(editingAssignment.advancedDate),
+        balanceDate: toDateInput(editingAssignment.balanceDate),
+      })
     );
-  }, [editingAssignment, heldUpRates]);
+  }, [editingAssignment]);
 
   const resetForm = () => {
     setContainers({
@@ -145,9 +139,7 @@ function EditContainer({
   };
   const updateContainer = (field: string, value: string | number) => {
     setContainers((prev) =>
-      applyAdvancedDate(
-        applyHeldUpToContainer({ ...prev, [field]: value }, heldUpRates)
-      )
+      applyAdvancedDate({ ...prev, [field]: value })
     );
     setErrors((prev) => {
       if (!prev[field as keyof ContainerFieldErrors]) return prev;
@@ -188,28 +180,9 @@ function EditContainer({
           variant: "destructive",
         });
       });
-    baseUrl
-      .get("/heldup")
-      .then((response) => {
-        setHeldUpRates(asList<HeldUpRateOption>(response.data?.data));
-      })
-      .catch(() => {
-        setHeldUpRates([]);
-      });
   }, []);
   useEntitySync("destination", (payload) => {
     setDestination((prev) => upsertById(prev, payload));
-  });
-  useEntitySync("heldup", (payload) => {
-    setHeldUpRates((prev) => {
-      if (payload.action === "created" && payload.data) {
-        return [
-          payload.data,
-          ...prev.map((item) => ({ ...item, status: false })),
-        ];
-      }
-      return upsertById(prev, payload);
-    });
   });
   const handleSave = async () => {
     if (!id || !containers?._id) {
@@ -560,22 +533,12 @@ function EditContainer({
                 <Label>Held Up (Rs)</Label>
                 <Input
                   type="number"
-                  readOnly
                   value={containers.heldUp || ""}
-                  placeholder="Auto from dates"
-                  className="bg-muted/50"
+                  onChange={(e) =>
+                    updateContainer("heldUp", parseFloat(e.target.value) || 0)
+                  }
+                  placeholder="Add from Held Up popup"
                 />
-                {(containers.heldUpExtraDays || 0) > 0 ? (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {containers.heldUpExtraDays} extra day
-                    {containers.heldUpExtraDays === 1 ? "" : "s"} after the first
-                    day
-                  </p>
-                ) : (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Charged after one day from loading to demount
-                  </p>
-                )}
               </div>
             </FieldGate>
             <FieldGate field="agentFee">

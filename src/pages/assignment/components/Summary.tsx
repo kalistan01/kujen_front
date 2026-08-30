@@ -30,7 +30,11 @@ function Summary({ assignment }: any) {
   const commissionFields = COMMISSION_FIELDS.filter((field) =>
     canSeeField(field.key)
   );
-  const showTotals = canSeeField("totals");
+  const showTotals =
+    canSeeField("totals") &&
+    (chargeFields.length > 0 ||
+      canSeeField("advanced") ||
+      canSeeField("balancePaid"));
   const { charges, commissions, total, advanced, balancePaid } =
     getAssignmentFinancials(assignment?.containers, {
       chargeFields,

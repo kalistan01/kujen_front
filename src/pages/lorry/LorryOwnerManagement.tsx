@@ -177,8 +177,8 @@ export const LorryOwnerManagement = () => {
         </Card>
       ) : (
         <div className="grid gap-5 xl:grid-cols-2">
-          {filtered.map((owner, i) => (
-            <Card key={owner._id || owner.id || i} className="overflow-hidden">
+          {filtered.map((owner) => (
+            <Card key={String(owner._id || owner.id)} className="overflow-hidden">
               <CardHeader className="border-b border-border/70 bg-muted/20">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3">

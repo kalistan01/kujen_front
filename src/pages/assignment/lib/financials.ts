@@ -190,6 +190,16 @@ export const applyHeldUpToContainers = <T extends Record<string, any>>(
   rates: HeldUpRateOption[] = []
 ) => containers.map((container) => applyHeldUpToContainer(container, rates));
 
+export const heldUpSuggestion = (
+  container: Record<string, any> = {},
+  rates: HeldUpRateOption[] = []
+) =>
+  heldUpFromDates(
+    container?.loadingDate,
+    container?.demoundDate,
+    pickHeldUpRate(rates, container?.loadingDate)
+  );
+
 export const getAssignmentFinancials = (
   containers: any[] = [],
   options?: {

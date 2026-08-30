@@ -91,8 +91,16 @@ export function LorryReports({
   const exportCsv = () => {
     if (view === "owners") {
       downloadCsv(
-        "RG-Business-transport-Owner-Report",
-        ["Owner", "Company", "Phone", "Lorries", "Used", "Trips", "Total", "Paid", "Remaining"],
+        "RG-Brothers-Owner-Report",
+        [
+          "Owner",
+          "Company",
+          "Phone",
+          "Lorries",
+          "Used",
+          "Trips",
+          ...(money ? ["Total", "Paid", "Remaining"] : []),
+        ],
         ownerStats.map((item) => [
           item.ownerName,
           item.companyName,
@@ -100,16 +108,14 @@ export function LorryReports({
           item.lorries,
           item.usedLorries,
           item.trips,
-          item.money.total,
-          item.money.paid,
-          item.money.remaining,
+          ...(money ? [item.money.total, item.money.paid, item.money.remaining] : []),
         ])
       );
       return;
     }
     if (view === "idle") {
       downloadCsv(
-        "RG-Business-transport-Idle-Lorries",
+        "RG-Brothers-Idle-Lorries",
         ["Lorry", "Capacity", "Owner", "Company"],
         idle.map((item) => [
           item.lorryNum,
@@ -121,8 +127,17 @@ export function LorryReports({
       return;
     }
     downloadCsv(
-      view === "overview" ? "RG-Business-transport-Fleet-Overview" : "RG-Business-transport-Lorry-Report",
-      ["Lorry", "Capacity", "Owner", "Company", "Trips", "Last used", "Destinations", "Total", "Paid", "Remaining"],
+      view === "overview" ? "RG-Brothers-Fleet-Overview" : "RG-Brothers-Lorry-Report",
+      [
+        "Lorry",
+        "Capacity",
+        "Owner",
+        "Company",
+        "Trips",
+        "Last used",
+        "Destinations",
+        ...(money ? ["Total", "Paid", "Remaining"] : []),
+      ],
       lorryStats.map((item) => [
         item.lorryNum,
         item.capacity,
@@ -131,9 +146,7 @@ export function LorryReports({
         item.trips,
         item.lastDate ? formatDate(item.lastDate) : "",
         item.destinations,
-        item.money.total,
-        item.money.paid,
-        item.money.remaining,
+        ...(money ? [item.money.total, item.money.paid, item.money.remaining] : []),
       ])
     );
   };
@@ -145,7 +158,7 @@ export function LorryReports({
         <div className="flex items-center gap-2">
           <Badge variant="secondary">{lorryStats.length} lorries</Badge>
           <ReportActions
-            onPrint={() => handlePrint(`RG-Business-transport-Lorry-${view}-Report`)}
+            onPrint={() => handlePrint(`RG-Brothers-Lorry-${view}-Report`)}
             onCsv={exportCsv}
           />
         </div>

@@ -16,7 +16,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Banknote, Edit } from "lucide-react";
+import { Banknote, Clock, Edit } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import baseUrl from "@/api/baseUrl";
 import { useToast } from "@/hooks/use-toast";
@@ -28,8 +28,10 @@ import {
   formatMoney,
   todayDateInput,
   CHARGE_FIELDS,
+  heldUpSuggestion,
   roundMoney,
   toAmount,
+  type HeldUpRateOption,
 } from "../lib/financials";
 import { canSeeField, canManageAssignments } from "@/lib/permissions";
 import { parseFcl, type FclState } from "../lib/fcl";
@@ -86,21 +88,28 @@ const formatDateTime = (dateString: string) => {
 };
 type ContainersProps = {
   container: ContainerType;
+  heldUpRates?: HeldUpRateOption[];
   setOpen: (isOpen: boolean) => void;
   onPaid?: () => void;
+  onChanged?: () => void;
   selected?: boolean;
   onSelect?: (containerId: string, checked: boolean) => void;
 };
 
 function Containers({
   container,
+  heldUpRates = [],
   setOpen,
   onPaid,
+  onChanged,
   selected = false,
   onSelect,
 }: ContainersProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isPayOpen, setIsPayOpen] = useState(false);
+  const [isHeldUpOpen, setIsHeldUpOpen] = useState(false);
+  const [heldUpAmount, setHeldUpAmount] = useState("");
+  const [savingHeldUp, setSavingHeldUp] = useState(false);
   const [payDate, setPayDate] = useState(todayDateInput());
   const [paying, setPaying] = useState(false);
   const [editingAssignment, seteditingAssignment] = useState({});
@@ -169,6 +178,43 @@ function Containers({
   const handleOpenEdit = () => {
     setIsDialogOpen(true);
     seteditingAssignment(container);
+  };
+  const suggestedHeldUp = heldUpSuggestion(container, heldUpRates);
+  const savedHeldUp = toAmount(container.heldUp);
+  const openHeldUpDialog = () => {
+    const next =
+      savedHeldUp > 0 ? savedHeldUp : suggestedHeldUp.amount;
+    setHeldUpAmount(next ? String(next) : "");
+    setIsHeldUpOpen(true);
+  };
+  const handleSaveHeldUp = () => {
+    if (!id || !container?._id || savingHeldUp) return;
+    const amount = roundMoney(toAmount(heldUpAmount));
+    if (amount < 0) return;
+    setSavingHeldUp(true);
+    baseUrl
+      .put(`assignlorry/${id}/containers/${container._id}`, { heldUp: amount })
+      .then(() => {
+        toast({
+          title: savedHeldUp > 0 ? "Held up updated" : "Held up added",
+          description: `${formatMoney(amount)} saved for this container.`,
+        });
+        setIsHeldUpOpen(false);
+        onChanged?.();
+      })
+      .catch((error) => {
+        toast({
+          title: "Could not save held up",
+          description: getApiErrorMessage(
+            error,
+            "Could not save held up. Please try again."
+          ),
+          variant: "destructive",
+        });
+      })
+      .finally(() => {
+        setSavingHeldUp(false);
+      });
   };
   const handlePayBalance = () => {
     if (!id || !container?._id || paying || balance <= 0) return;
@@ -256,6 +302,18 @@ function Containers({
               {(status || "pending").replace(/-/g, " ")}
             </span>
           )}
+          {canManage && canSeeField("heldUp") ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8"
+              onClick={openHeldUpDialog}
+            >
+              <Clock className="h-3.5 w-3.5" />
+              {savedHeldUp > 0 ? "Edit Held Up" : "Add Held Up"}
+            </Button>
+          ) : null}
           {canManage ? (
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
@@ -321,7 +379,9 @@ function Containers({
           canSeeField("balancePaid") ? ["Balance Paid", container.balancePaid, "balancePaid"] : null,
           canSeeField("outHire") ? ["Out Hire", container.outHire, "outHire"] : null,
           canSeeField("other") ? ["Other", container.other, "other"] : null,
-          canSeeField("heldUp") ? ["Held Up", container.heldUp, "heldUp"] : null,
+          canSeeField("heldUp") && savedHeldUp > 0
+            ? ["Held Up", container.heldUp, "heldUp"]
+            : null,
           canSeeField("agentFee") ? ["Agent Fee", container.agentFee, "agentFee"] : null,
           canSeeField("transportCommission")
             ? ["Transport Commission", container.transportCommission, "transportCommission"]
@@ -351,11 +411,11 @@ function Containers({
                 {formatDate(container.advancedDate)}
               </p>
             ) : null}
-            {label === "Held Up" && Number(container.heldUpExtraDays) > 0 ? (
+            {label === "Held Up" && suggestedHeldUp.extraDays > 0 ? (
               <p className="text-xs text-muted-foreground">
-                {container.heldUpExtraDays} extra day
-                {Number(container.heldUpExtraDays) === 1 ? "" : "s"} ×{" "}
-                {formatMoney(container.heldUpRate)}
+                {`${suggestedHeldUp.extraDays} extra day${
+                  suggestedHeldUp.extraDays === 1 ? "" : "s"
+                } × ${formatMoney(suggestedHeldUp.rate)}`}
               </p>
             ) : null}
             {label === "Balance Paid" && container.balancePaid && canSeeField("balanceDate") ? (
@@ -368,7 +428,10 @@ function Containers({
           })}
       </div>
 
-      {canSeeField("totals") ? (
+      {canSeeField("totals") &&
+      (visibleCharges.length > 0 ||
+        canSeeField("advanced") ||
+        canSeeField("balancePaid")) ? (
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/70 pt-2 text-sm">
         <div className="flex flex-wrap gap-x-5 gap-y-1">
           <p>
@@ -439,6 +502,71 @@ function Containers({
         ) : null}
       </div>
       ) : null}
+
+      <Dialog open={isHeldUpOpen} onOpenChange={setIsHeldUpOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              {savedHeldUp > 0 ? "Edit held up" : "Add held up"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Held up is not added automatically. Confirm the amount to save it
+              on this container.
+            </p>
+            {suggestedHeldUp.extraDays > 0 ? (
+              <p className="text-sm">
+                {`${suggestedHeldUp.extraDays} extra day${
+                  suggestedHeldUp.extraDays === 1 ? "" : "s"
+                } after the first day`}
+                {suggestedHeldUp.rate
+                  ? ` × ${formatMoney(suggestedHeldUp.rate)}`
+                  : ""}
+                {suggestedHeldUp.amount
+                  ? ` = ${formatMoney(suggestedHeldUp.amount)}`
+                  : ""}
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No extra days from loading to demount. Enter an amount to add
+                held up manually.
+              </p>
+            )}
+            <div>
+              <Label>Amount (Rs)</Label>
+              <Input
+                type="number"
+                min={0}
+                value={heldUpAmount}
+                onChange={(e) => setHeldUpAmount(e.target.value)}
+                placeholder="Enter held up amount"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsHeldUpOpen(false)}
+                disabled={savingHeldUp}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSaveHeldUp}
+                disabled={savingHeldUp || heldUpAmount === ""}
+              >
+                {savingHeldUp
+                  ? "Saving..."
+                  : savedHeldUp > 0
+                    ? "Update"
+                    : "Add"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="flex flex-wrap gap-x-5 text-xs text-muted-foreground">
         <span>

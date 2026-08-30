@@ -181,8 +181,8 @@ export const Layout = () => {
               <div className="flex items-center gap-3">
                 <img
                   src="/logo.png"
-                  alt="RG Business transport"
-                  title="RG Business transport"
+                  alt="RG Brothers Logistics"
+                  title="RG Brothers Logistics"
                   className="h-11 w-11 shrink-0 rounded-lg bg-white object-cover ring-1 ring-sidebar-foreground/40"
                 />
                 <div
@@ -192,10 +192,10 @@ export const Layout = () => {
                   )}
                 >
                   <h1 className="text-[15px] font-bold leading-tight tracking-tight text-sidebar-foreground">
-                    RG Business transport
+                    RG Brothers Logistics
                   </h1>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sidebar-foreground/80">
-                    Logistics
+                    Ship line
                   </p>
                 </div>
                 <Button
@@ -287,7 +287,7 @@ export const Layout = () => {
                     {user?.fullName || "Administrator"}
                   </p>
                   <p className="truncate text-xs text-sidebar-foreground/75">
-                    {user?.roleName || "RG Business transport"}
+                    {user?.roleName || "RG Brothers Logistics"}
                   </p>
                 </div>
                 <Button
@@ -350,7 +350,7 @@ export const Layout = () => {
               </Button>
               <div className="min-w-0">
                 <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                  RG Business transport
+                  RG Brothers Logistics
                 </p>
                 <h2 className="truncate text-lg font-semibold leading-tight tracking-tight text-foreground">
                   {currentItem.label}
@@ -380,7 +380,7 @@ export const Layout = () => {
                       {user?.fullName || "Administrator"}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {user?.roleName || user?.email || "RG Business transport"}
+                      {user?.roleName || user?.email || "RG Brothers Logistics"}
                     </p>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />

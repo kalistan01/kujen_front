@@ -52,6 +52,7 @@ interface User {
   password: string;
   roleId: string;
   roleName: string;
+  roleStatus?: boolean;
   createdAt: string;
 }
 
@@ -211,11 +212,13 @@ function AddUser({
       return;
     }
 
-    const roleName =
-      roles.find((role) => String(role._id) === String(formData.roleId))
-        ?.roleName ||
-      editingUser?.roleName ||
-      "";
+    const selectedRole = roles.find(
+      (role) => String(role._id) === String(formData.roleId)
+    );
+    const roleName = selectedRole?.roleName || editingUser?.roleName || "";
+    const roleStatus = selectedRole
+      ? selectedRole.status !== false
+      : editingUser?.roleStatus !== false;
 
     setSaving(true);
 
@@ -242,7 +245,7 @@ function AddUser({
         setUsers((prevUsers) =>
           prevUsers.map((user) =>
             user._id === editingUser._id
-              ? { ...user, ...payload, roleName }
+              ? { ...user, ...payload, roleName, roleStatus }
               : user
           )
         );
@@ -269,6 +272,7 @@ function AddUser({
             ...payload,
             ...created,
             roleName: created?.roleName || roleName,
+            roleStatus: created?.roleStatus ?? roleStatus,
           },
         ]);
         toast({
@@ -307,7 +311,14 @@ function AddUser({
   };
 
   return (
-    <div className="space-y-5">
+    <form
+      className="space-y-5"
+      autoComplete="off"
+      onSubmit={(e) => {
+        e.preventDefault();
+        handleSave();
+      }}
+    >
       {errors.form ? (
         <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
           {errors.form}
@@ -324,7 +335,9 @@ function AddUser({
         <div className="grid grid-cols-1 gap-4 p-4">
           <Field label="Full Name" required error={errors.fullName}>
             <Input
-              id="fullName"
+              id="new-user-fullName"
+              name="staff-full-name"
+              autoComplete="off"
               value={formData.fullName}
               onChange={(e) => {
                 setFormData({ ...formData, fullName: e.target.value });
@@ -337,8 +350,10 @@ function AddUser({
           {!editingUser && (
             <Field label="Email" required error={errors.email}>
               <Input
-                id="email"
+                id="new-user-email"
+                name="staff-email"
                 type="email"
+                autoComplete="off"
                 value={formData.email}
                 onChange={(e) => {
                   setFormData({ ...formData, email: e.target.value });
@@ -353,8 +368,10 @@ function AddUser({
             <Field label="Password" required error={errors.password}>
               <div className="relative">
                 <Input
-                  id="password"
+                  id="new-user-password"
+                  name="staff-password"
                   type={showPassword ? "text" : "password"}
+                  autoComplete="new-password"
                   value={formData.password}
                   onChange={(e) => {
                     setFormData({ ...formData, password: e.target.value });
@@ -426,7 +443,7 @@ function AddUser({
                 id="status"
                 checked={formData.status}
                 onCheckedChange={(checked) =>
-                  setFormData({ ...formData, status: checked as boolean })
+                  setFormData({ ...formData, status: checked === true })
                 }
               />
             </div>
@@ -436,6 +453,7 @@ function AddUser({
 
       <div className="flex justify-end gap-2 border-t border-border pt-4">
         <Button
+          type="button"
           variant="outline"
           onClick={() => setIsDialogOpen(false)}
           disabled={saving}
@@ -443,7 +461,7 @@ function AddUser({
           Cancel
         </Button>
         <Button
-          onClick={handleSave}
+          type="submit"
           disabled={saving}
           className="bg-[hsl(var(--brand-navy))] text-white hover:bg-[hsl(var(--brand-navy-muted))]"
         >
@@ -459,7 +477,7 @@ function AddUser({
           )}
         </Button>
       </div>
-    </div>
+    </form>
   );
 }
 

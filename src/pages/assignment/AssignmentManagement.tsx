@@ -378,7 +378,7 @@ export const AssignmentManagement = () => {
       return;
     }
     const previousTitle = document.title;
-    document.title = "RG-Business-transport-Containers";
+    document.title = "RG-Brothers-Containers";
     const style = document.createElement("style");
     style.setAttribute("data-print-page", "");
     style.textContent =
@@ -501,7 +501,7 @@ export const AssignmentManagement = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `RG-Business-transport-Assignments.${ext}`;
+      link.download = `RG-Brothers-Assignments.${ext}`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -546,7 +546,7 @@ export const AssignmentManagement = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "RG-Business-transport-Containers.pdf";
+      link.download = "RG-Brothers-Containers.pdf";
       document.body.appendChild(link);
       link.click();
       link.remove();

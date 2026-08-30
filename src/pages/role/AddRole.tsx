@@ -180,12 +180,15 @@ function AddRole({
           return;
         }
 
-        await baseUrl.patch("/role/updateRole", payload, {
-          headers: { roleid: editingRole._id },
+        await baseUrl.patch("/role/updateRole", {
+          ...payload,
+          roleid: editingRole._id,
         });
         setRoles((prevRoles) =>
           prevRoles.map((role) =>
-            role._id === editingRole._id ? { ...role, ...payload } : role
+            String(role._id) === String(editingRole._id)
+              ? { ...role, ...payload, _id: role._id, status: payload.status === true }
+              : role
           )
         );
         toast({
@@ -333,7 +336,7 @@ function AddRole({
           id="status"
           checked={formData.status}
           onCheckedChange={(checked) =>
-            setFormData({ ...formData, status: checked as boolean })
+            setFormData({ ...formData, status: checked === true })
           }
         />
         <Label htmlFor="status">Active Status</Label>

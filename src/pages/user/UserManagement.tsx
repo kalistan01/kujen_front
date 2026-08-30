@@ -127,6 +127,24 @@ export const UserManagement = () => {
     });
   });
 
+  useEntitySync("role", (payload) => {
+    const roleId = String(payload.id || "");
+    if (!roleId) return;
+    const roleName = payload.data?.roleName;
+    const roleStatus =
+      payload.action === "deleted" ? false : payload.data?.status !== false;
+    const patchUser = (user: User) =>
+      String(user.roleId) === roleId
+        ? {
+            ...user,
+            roleName: roleName || user.roleName,
+            roleStatus,
+          }
+        : user;
+    setUsers((prev) => prev.map(patchUser));
+    setViewingUser((current) => (current ? patchUser(current) : current));
+  });
+
   const toggleStatus = (id: string | undefined, status: boolean) => {
     if (!id) {
       toast({
@@ -174,7 +192,14 @@ export const UserManagement = () => {
     const q = query.trim().toLowerCase();
     if (!q) return users;
     return users.filter((user) =>
-      [user.fullName, user.email, user.roleName, user.lastLoginDevice, user.lastLoginIp]
+      [
+        user.fullName,
+        user.email,
+        user.roleName,
+        user.roleStatus === false ? "inactive" : "active",
+        user.lastLoginDevice,
+        user.lastLoginIp,
+      ]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(q))
     );
@@ -196,7 +221,18 @@ export const UserManagement = () => {
         <div className="relative w-full sm:w-64">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
+            type="search"
+            name="user-directory-search"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            readOnly
+            data-lpignore="true"
+            data-1p-ignore="true"
             value={query}
+            onFocus={(e) => e.currentTarget.removeAttribute("readOnly")}
+            onBlur={(e) => e.currentTarget.setAttribute("readOnly", "true")}
             onChange={(e) => {
               setQuery(e.target.value);
               setPage(1);
@@ -306,7 +342,12 @@ export const UserManagement = () => {
                         {user.email}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary">{user.roleName || "—"}</Badge>
+                        <div className="flex flex-col items-start gap-1">
+                          <Badge variant="secondary">{user.roleName || "—"}</Badge>
+                          {user.roleName ? (
+                            <StatusBadge status={user.roleStatus !== false} />
+                          ) : null}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col items-start gap-1">

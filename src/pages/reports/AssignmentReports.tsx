@@ -55,7 +55,7 @@ const monthChartConfig = {
 } satisfies ChartConfig;
 
 function printTitle(view: string) {
-  return `RG-Business-transport-Assignment-${view}-Report`;
+  return `RG-Brothers-Assignment-${view}-Report`;
 }
 
 export function AssignmentReports({
@@ -79,8 +79,17 @@ export function AssignmentReports({
   const exportCsv = () => {
     if (view === "outstanding") {
       downloadCsv(
-        "RG-Business-transport-Outstanding",
-        ["BL", "Container", "VOC", "Lorry", "Owner", "Destination", "Status", "Total", "Paid", "Balance"],
+        "RG-Brothers-Outstanding",
+        [
+          "BL",
+          "Container",
+          "VOC",
+          "Lorry",
+          "Owner",
+          "Destination",
+          "Status",
+          ...(money ? ["Total", "Paid", "Balance"] : []),
+        ],
         outstanding.map((row) => {
           const item = containerMoney(row.container);
           return [
@@ -91,9 +100,7 @@ export function AssignmentReports({
             containerOwner(row.container) || "",
             containerDestination(row.container),
             row.container?.status || "",
-            item.total,
-            item.paid,
-            item.balance,
+            ...(money ? [item.total, item.paid, item.balance] : []),
           ];
         })
       );
@@ -101,38 +108,53 @@ export function AssignmentReports({
     }
     if (view === "destinations") {
       downloadCsv(
-        "RG-Business-transport-Destinations",
-        ["Destination", "BLs", "Containers", "Total", "Paid", "Remaining"],
+        "RG-Brothers-Destinations",
+        [
+          "Destination",
+          "BLs",
+          "Containers",
+          ...(money ? ["Total", "Paid", "Remaining"] : []),
+        ],
         destinations.map((item) => [
           item.label,
           item.assignments,
           item.containers,
-          item.money.total,
-          item.money.paid,
-          item.money.remaining,
+          ...(money ? [item.money.total, item.money.paid, item.money.remaining] : []),
         ])
       );
       return;
     }
     if (view === "parties") {
       downloadCsv(
-        "RG-Business-transport-Exporters",
-        ["Exporter", "BLs", "Containers", "Total", "Paid", "Remaining"],
+        "RG-Brothers-Exporters",
+        [
+          "Exporter",
+          "BLs",
+          "Containers",
+          ...(money ? ["Total", "Paid", "Remaining"] : []),
+        ],
         exporters.map((item) => [
           item.label,
           item.assignments,
           item.containers,
-          item.money.total,
-          item.money.paid,
-          item.money.remaining,
+          ...(money ? [item.money.total, item.money.paid, item.money.remaining] : []),
         ])
       );
       return;
     }
     if (view === "heldup") {
       downloadCsv(
-        "RG-Business-transport-HeldUp",
-        ["BL", "Container", "Lorry", "Loading", "Demount", "Extra days", "Held up", "Status"],
+        "RG-Brothers-HeldUp",
+        [
+          "BL",
+          "Container",
+          "Lorry",
+          "Loading",
+          "Demount",
+          "Extra days",
+          ...(canSeeField("heldUp") ? ["Held up"] : []),
+          "Status",
+        ],
         heldUp.map((row) => [
           row.assignment?.blNo || "",
           row.container?.containerNo || "",
@@ -140,7 +162,7 @@ export function AssignmentReports({
           formatDate(row.container?.loadingDate),
           formatDate(row.container?.demoundDate),
           row.extraDays,
-          row.heldUp,
+          ...(canSeeField("heldUp") ? [row.heldUp] : []),
           row.container?.status || "",
         ])
       );
@@ -148,34 +170,39 @@ export function AssignmentReports({
     }
     if (view === "monthly") {
       downloadCsv(
-        "RG-Business-transport-Monthly",
-        ["Month", "BLs", "Containers", "Total", "Paid", "Remaining"],
+        "RG-Brothers-Monthly",
+        [
+          "Month",
+          "BLs",
+          "Containers",
+          ...(money ? ["Total", "Paid", "Remaining"] : []),
+        ],
         monthly.map((item) => [
           item.label,
           item.assignments,
           item.containers,
-          item.total,
-          item.paid,
-          item.remaining,
+          ...(money ? [item.total, item.paid, item.remaining] : []),
         ])
       );
       return;
     }
-    downloadCsv(
-      "RG-Business-transport-Assignment-Overview",
-      ["Metric", "Value"],
-      [
-        ["Assignments", overview.assignments],
-        ["Containers", overview.containers],
-        ["Pending", overview.status.pending],
-        ["In progress", overview.status["in-progress"]],
-        ["Completed", overview.status.completed],
-        ["Total", overview.money.total],
-        ["Paid", overview.money.paid],
-        ["Remaining", overview.money.remaining],
-        ["Held up", overview.money.heldUp],
-      ]
-    );
+    downloadCsv("RG-Brothers-Assignment-Overview", ["Metric", "Value"], [
+      ["Assignments", overview.assignments],
+      ["Containers", overview.containers],
+      ["Pending", overview.status.pending],
+      ["In progress", overview.status["in-progress"]],
+      ["Completed", overview.status.completed],
+      ...(money
+        ? [
+            ["Total", overview.money.total],
+            ["Paid", overview.money.paid],
+            ["Remaining", overview.money.remaining],
+            ...(canSeeField("heldUp")
+              ? [["Held up", overview.money.heldUp]]
+              : []),
+          ]
+        : []),
+    ]);
   };
 
   return (

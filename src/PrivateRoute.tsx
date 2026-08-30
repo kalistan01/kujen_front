@@ -5,14 +5,14 @@ import { SocketProvider } from "./context/SocketProvider";
 const API_URL = import.meta.env.VITE_API_URL;
 
 const PrivateRoute: React.FC = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(true);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
         const response = await fetch(`${API_URL}/auth/check`, {
           method: "GET",
-          credentials: "include", // 👈 Required to send cookies
+          credentials: "include",
         });
 
         if (response.ok) {
@@ -22,6 +22,8 @@ const PrivateRoute: React.FC = () => {
           }
           setIsAuthenticated(true);
         } else {
+          localStorage.removeItem("user");
+          localStorage.removeItem("token");
           setIsAuthenticated(false);
         }
       } catch {
@@ -33,7 +35,11 @@ const PrivateRoute: React.FC = () => {
   }, []);
 
   if (isAuthenticated === null) {
-    return <div>Loading...</div>; // Or a spinner
+    return (
+      <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
+        Checking session...
+      </div>
+    );
   }
 
   return isAuthenticated ? (

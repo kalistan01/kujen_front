@@ -19,7 +19,7 @@ import { useParams } from "react-router-dom";
 import DestinationSelect, {
   type DestinationOption,
 } from "./DestinationSelect";
-import { todayDateInput, applyHeldUpToContainer, applyAdvancedDate, type HeldUpRateOption } from "../lib/financials";
+import { todayDateInput, applyAdvancedDate } from "../lib/financials";
 import { formatVocNo } from "../lib/voc";
 import { omitHiddenContainerFields } from "@/lib/permissions";
 import { FieldGate } from "@/components/RequirePermission";
@@ -76,7 +76,6 @@ function AddContainer({
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<ContainerFieldErrors>({});
   const [formError, setFormError] = useState("");
-  const [heldUpRates, setHeldUpRates] = useState<HeldUpRateOption[]>([]); 
   const intialstate :Container ={
     containerNo: "",
     vocNo: formatVocNo(1),
@@ -108,9 +107,7 @@ function AddContainer({
   };
   const updateContainer = (field: string, value: string | number) => {
     setContainers((prev) =>
-      applyAdvancedDate(
-        applyHeldUpToContainer({ ...prev, [field]: value }, heldUpRates)
-      )
+      applyAdvancedDate({ ...prev, [field]: value })
     );
     setErrors((prev) => {
       if (!prev[field as keyof ContainerFieldErrors]) return prev;
@@ -160,32 +157,10 @@ function AddContainer({
       .catch(() => {
         setContainers((prev) => ({ ...prev, vocNo: formatVocNo(1) }));
       });
-    baseUrl
-      .get("/heldup")
-      .then((response) => {
-        setHeldUpRates(asList<HeldUpRateOption>(response.data?.data));
-      })
-      .catch(() => {
-        setHeldUpRates([]);
-      });
   }, []);
   useEntitySync("destination", (payload) => {
     setDestination((prev) => upsertById(prev, payload));
   });
-  useEntitySync("heldup", (payload) => {
-    setHeldUpRates((prev) => {
-      if (payload.action === "created" && payload.data) {
-        return [
-          payload.data,
-          ...prev.map((item) => ({ ...item, status: false })),
-        ];
-      }
-      return upsertById(prev, payload);
-    });
-  });
-  useEffect(() => {
-    setContainers((prev) => applyHeldUpToContainer(prev, heldUpRates));
-  }, [heldUpRates]);
   const handleSave = async () => {
     if (!id) {
       const message = "This assignment cannot be updated because it has no ID.";
@@ -452,29 +427,6 @@ function AddContainer({
                   }
                   placeholder="Enter other amount"
                 />
-              </div>
-            </FieldGate>
-            <FieldGate field="heldUp">
-              <div>
-                <Label>Held Up (Rs)</Label>
-                <Input
-                  type="number"
-                  readOnly
-                  value={containers.heldUp || ""}
-                  placeholder="Auto from dates"
-                  className="bg-muted/50"
-                />
-                {(containers.heldUpExtraDays || 0) > 0 ? (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {containers.heldUpExtraDays} extra day
-                    {containers.heldUpExtraDays === 1 ? "" : "s"} after the first
-                    day
-                  </p>
-                ) : (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Charged after one day from loading to demount
-                  </p>
-                )}
               </div>
             </FieldGate>
             <FieldGate field="agentFee">

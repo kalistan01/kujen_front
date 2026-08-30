@@ -8,6 +8,7 @@ import { Loader2, Plus, Trash2, Truck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/apiError";
 import baseUrl from "@/api/baseUrl";
+import { upsertById } from "@/lib/socket";
 
 function Field({
   label,
@@ -213,9 +214,12 @@ function AddLorryOwner({
         const response = await baseUrl.put(`/lorry/${ownerId}`, payload);
         const updated = response.data.data;
         setOwners((prev) =>
-          prev.map((owner) =>
-            owner._id === ownerId ? { ...owner, ...updated } : owner
-          )
+          upsertById(prev, {
+            module: "lorry",
+            action: "updated",
+            id: String(ownerId),
+            data: { ...updated, _id: updated?._id || ownerId },
+          })
         );
         toast({
           title: "Success",
@@ -223,11 +227,19 @@ function AddLorryOwner({
         });
       } else {
         const response = await baseUrl.post("/lorry", payload);
-        const created: LorryOwner = {
-          ...response.data.owner,
-          lorries: response.data.lorries || payload.lorries,
-        };
-        setOwners((prev) => [...prev, created]);
+        const created: LorryOwner =
+          response.data?.data || {
+            ...response.data.owner,
+            lorries: response.data.lorries || payload.lorries,
+          };
+        setOwners((prev) =>
+          upsertById(prev, {
+            module: "lorry",
+            action: "created",
+            id: String(created._id || created.id || ""),
+            data: created,
+          })
+        );
         toast({
           title: "Success",
           description: "Lorry owner created successfully.",

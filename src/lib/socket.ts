@@ -46,7 +46,11 @@ function tabIsVisible() {
 
 export function entityId(item: { _id?: unknown; id?: unknown } | null | undefined) {
   if (!item) return "";
-  return String(item._id || item.id || "");
+  const value = item._id || item.id;
+  if (value && typeof value === "object" && "$oid" in (value as object)) {
+    return String((value as { $oid: string }).$oid);
+  }
+  return String(value || "");
 }
 
 export function upsertById<T extends { _id?: unknown; id?: unknown }>(
@@ -62,5 +66,5 @@ export function upsertById<T extends { _id?: unknown; id?: unknown }>(
   if (index === -1) return [payload.data, ...list];
   const next = [...list];
   next[index] = { ...next[index], ...payload.data };
-  return next;
+  return next.filter((row, i) => entityId(row) !== id || i === index);
 }

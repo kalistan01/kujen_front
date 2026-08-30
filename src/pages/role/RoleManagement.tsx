@@ -122,18 +122,19 @@ export const RoleManagement = () => {
       return;
     }
 
+    const nextStatus = !currentStatus;
     baseUrl
       .patch(
-        `${currentStatus ? "role/deactivateRole" : "role/activateRole"}`,
-        {},
-        {
-          headers: { roleid: id },
-        }
+        nextStatus ? "/role/activateRole" : "/role/deactivateRole",
+        { roleid: id, status: nextStatus }
       )
-      .then(() => {
+      .then((response) => {
+        const updated = response.data?.data;
         setRoles((prev) =>
           prev.map((role) =>
-            role._id === id ? { ...role, status: !role.status } : role
+            String(role._id) === String(id)
+              ? { ...role, ...updated, status: updated?.status ?? nextStatus }
+              : role
           )
         );
         toast({

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,13 +25,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  applyHeldUpToContainers,
   containerBalance,
   formatMoney,
   todayDateInput,
   type HeldUpRateOption,
 } from "./lib/financials";
-import { canManageAssignments, canSeeField } from "@/lib/permissions";
+import { can, canManageAssignments, canSeeField, P } from "@/lib/permissions";
 import { useEntitySync } from "@/hooks/useEntitySync";
 import { upsertById } from "@/lib/socket";
 
@@ -44,6 +43,7 @@ const AssignmentDetails = () => {
   const [isBasicDialogOpen, setIsBasicDialogOpen] = useState(false);
   const [open, setOpen] = useState(false);
   const [assignment, setAssignment] = useState<any | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [heldUpRates, setHeldUpRates] = useState<HeldUpRateOption[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isBulkPayOpen, setIsBulkPayOpen] = useState(false);
@@ -57,19 +57,28 @@ const AssignmentDetails = () => {
     baseUrl
       .get("/assignlorry/" + id)
       .then(async (response) => {
+        setLoadError(null);
         setAssignment(response.data.data);
       })
       .catch((error) => {
+        setAssignment(null);
+        const description = getApiErrorMessage(
+          error,
+          "Could not load this assignment. Please try again."
+        );
+        setLoadError(description);
         toast({
           title: "Unable to load assignment",
-          description: getApiErrorMessage(
-            error,
-            "Could not load this assignment. Please try again."
-          ),
+          description,
           variant: "destructive",
         });
       });
   };
+
+  useEffect(() => {
+    setAssignment(null);
+    setLoadError(null);
+  }, [id]);
 
   useEffect(() => {
     loadAssignment();
@@ -125,7 +134,7 @@ const AssignmentDetails = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `RG-Business-transport-BL-${assignment?.blNo || id}.${ext}`;
+      link.download = `RG-Brothers-BL-${assignment?.blNo || id}.${ext}`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -147,7 +156,7 @@ const AssignmentDetails = () => {
 
   const handlePrint = (onDone?: () => void) => {
     const previousTitle = document.title;
-    document.title = `RG Business transport - BL ${assignment?.blNo || ""}`.trim();
+    document.title = `RG Brothers Logistics - BL ${assignment?.blNo || ""}`.trim();
     const style = document.createElement("style");
     style.setAttribute("data-print-page", "");
     style.textContent =
@@ -175,16 +184,7 @@ const AssignmentDetails = () => {
     window.setTimeout(finishPrint, 120000);
   };
 
-  const displayAssignment = useMemo(() => {
-    if (!assignment) return assignment;
-    return {
-      ...assignment,
-      containers: applyHeldUpToContainers(
-        assignment.containers || [],
-        heldUpRates
-      ),
-    };
-  }, [assignment, heldUpRates]);
+  const displayAssignment = assignment;
 
   const containers = displayAssignment?.containers || [];
   const payableContainers = containers.filter(
@@ -282,6 +282,27 @@ const AssignmentDetails = () => {
         });
       });
   };
+
+  if (loadError) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => navigate("/assignments")}
+            className="h-9 w-9 shrink-0"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h1 className="text-xl font-bold tracking-tight">Assignment not found</h1>
+            <p className="text-sm text-muted-foreground">{loadError}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -416,6 +437,7 @@ const AssignmentDetails = () => {
                   <Containers
                     key={container._id || index}
                     container={container}
+                    heldUpRates={heldUpRates}
                     setOpen={setOpen}
                     onPaid={() => {
                       setSelectedIds((prev) =>
@@ -423,6 +445,7 @@ const AssignmentDetails = () => {
                       );
                       loadAssignment();
                     }}
+                    onChanged={loadAssignment}
                     selected={selectedIds.includes(container._id)}
                     onSelect={toggleSelected}
                   />
@@ -442,10 +465,12 @@ const AssignmentDetails = () => {
         </div>
       </div>
 
-      <AssignmentLogs
-        assignmentId={id}
-        refreshKey={assignment?.updatedAt}
-      />
+      {can(P.LOGS_VIEW) ? (
+        <AssignmentLogs
+          assignmentId={id}
+          refreshKey={assignment?.updatedAt}
+        />
+      ) : null}
 
       <Dialog open={isBulkPayOpen} onOpenChange={setIsBulkPayOpen}>
         <DialogContent className="sm:max-w-md">

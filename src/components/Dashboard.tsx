@@ -201,7 +201,7 @@ export const Dashboard = () => {
         <div className="pointer-events-none absolute -right-10 -top-16 h-48 w-48 rounded-full bg-white/10 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-16 left-1/3 h-40 w-40 rounded-full bg-sky-400/15 blur-3xl" />
         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/45">
-          RG Business transport
+          RG Brothers Logistics
         </p>
         <h2 className="mt-2 max-w-xl text-2xl font-bold tracking-tight sm:text-3xl">
           Operations overview
@@ -269,6 +269,7 @@ export const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {canLogs ? (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center justify-between text-lg">
@@ -276,15 +277,13 @@ export const Dashboard = () => {
                 <TrendingUp className="h-5 w-5 text-amber-500" />
                 Recent activity
               </span>
-              {canLogs && (
-                <button
-                  type="button"
-                  onClick={() => navigate("/logs")}
-                  className="text-xs font-medium text-muted-foreground hover:text-foreground"
-                >
-                  View all
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => navigate("/logs")}
+                className="text-xs font-medium text-muted-foreground hover:text-foreground"
+              >
+                View all
+              </button>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -315,6 +314,7 @@ export const Dashboard = () => {
             )}
           </CardContent>
         </Card>
+        ) : null}
 
         <Card>
           <CardHeader className="pb-3">
@@ -353,9 +353,9 @@ export const Dashboard = () => {
                       {item.item || "Assignment"}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {item.containers || 0} container
-                      {(item.containers || 0) !== 1 ? "s" : ""} ·{" "}
-                      {formatRelativeTime(item.createdAt)}
+                      {item.containers || 0}{" "}
+                      {(item.containers || 0) === 1 ? "container" : "containers"}{" "}
+                      · {formatRelativeTime(item.createdAt)}
                     </p>
                   </div>
                   <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground" />
