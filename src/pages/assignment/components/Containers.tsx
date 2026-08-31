@@ -66,6 +66,7 @@ interface ContainerType {
   return?: number;
   status?: "pending" | "in-progress" | "completed";
   fcl?: unknown;
+  note?: string;
 }
 
 export const formatDate = (date?: string | Date) => {
@@ -361,6 +362,12 @@ function Containers({
             {formatDate(container?.loadingDate)} / {formatDate(container?.demoundDate)}
           </p>
         </div>
+        {container?.note ? (
+          <div className="col-span-2 sm:col-span-3">
+            <p className="text-xs text-muted-foreground">Note</p>
+            <p className="whitespace-pre-wrap font-medium">{container.note}</p>
+          </div>
+        ) : null}
       </div>
 
       {canManage || parseFcl(fcl).enabled ? (

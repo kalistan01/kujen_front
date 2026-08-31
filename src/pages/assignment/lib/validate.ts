@@ -61,9 +61,6 @@ export function validateContainer(container: {
   if (!hasDate(container.loadingDate)) {
     errors.loadingDate = "Loading date is required.";
   }
-  if (!hasDate(container.demoundDate)) {
-    errors.demoundDate = "Demount date is required.";
-  }
   return errors;
 }
 

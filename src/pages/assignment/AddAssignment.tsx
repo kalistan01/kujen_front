@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode, cloneElement, isValidElement } fro
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -22,6 +23,7 @@ import { asList } from "@/lib/utils";
 import DestinationSelect, {
   type DestinationOption,
 } from "./components/DestinationSelect";
+import LorrySelect from "./components/LorrySelect";
 import { todayDateInput, applyAdvancedDate } from "./lib/financials";
 import { emptyFcl, parseFcl, type FclState } from "./lib/fcl";
 import FclRecord from "./components/FclRecord";
@@ -108,6 +110,7 @@ interface Container {
   return: number;
   ot: number;
   fcl: FclState;
+  note: string;
 }
 interface Assignment {
   id: string;
@@ -148,6 +151,7 @@ function emptyContainer(vocNo: string): Omit<Container, "id"> {
     ot: 0,
     status: "pending",
     fcl: emptyFcl(),
+    note: "",
   };
 }
 
@@ -361,6 +365,7 @@ function AddAssignment({
         ...omitHiddenContainerFields({
           ...applyAdvancedDate(container),
           destination: container.destination || undefined,
+          demoundDate: container.demoundDate || undefined,
         }),
       })
     );
@@ -606,26 +611,14 @@ function AddAssignment({
                   required
                   error={containerErrors[index]?.lorryId}
                 >
-                  <Select
+                  <LorrySelect
+                    lorries={lorries}
                     value={container.lorryId}
-                    onValueChange={(value) =>
+                    onChange={(value) =>
                       updateContainer(index, "lorryId", value)
                     }
-                  >
-                    <SelectTrigger
-                      className={`h-10 ${containerErrors[index]?.lorryId ? "border-destructive" : ""}`}
-                    >
-                      <SelectValue placeholder="Select lorry" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {lorries.map((lorry) => (
-                        <SelectItem key={lorry._id} value={lorry._id}>
-                          {lorry.lorryNum} - {lorry.capacity} -{" "}
-                          {lorry.owner?.ownerName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    error={Boolean(containerErrors[index]?.lorryId)}
+                  />
                 </Field>
                 <Field label="Destination">
                   <DestinationSelect
@@ -655,7 +648,6 @@ function AddAssignment({
                 </Field>
                 <Field
                   label="Demount Date"
-                  required
                   error={containerErrors[index]?.demoundDate}
                 >
                   <Input
@@ -664,7 +656,17 @@ function AddAssignment({
                     onChange={(e) =>
                       updateContainer(index, "demoundDate", e.target.value)
                     }
-                    className={`h-10 ${containerErrors[index]?.demoundDate ? "border-destructive" : ""}`}
+                    className="h-10"
+                  />
+                </Field>
+                <Field label="Note" className="sm:col-span-2 lg:col-span-3">
+                  <Textarea
+                    value={container.note || ""}
+                    onChange={(e) =>
+                      updateContainer(index, "note", e.target.value)
+                    }
+                    placeholder="Enter note"
+                    rows={3}
                   />
                 </Field>
               </div>

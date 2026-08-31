@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -19,6 +20,7 @@ import { useParams } from "react-router-dom";
 import DestinationSelect, {
   type DestinationOption,
 } from "./DestinationSelect";
+import LorrySelect from "./LorrySelect";
 import { todayDateInput, applyAdvancedDate } from "../lib/financials";
 import { formatVocNo } from "../lib/voc";
 import { fieldLockProps, omitHiddenContainerFields } from "@/lib/permissions";
@@ -62,6 +64,7 @@ interface Container {
   return?: number;
   ot?: number;
   status?: "pending" | "in-progress" | "completed";
+  note?: string;
 }
 
 function AddContainer({
@@ -97,6 +100,7 @@ function AddContainer({
     return: 0,
     ot: 0,
     status: "pending" as "pending" | "in-progress" | "completed",
+    note: "",
   };
   const [containers, setContainers] = useState<Container>(intialstate);
 
@@ -193,6 +197,7 @@ function AddContainer({
         omitHiddenContainerFields({
           ...applyAdvancedDate(containers),
           destination: containers.destination || undefined,
+          demoundDate: containers.demoundDate || undefined,
         })
       );
       toast({
@@ -256,24 +261,12 @@ function AddContainer({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Assign Lorry *</Label>
-              <Select
+              <LorrySelect
+                lorries={lorries}
                 value={containers.lorryId}
-                onValueChange={(value) => updateContainer("lorryId", value)}
-              >
-                <SelectTrigger
-                  className={errors.lorryId ? "border-destructive" : ""}
-                >
-                  <SelectValue placeholder="Select lorry" />
-                </SelectTrigger>
-                <SelectContent>
-                  {lorries.map((lorry) => (
-                    <SelectItem key={lorry._id} value={lorry._id}>
-                      {lorry.lorryNum} - {lorry.capacity} -{" "}
-                      {lorry.owner?.ownerName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                onChange={(value) => updateContainer("lorryId", value)}
+                error={Boolean(errors.lorryId)}
+              />
               {errors.lorryId ? (
                 <p className="text-xs font-medium text-destructive">
                   {errors.lorryId}
@@ -313,7 +306,7 @@ function AddContainer({
               ) : null}
             </div>
             <div className="space-y-1.5">
-              <Label>Demount Date *</Label>
+              <Label>Demount Date</Label>
               <Input
                 type="date"
                 value={
@@ -322,13 +315,7 @@ function AddContainer({
                     : ""
                 }
                 onChange={(e) => updateContainer("demoundDate", e.target.value)}
-                className={errors.demoundDate ? "border-destructive" : ""}
               />
-              {errors.demoundDate ? (
-                <p className="text-xs font-medium text-destructive">
-                  {errors.demoundDate}
-                </p>
-              ) : null}
             </div>
           </div>
 
@@ -498,6 +485,15 @@ function AddContainer({
                 <SelectItem value="completed">Completed</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Note</Label>
+            <Textarea
+              value={containers.note || ""}
+              onChange={(e) => updateContainer("note", e.target.value)}
+              placeholder="Enter note"
+              rows={3}
+            />
           </div>
         </div>
       </div>

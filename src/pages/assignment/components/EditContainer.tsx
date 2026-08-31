@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -18,6 +19,7 @@ import { useParams } from "react-router-dom";
 import DestinationSelect, {
   type DestinationOption,
 } from "./DestinationSelect";
+import LorrySelect from "./LorrySelect";
 import { todayDateInput, toDateInput, toDateKey, containerChargesTotal, formatMoney, toAmount, CHARGE_FIELDS, roundMoney, applyAdvancedDate } from "../lib/financials";
 import { canEditField, canSeeField, fieldLockProps, omitHiddenContainerFields } from "@/lib/permissions";
 import { FieldGate } from "@/components/RequirePermission";
@@ -61,6 +63,7 @@ interface Container {
   return?: number;
   ot?: number;
   status?: "pending" | "in-progress" | "completed";
+  note?: string;
 }
 
 function EditContainer({
@@ -98,6 +101,7 @@ function EditContainer({
     return: 0,
     ot: 0,
     status: "pending" as "pending" | "in-progress" | "completed",
+    note: "",
   });
 
   useEffect(() => {
@@ -133,6 +137,7 @@ function EditContainer({
       ot: 0,
       return: 0,
       status: "pending" as "pending" | "in-progress" | "completed",
+      note: "",
     });
     // setEditingAssignment(null);
     
@@ -226,6 +231,7 @@ function EditContainer({
           ...applyAdvancedDate(containerFields),
           lorryId,
           destination: containers.destination || undefined,
+          demoundDate: containers.demoundDate || "",
         })
       );
       toast({
@@ -301,28 +307,12 @@ function EditContainer({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Assign Lorry *</Label>
-              <Select
-                value={
-                  typeof containers.lorryId === "string"
-                    ? containers.lorryId
-                    : (containers.lorryId as any)?._id || ""
-                }
-                onValueChange={(value) => updateContainer("lorryId", value)}
-              >
-                <SelectTrigger
-                  className={errors.lorryId ? "border-destructive" : ""}
-                >
-                  <SelectValue placeholder="Select lorry" />
-                </SelectTrigger>
-                <SelectContent>
-                  {lorries.map((lorry) => (
-                    <SelectItem key={lorry._id} value={lorry._id}>
-                      {lorry.lorryNum} - {lorry.capacity} -{" "}
-                      {lorry.owner?.ownerName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <LorrySelect
+                lorries={lorries}
+                value={containers.lorryId}
+                onChange={(value) => updateContainer("lorryId", value)}
+                error={Boolean(errors.lorryId)}
+              />
               {errors.lorryId ? (
                 <p className="text-xs font-medium text-destructive">
                   {errors.lorryId}
@@ -362,22 +352,12 @@ function EditContainer({
               ) : null}
             </div>
             <div className="space-y-1.5">
-              <Label>Demount Date *</Label>
+              <Label>Demount Date</Label>
               <Input
                 type="date"
-                value={
-                  typeof containers.demoundDate === "string"
-                    ? containers.demoundDate.substring(0, 10)
-                    : ""
-                }
+                value={toDateKey(containers.demoundDate)}
                 onChange={(e) => updateContainer("demoundDate", e.target.value)}
-                className={errors.demoundDate ? "border-destructive" : ""}
               />
-              {errors.demoundDate ? (
-                <p className="text-xs font-medium text-destructive">
-                  {errors.demoundDate}
-                </p>
-              ) : null}
             </div>
           </div>
 
@@ -613,6 +593,15 @@ function EditContainer({
                 <SelectItem value="completed">Completed</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Note</Label>
+            <Textarea
+              value={containers.note || ""}
+              onChange={(e) => updateContainer("note", e.target.value)}
+              placeholder="Enter note"
+              rows={3}
+            />
           </div>
         </div>
       </div>
