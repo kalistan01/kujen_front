@@ -159,6 +159,17 @@ export function fclStepRecords(value?: unknown) {
   }));
 }
 
+export function assignmentFclStatus(containers?: unknown[]) {
+  const list = Array.isArray(containers) ? containers : [];
+  const fcls = list
+    .map((container) => parseFcl((container as { fcl?: unknown })?.fcl))
+    .filter((fcl) => fcl.enabled);
+  if (!fcls.length) return "pending";
+  return fcls.every((fcl) => fcl.paymentReceived.done)
+    ? "received"
+    : "pending";
+}
+
 export function formatFclStatus(value?: unknown) {
   const current = fclCurrentStatus(value);
   if (!current.key) return "—";

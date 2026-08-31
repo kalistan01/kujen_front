@@ -24,10 +24,11 @@ import {
   visibleChargeColumns,
 } from "../lib/containerDisplay";
 import { formatDate } from "../lib/dates";
+import { assignmentFclStatus } from "../lib/fcl";
 import { formatMoney } from "../lib/financials";
 import FclStatusBadge from "./FclStatusBadge";
 
-const COLUMN_COUNT = 9;
+const COLUMN_COUNT = 10;
 
 function AssignmentEmptyState({ hasFilters }: { hasFilters: boolean }) {
   return (
@@ -255,6 +256,9 @@ function AssignmentRow({
         <TableCell>
           <StatusBadge status={assignment.status} />
         </TableCell>
+        <TableCell>
+          <StatusBadge status={assignmentFclStatus(containers)} />
+        </TableCell>
         <TableCell className="text-right">
           <Button
             type="button"
@@ -401,6 +405,7 @@ function AssignmentTable({
               <TableHead>Containers</TableHead>
               <TableHead>Exporter</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>FCL Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>

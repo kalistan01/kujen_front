@@ -160,7 +160,7 @@ const AssignmentDetails = () => {
 
   const handlePrint = (onDone?: () => void) => {
     const previousTitle = document.title;
-    document.title = `RG Brothers Logistics - BL ${assignment?.blNo || ""}`.trim();
+    document.title = `RG Business transport - BL ${assignment?.blNo || ""}`.trim();
     const style = document.createElement("style");
     style.setAttribute("data-print-page", "");
     style.textContent =

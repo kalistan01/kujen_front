@@ -39,7 +39,7 @@ function AssignmentPrint({
         <div className="print-brand">
           <div className="print-mark">RG</div>
           <div>
-            <h1>RG Brothers Logistics</h1>
+            <h1>RG Business transport</h1>
             <p>Ship line</p>
           </div>
         </div>
@@ -75,7 +75,7 @@ function AssignmentPrint({
       </section>
 
       <p className="print-note">
-        Printed on {formatDateTime(new Date().toISOString())} · RG Brothers Logistics
+        Printed on {formatDateTime(new Date().toISOString())} · RG Business transport
         Ship line
       </p>
     </div>

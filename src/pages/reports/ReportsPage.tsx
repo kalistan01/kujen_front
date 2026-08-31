@@ -172,7 +172,7 @@ export function ReportsPage() {
         </CardHeader>
         <CardContent className="p-3 sm:p-4">
           <h1 className="mb-4 hidden text-xl font-bold print:block">
-            RG Brothers Logistics {isLorryTab ? "Lorry" : "Assignment"} Reports
+            RG Business transport {isLorryTab ? "Lorry" : "Assignment"} Reports
           </h1>
           {loading ? (
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

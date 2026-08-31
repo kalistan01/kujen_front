@@ -53,11 +53,11 @@ const Login = () => {
         <div className="relative flex items-center gap-3">
           <img
             src="/logo.png"
-            alt="RG Brothers Logistics"
+            alt="RG Business transport"
             className="h-11 w-11 rounded-lg bg-white object-cover ring-1 ring-white/15"
           />
           <div>
-            <p className="text-lg font-bold leading-tight">RG Brothers Logistics</p>
+            <p className="text-lg font-bold leading-tight">RG Business transport</p>
             <p className="text-[11px] uppercase tracking-[0.18em] text-white/45">
               Ship line
             </p>
@@ -85,7 +85,7 @@ const Login = () => {
         </div>
 
         <p className="relative text-sm text-white/40">
-          © {new Date().getFullYear()} RG Brothers Logistics. All rights reserved.
+          © {new Date().getFullYear()} RG Business transport. All rights reserved.
         </p>
       </div>
 
@@ -98,11 +98,11 @@ const Login = () => {
           <div className="mb-8 flex items-center gap-3 lg:hidden">
             <img
               src="/logo.png"
-              alt="RG Brothers Logistics"
+              alt="RG Business transport"
               className="h-11 w-11 rounded-lg bg-white object-cover"
             />
             <div>
-              <p className="font-bold">RG Brothers Logistics</p>
+              <p className="font-bold">RG Business transport</p>
               <p className="text-xs text-muted-foreground">Ship line</p>
             </div>
           </div>
@@ -111,7 +111,7 @@ const Login = () => {
             <div className="mb-8 space-y-2">
               <h2 className="text-2xl font-bold tracking-tight">Welcome back</h2>
               <p className="text-sm text-muted-foreground">
-                Sign in to continue to the RG Brothers Logistics dashboard.
+                Sign in to continue to the RG Business transport dashboard.
               </p>
             </div>
 

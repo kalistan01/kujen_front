@@ -202,7 +202,7 @@ export const Dashboard = () => {
         <div className="pointer-events-none absolute -right-10 -top-16 h-48 w-48 rounded-full bg-white/10 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-16 left-1/3 h-40 w-40 rounded-full bg-sky-400/15 blur-3xl" />
         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/45">
-          RG Brothers Logistics
+          RG Business transport
         </p>
         <h2 className="mt-2 max-w-xl text-2xl font-bold tracking-tight sm:text-3xl">
           Operations overview
