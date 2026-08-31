@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +17,7 @@ import baseUrl from "@/api/baseUrl";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/apiError";
-import { canAddAssignments, canEditAssignments, canSeeField } from "@/lib/permissions";
+import { canAddAssignments, canEditContainers, canViewContainers, canSeeField } from "@/lib/permissions";
 import {
   containerCapacity,
   containerDestination,
@@ -66,7 +66,9 @@ export const AssignmentManagement = () => {
   const [lorryOwners, setLorryOwners] = useState<any[]>([]);
   const [exporting, setExporting] = useState<"pdf" | "excel" | null>(null);
   const location = useLocation();
+  const navigate = useNavigate();
   const isContainers = location.pathname.endsWith("/containers");
+  const canSeeContainers = canViewContainers();
   const [page, setPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isBulkPayOpen, setIsBulkPayOpen] = useState(false);
@@ -76,7 +78,7 @@ export const AssignmentManagement = () => {
   const pageSize = 10;
   const { toast } = useToast();
   const canPay =
-    canEditAssignments() && canSeeField("balancePaid");
+    canEditContainers() && canSeeField("balancePaid");
 
   const handleAdd = () => {
     setEditingAssignment(null);
@@ -103,6 +105,12 @@ export const AssignmentManagement = () => {
   useEffect(() => {
     loadAssignments();
   }, [isDialogOpen]);
+
+  useEffect(() => {
+    if (isContainers && !canSeeContainers) {
+      navigate("/assignments", { replace: true });
+    }
+  }, [isContainers, canSeeContainers, navigate]);
 
   useEffect(() => {
     baseUrl
@@ -628,6 +636,7 @@ export const AssignmentManagement = () => {
               >
                 Assignments
               </NavLink>
+              {canSeeContainers ? (
               <NavLink
                 to="/assignments/containers"
                 className={({ isActive }) =>
@@ -641,6 +650,7 @@ export const AssignmentManagement = () => {
               >
                 Containers
               </NavLink>
+              ) : null}
             </nav>
             <div className="flex flex-wrap items-center justify-end gap-2">
               <Button

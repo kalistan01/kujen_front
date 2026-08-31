@@ -174,6 +174,7 @@ function AssignmentRow({
 }) {
   const [open, setOpen] = useState(false);
   const containers = assignment.containers || [];
+  const containerCount = assignment.containerCount ?? containers.length;
   const selectableIds = containers
     .filter((container: any) => container?._id)
     .map((container: any) => container._id as string);
@@ -232,7 +233,7 @@ function AssignmentRow({
             <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
               <Package className="h-3.5 w-3.5 text-amber-600" />
               <span className="font-medium text-foreground">
-                {containers.length}
+                {containerCount}
               </span>
             </span>
             {containers.slice(0, 2).map((c: any, i: number) => (

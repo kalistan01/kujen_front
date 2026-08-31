@@ -22,6 +22,9 @@ export const P = {
   DESTINATIONS_EDIT: 14,
   ROLES_EDIT: 15,
   ASSIGNMENTS_EDIT: 16,
+  CONTAINERS_VIEW: 17,
+  CONTAINERS_ADD: 18,
+  CONTAINERS_EDIT: 19,
   WEIGHT: 20,
   DAY_HIRE: 21,
   ADVANCED: 22,
@@ -47,6 +50,18 @@ export const P = {
   AGENT_FEE_EDIT: 49,
   TRANSPORT_COMMISSION_EDIT: 50,
   RETURN_EDIT: 51,
+  WEIGHT_ADD: 52,
+  DAY_HIRE_ADD: 53,
+  ADVANCED_ADD: 54,
+  ADVANCED_DATE_ADD: 55,
+  BALANCE_PAID_ADD: 56,
+  BALANCE_DATE_ADD: 57,
+  OUT_HIRE_ADD: 58,
+  OTHER_ADD: 59,
+  HELD_UP_ADD: 60,
+  AGENT_FEE_ADD: 61,
+  TRANSPORT_COMMISSION_ADD: 62,
+  RETURN_ADD: 63,
 } as const;
 
 export type PermissionId = (typeof P)[keyof typeof P];
@@ -57,6 +72,7 @@ export type PermissionItem = {
   description: string;
   group: "pages" | "fields";
   key?: string;
+  addId?: number;
   editId?: number;
 };
 
@@ -66,6 +82,7 @@ export type PageAccessItem = {
   viewId: number;
   addId?: number;
   editId?: number;
+  requiresViewId?: number;
 };
 
 export const PAGE_ACCESS: PageAccessItem[] = [
@@ -99,10 +116,18 @@ export const PAGE_ACCESS: PageAccessItem[] = [
   },
   {
     name: "Assignments",
-    description: "BLs, containers, and payments",
+    description: "BLs and shipment records",
     viewId: P.ASSIGNMENTS_VIEW,
     addId: P.ASSIGNMENTS_ADD,
     editId: P.ASSIGNMENTS_EDIT,
+  },
+  {
+    name: "Containers",
+    description: "Containers on assignments",
+    viewId: P.CONTAINERS_VIEW,
+    addId: P.CONTAINERS_ADD,
+    editId: P.CONTAINERS_EDIT,
+    requiresViewId: P.ASSIGNMENTS_VIEW,
   },
 ];
 
@@ -121,7 +146,10 @@ export const PAGE_PERMISSIONS: PermissionItem[] = [
   { id: P.DESTINATIONS_EDIT, name: "Edit Destinations", description: "Update and disable routes", group: "pages" },
   { id: P.ASSIGNMENTS_VIEW, name: "View Assignments", description: "Open assignments and details", group: "pages" },
   { id: P.ASSIGNMENTS_ADD, name: "Add Assignments", description: "Create assignments", group: "pages" },
-  { id: P.ASSIGNMENTS_EDIT, name: "Edit Assignments", description: "Update, pay, and delete assignments", group: "pages" },
+  { id: P.ASSIGNMENTS_EDIT, name: "Edit Assignments", description: "Update and delete assignments", group: "pages" },
+  { id: P.CONTAINERS_VIEW, name: "View Containers", description: "See containers on assignments", group: "pages" },
+  { id: P.CONTAINERS_ADD, name: "Add Containers", description: "Add containers to assignments", group: "pages" },
+  { id: P.CONTAINERS_EDIT, name: "Edit Containers", description: "Update, pay, and remove containers", group: "pages" },
   { id: P.LOGS_VIEW, name: "View Logs", description: "Open the activity log", group: "pages" },
 ];
 
@@ -137,19 +165,25 @@ const LEGACY_ADD_TO_EDIT: Array<[number, number]> = [
   [P.ASSIGNMENTS_ADD, P.ASSIGNMENTS_EDIT],
 ];
 
+const LEGACY_FROM_PARENT: Array<[number, number[]]> = [
+  [P.CONTAINERS_VIEW, [P.ASSIGNMENTS_VIEW, P.ASSIGNMENTS_ADD, P.ASSIGNMENTS_EDIT]],
+  [P.CONTAINERS_ADD, [P.ASSIGNMENTS_ADD, P.ASSIGNMENTS_EDIT]],
+  [P.CONTAINERS_EDIT, [P.ASSIGNMENTS_EDIT]],
+];
+
 export const FIELD_PERMISSIONS: PermissionItem[] = [
-  { id: P.WEIGHT, name: "Weight", description: "Container weight", group: "fields", key: "weight", editId: P.WEIGHT_EDIT },
-  { id: P.DAY_HIRE, name: "Day Hire", description: "Day hire amount", group: "fields", key: "dayHire", editId: P.DAY_HIRE_EDIT },
-  { id: P.ADVANCED, name: "Advanced", description: "Advance payment", group: "fields", key: "advanced", editId: P.ADVANCED_EDIT },
-  { id: P.ADVANCED_DATE, name: "Advanced Date", description: "Advance payment date", group: "fields", key: "advancedDate", editId: P.ADVANCED_DATE_EDIT },
-  { id: P.BALANCE_PAID, name: "Balance Paid", description: "Balance payment", group: "fields", key: "balancePaid", editId: P.BALANCE_PAID_EDIT },
-  { id: P.BALANCE_DATE, name: "Balance Date", description: "Balance payment date", group: "fields", key: "balanceDate", editId: P.BALANCE_DATE_EDIT },
-  { id: P.OUT_HIRE, name: "Out Hire", description: "Out hire amount", group: "fields", key: "outHire", editId: P.OUT_HIRE_EDIT },
-  { id: P.OTHER, name: "Other", description: "Other charges", group: "fields", key: "other", editId: P.OTHER_EDIT },
-  { id: P.HELD_UP, name: "Held Up", description: "Held up amount", group: "fields", key: "heldUp", editId: P.HELD_UP_EDIT },
-  { id: P.AGENT_FEE, name: "Agent Fee", description: "Agent commission", group: "fields", key: "agentFee", editId: P.AGENT_FEE_EDIT },
-  { id: P.TRANSPORT_COMMISSION, name: "Transport Commission", description: "Transport commission", group: "fields", key: "transportCommission", editId: P.TRANSPORT_COMMISSION_EDIT },
-  { id: P.RETURN, name: "Return", description: "Return amount", group: "fields", key: "return", editId: P.RETURN_EDIT },
+  { id: P.WEIGHT, name: "Weight", description: "Container weight", group: "fields", key: "weight", addId: P.WEIGHT_ADD, editId: P.WEIGHT_EDIT },
+  { id: P.DAY_HIRE, name: "Day Hire", description: "Day hire amount", group: "fields", key: "dayHire", addId: P.DAY_HIRE_ADD, editId: P.DAY_HIRE_EDIT },
+  { id: P.ADVANCED, name: "Advanced", description: "Advance payment", group: "fields", key: "advanced", addId: P.ADVANCED_ADD, editId: P.ADVANCED_EDIT },
+  { id: P.ADVANCED_DATE, name: "Advanced Date", description: "Advance payment date", group: "fields", key: "advancedDate", addId: P.ADVANCED_DATE_ADD, editId: P.ADVANCED_DATE_EDIT },
+  { id: P.BALANCE_PAID, name: "Balance Paid", description: "Balance payment", group: "fields", key: "balancePaid", addId: P.BALANCE_PAID_ADD, editId: P.BALANCE_PAID_EDIT },
+  { id: P.BALANCE_DATE, name: "Balance Date", description: "Balance payment date", group: "fields", key: "balanceDate", addId: P.BALANCE_DATE_ADD, editId: P.BALANCE_DATE_EDIT },
+  { id: P.OUT_HIRE, name: "Out Hire", description: "Out hire amount", group: "fields", key: "outHire", addId: P.OUT_HIRE_ADD, editId: P.OUT_HIRE_EDIT },
+  { id: P.OTHER, name: "Other", description: "Other charges", group: "fields", key: "other", addId: P.OTHER_ADD, editId: P.OTHER_EDIT },
+  { id: P.HELD_UP, name: "Held Up", description: "Held up amount", group: "fields", key: "heldUp", addId: P.HELD_UP_ADD, editId: P.HELD_UP_EDIT },
+  { id: P.AGENT_FEE, name: "Agent Fee", description: "Agent commission", group: "fields", key: "agentFee", addId: P.AGENT_FEE_ADD, editId: P.AGENT_FEE_EDIT },
+  { id: P.TRANSPORT_COMMISSION, name: "Transport Commission", description: "Transport commission", group: "fields", key: "transportCommission", addId: P.TRANSPORT_COMMISSION_ADD, editId: P.TRANSPORT_COMMISSION_EDIT },
+  { id: P.RETURN, name: "Return", description: "Return amount", group: "fields", key: "return", addId: P.RETURN_ADD, editId: P.RETURN_EDIT },
   { id: P.FINANCIAL_TOTALS, name: "Totals", description: "Total, paid, and remaining amounts", group: "fields", key: "totals" },
 ];
 
@@ -163,9 +197,20 @@ export const FIELD_EDIT_PERMISSIONS: PermissionItem[] = FIELD_PERMISSIONS.filter
   key: item.key,
 }));
 
+export const FIELD_ADD_PERMISSIONS: PermissionItem[] = FIELD_PERMISSIONS.filter(
+  (item) => item.addId
+).map((item) => ({
+  id: item.addId as number,
+  name: `Add ${item.name}`,
+  description: `Set ${item.description.toLowerCase()} when creating`,
+  group: "fields" as const,
+  key: item.key,
+}));
+
 export const ALL_PERMISSIONS: PermissionItem[] = [
   ...PAGE_PERMISSIONS,
   ...FIELD_PERMISSIONS,
+  ...FIELD_ADD_PERMISSIONS,
   ...FIELD_EDIT_PERMISSIONS,
 ];
 
@@ -175,7 +220,9 @@ export const DEFAULT_STAFF_PERMISSIONS = [
   P.LORRIES_VIEW,
   P.DESTINATIONS_VIEW,
   P.ASSIGNMENTS_VIEW,
+  P.CONTAINERS_VIEW,
   ...FIELD_PERMISSIONS.map((item) => item.id),
+  ...FIELD_ADD_PERMISSIONS.map((item) => item.id),
   ...FIELD_EDIT_PERMISSIONS.map((item) => item.id),
 ];
 
@@ -187,6 +234,10 @@ const MUST_GRANT = new Set<number>([
   P.LORRIES_EDIT,
   P.ASSIGNMENTS_ADD,
   P.ASSIGNMENTS_EDIT,
+  P.CONTAINERS_VIEW,
+  P.CONTAINERS_ADD,
+  P.CONTAINERS_EDIT,
+  ...FIELD_ADD_PERMISSIONS.map((item) => item.id),
   P.DESTINATIONS_ADD,
   P.DESTINATIONS_EDIT,
   P.ROLES_ADD,
@@ -201,12 +252,23 @@ export const FIELD_KEY_TO_ID: Record<string, number> = Object.fromEntries(
   )
 );
 
+export const FIELD_KEY_TO_ADD_ID: Record<string, number> = Object.fromEntries(
+  FIELD_PERMISSIONS.filter((item) => item.key && item.addId).map((item) => [
+    item.key as string,
+    item.addId as number,
+  ])
+);
+
 export const FIELD_KEY_TO_EDIT_ID: Record<string, number> = Object.fromEntries(
   FIELD_PERMISSIONS.filter((item) => item.key && item.editId).map((item) => [
     item.key as string,
     item.editId as number,
   ])
 );
+
+const LEGACY_FIELD_EDIT_TO_ADD: Array<[number, number]> = FIELD_PERMISSIONS.filter(
+  (item) => item.editId && item.addId
+).map((item) => [item.editId as number, item.addId as number]);
 
 const toIdList = (value: unknown) =>
   (Array.isArray(value) ? value : [])
@@ -225,6 +287,19 @@ export function can(id: number, user: AuthUser | null = getAuthUser()) {
       return true;
     }
   }
+  for (const [childId, parentIds] of LEGACY_FROM_PARENT) {
+    if (
+      id === childId &&
+      parentIds.some((parentId) => permission.includes(parentId))
+    ) {
+      return true;
+    }
+  }
+  for (const [editId, addId] of LEGACY_FIELD_EDIT_TO_ADD) {
+    if (id === addId && permission.includes(editId) && !denied.includes(addId)) {
+      return true;
+    }
+  }
   return !MUST_GRANT.has(id);
 }
 
@@ -237,6 +312,16 @@ export function canSeeField(key: string, user: AuthUser | null = getAuthUser()) 
     return can(P.FINANCIAL_TOTALS, user);
   }
   const id = FIELD_KEY_TO_ID[key];
+  if (!id) return true;
+  return can(id, user);
+}
+
+export function canAddField(key: string, user: AuthUser | null = getAuthUser()) {
+  if (key === "totals" || key === "total" || key === "paid" || key === "remaining" || key === "balance") {
+    return false;
+  }
+  if (!canSeeField(key, user)) return false;
+  const id = FIELD_KEY_TO_ADD_ID[key];
   if (!id) return true;
   return can(id, user);
 }
@@ -263,18 +348,38 @@ export function canManageAssignments(user: AuthUser | null = getAuthUser()) {
   return canEditAssignments(user);
 }
 
-export function fieldLockProps(key: string, extraClass = "") {
-  const locked = !canEditField(key);
+export function canViewContainers(user: AuthUser | null = getAuthUser()) {
+  return can(P.CONTAINERS_VIEW, user);
+}
+
+export function canAddContainers(user: AuthUser | null = getAuthUser()) {
+  return can(P.CONTAINERS_ADD, user);
+}
+
+export function canEditContainers(user: AuthUser | null = getAuthUser()) {
+  return can(P.CONTAINERS_EDIT, user);
+}
+
+export function fieldLockProps(
+  key: string,
+  extraClass = "",
+  mode: "add" | "edit" = "edit"
+) {
+  const locked = mode === "add" ? !canAddField(key) : !canEditField(key);
   return {
     disabled: locked,
     className: [extraClass, locked ? "bg-muted" : ""].filter(Boolean).join(" "),
   };
 }
 
-export function omitHiddenContainerFields<T extends Record<string, any>>(container: T): T {
+export function omitHiddenContainerFields<T extends Record<string, any>>(
+  container: T,
+  mode: "add" | "edit" = "edit"
+): T {
+  const writable = mode === "add" ? canAddField : canEditField;
   const next = { ...container };
   for (const key of Object.keys(FIELD_KEY_TO_ID)) {
-    if (!canEditField(key) && key in next) {
+    if (!writable(key) && key in next) {
       delete next[key];
     }
   }
@@ -290,6 +395,20 @@ export function hydrateRolePermissions(
   for (const [addId, editId] of LEGACY_ADD_TO_EDIT) {
     if (allowed.has(addId) && !blocked.has(editId) && !allowed.has(editId)) {
       allowed.add(editId);
+    }
+  }
+  for (const [childId, parentIds] of LEGACY_FROM_PARENT) {
+    if (
+      !blocked.has(childId) &&
+      !allowed.has(childId) &&
+      parentIds.some((parentId) => allowed.has(parentId))
+    ) {
+      allowed.add(childId);
+    }
+  }
+  for (const [editId, addId] of LEGACY_FIELD_EDIT_TO_ADD) {
+    if (allowed.has(editId) && !blocked.has(addId) && !allowed.has(addId)) {
+      allowed.add(addId);
     }
   }
   const nextPermission = ALL_PERMISSION_IDS.filter((id) => {

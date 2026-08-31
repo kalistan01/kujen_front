@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import EditDetail from "./EditDetail";
 import { StatusBadge } from "@/components/StatusBadge";
-import { canEditAssignments } from "@/lib/permissions";
+import { canEditAssignments, canViewContainers } from "@/lib/permissions";
 
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString("en-US", {
@@ -94,6 +94,7 @@ function BasicInfo({
             </div>
           ))}
         </div>
+        {canViewContainers() ? (
         <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-border/70 pt-3 text-sm">
           <span className="text-xs text-muted-foreground">Status</span>
           <span className="inline-flex items-center gap-1.5">
@@ -113,6 +114,7 @@ function BasicInfo({
             {countStatus("completed")}
           </span>
         </div>
+        ) : null}
       </CardContent>
     </Card>
   );

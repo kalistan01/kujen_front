@@ -126,15 +126,24 @@ function AddRole({
     if (which === "view") {
       if (checked) {
         next.add(page.viewId);
+        if (page.requiresViewId) next.add(page.requiresViewId);
       } else {
         next.delete(page.viewId);
         if (page.addId) next.delete(page.addId);
         if (page.editId) next.delete(page.editId);
+        PAGE_ACCESS.forEach((other) => {
+          if (other.requiresViewId === page.viewId) {
+            next.delete(other.viewId);
+            if (other.addId) next.delete(other.addId);
+            if (other.editId) next.delete(other.editId);
+          }
+        });
       }
     } else if (which === "add" && page.addId) {
       if (checked) {
         next.add(page.viewId);
         next.add(page.addId);
+        if (page.requiresViewId) next.add(page.requiresViewId);
       } else {
         next.delete(page.addId);
       }
@@ -142,6 +151,7 @@ function AddRole({
       if (checked) {
         next.add(page.viewId);
         next.add(page.editId);
+        if (page.requiresViewId) next.add(page.requiresViewId);
       } else {
         next.delete(page.editId);
       }
@@ -151,8 +161,9 @@ function AddRole({
 
   const handleFieldAccess = (
     viewId: number,
+    addId: number | undefined,
     editId: number | undefined,
-    which: "view" | "edit",
+    which: "view" | "add" | "edit",
     checked: boolean
   ) => {
     const next = new Set(formData.permission);
@@ -161,9 +172,17 @@ function AddRole({
         next.add(viewId);
       } else {
         next.delete(viewId);
+        if (addId) next.delete(addId);
         if (editId) next.delete(editId);
       }
-    } else if (editId) {
+    } else if (which === "add" && addId) {
+      if (checked) {
+        next.add(viewId);
+        next.add(addId);
+      } else {
+        next.delete(addId);
+      }
+    } else if (which === "edit" && editId) {
       if (checked) {
         next.add(viewId);
         next.add(editId);
@@ -498,10 +517,14 @@ function AddRole({
 
   const renderFieldPermissions = () => {
     const viewIds = FIELD_PERMISSIONS.map((item) => item.id);
+    const addIds = FIELD_PERMISSIONS.map((item) => item.addId).filter(
+      (id): id is number => Boolean(id)
+    );
     const editIds = FIELD_PERMISSIONS.map((item) => item.editId).filter(
       (id): id is number => Boolean(id)
     );
     const allView = viewIds.every((id) => formData.permission.includes(id));
+    const allAdd = addIds.every((id) => formData.permission.includes(id));
     const allEdit = editIds.every((id) => formData.permission.includes(id));
     const isChecked = (id: number) =>
       formData.admin || formData.permission.includes(id);
@@ -518,6 +541,12 @@ function AddRole({
                 handleGroupToggle(
                   [
                     ...FIELD_PERMISSIONS,
+                    ...FIELD_PERMISSIONS.filter((item) => item.addId).map(
+                      (item) => ({
+                        ...item,
+                        id: item.addId as number,
+                      })
+                    ),
                     ...FIELD_PERMISSIONS.filter((item) => item.editId).map(
                       (item) => ({
                         ...item,
@@ -525,11 +554,11 @@ function AddRole({
                       })
                     ),
                   ],
-                  !(allView && allEdit)
+                  !(allView && allAdd && allEdit)
                 )
               }
             >
-              {allView && allEdit ? "Clear" : "Select all"}
+              {allView && allAdd && allEdit ? "Clear" : "Select all"}
             </button>
           )}
         </div>
@@ -550,11 +579,33 @@ function AddRole({
                             checked ? next.add(id) : next.delete(id)
                           );
                           if (!checked) {
+                            addIds.forEach((id) => next.delete(id));
                             editIds.forEach((id) => next.delete(id));
                           }
                           applyAllowed([...next]);
                         }}
                         aria-label="Toggle all field view"
+                      />
+                    ) : null}
+                  </div>
+                </th>
+                <th className="w-[4.5rem] px-2 py-2 text-center font-medium">
+                  <div className="flex flex-col items-center gap-1">
+                    <span>Add</span>
+                    {!formData.admin ? (
+                      <Checkbox
+                        checked={allAdd}
+                        onCheckedChange={(checked) => {
+                          const next = new Set(formData.permission);
+                          if (checked) {
+                            viewIds.forEach((id) => next.add(id));
+                            addIds.forEach((id) => next.add(id));
+                          } else {
+                            addIds.forEach((id) => next.delete(id));
+                          }
+                          applyAllowed([...next]);
+                        }}
+                        aria-label="Toggle all field add"
                       />
                     ) : null}
                   </div>
@@ -602,6 +653,7 @@ function AddRole({
                       onCheckedChange={(checked) =>
                         handleFieldAccess(
                           item.id,
+                          item.addId,
                           item.editId,
                           "view",
                           checked === true
@@ -609,6 +661,27 @@ function AddRole({
                       }
                       aria-label={`View ${item.name}`}
                     />
+                  </td>
+                  <td className="px-2 py-2 text-center">
+                    {item.addId ? (
+                      <Checkbox
+                        id={`field-add-${item.addId}`}
+                        checked={isChecked(item.addId)}
+                        disabled={formData.admin}
+                        onCheckedChange={(checked) =>
+                          handleFieldAccess(
+                            item.id,
+                            item.addId,
+                            item.editId,
+                            "add",
+                            checked === true
+                          )
+                        }
+                        aria-label={`Add ${item.name}`}
+                      />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
                   </td>
                   <td className="px-2 py-2 text-center">
                     {item.editId ? (
@@ -619,6 +692,7 @@ function AddRole({
                         onCheckedChange={(checked) =>
                           handleFieldAccess(
                             item.id,
+                            item.addId,
                             item.editId,
                             "edit",
                             checked === true

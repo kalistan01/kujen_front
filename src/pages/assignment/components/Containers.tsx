@@ -33,7 +33,7 @@ import {
   toAmount,
   type HeldUpRateOption,
 } from "../lib/financials";
-import { canEditField, canSeeField, canEditAssignments } from "@/lib/permissions";
+import { canEditField, canSeeField, canEditContainers } from "@/lib/permissions";
 import { parseFcl, type FclState } from "../lib/fcl";
 import FclRecord from "./FclRecord";
 interface ContainerType {
@@ -253,7 +253,7 @@ function Containers({
       (canSeeField("balancePaid") ? toAmount(container.balancePaid) : 0)
   );
   const balance = roundMoney(total - paid);
-  const canManage = canEditAssignments();
+  const canManage = canEditContainers();
 
   const statusTone =
     status === "completed"

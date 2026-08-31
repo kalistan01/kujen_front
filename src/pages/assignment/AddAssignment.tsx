@@ -28,7 +28,7 @@ import { todayDateInput, applyAdvancedDate } from "./lib/financials";
 import { emptyFcl, parseFcl, type FclState } from "./lib/fcl";
 import FclRecord from "./components/FclRecord";
 import { formatVocNo } from "./lib/voc";
-import { canEditField, canSeeField, omitHiddenContainerFields } from "@/lib/permissions";
+import { canAddField, canSeeField, canAddContainers, omitHiddenContainerFields } from "@/lib/permissions";
 import {
   firstErrorMessage,
   mapContainerApiError,
@@ -56,7 +56,7 @@ function Field({
   error?: string;
 }) {
   if (field && !canSeeField(field)) return null;
-  const locked = Boolean(field && !canEditField(field));
+  const locked = Boolean(field && !canAddField(field));
   const child =
     locked && isValidElement(children)
       ? cloneElement(children as React.ReactElement<{ disabled?: boolean; className?: string }>, {
@@ -366,7 +366,7 @@ function AddAssignment({
           ...applyAdvancedDate(container),
           destination: container.destination || undefined,
           demoundDate: container.demoundDate || undefined,
-        }),
+        }, "add"),
       })
     );
 
@@ -861,6 +861,7 @@ function AddAssignment({
           </div>
         ))}
 
+        {canAddContainers() ? (
         <Button
           type="button"
           onClick={addContainer}
@@ -871,6 +872,7 @@ function AddAssignment({
           <Plus className="h-4 w-4" />
           Add Container
         </Button>
+        ) : null}
       </section>
 
       <div className="sticky bottom-0 -mx-6 -mb-5 flex justify-end gap-2 border-t border-border bg-card/95 px-6 py-4 backdrop-blur">

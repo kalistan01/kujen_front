@@ -30,7 +30,7 @@ import {
   todayDateInput,
   type HeldUpRateOption,
 } from "./lib/financials";
-import { can, canEditField, canEditAssignments, P } from "@/lib/permissions";
+import { can, canEditField, canEditAssignments, canViewContainers, canAddContainers, canEditContainers, P } from "@/lib/permissions";
 import { useEntitySync } from "@/hooks/useEntitySync";
 import { upsertById } from "@/lib/socket";
 
@@ -55,6 +55,9 @@ const AssignmentDetails = () => {
   const [bulkPaying, setBulkPaying] = useState<"pay" | "print" | false>(false);
   const [printOnlyIds, setPrintOnlyIds] = useState<string[] | null>(null);
   const canManage = canEditAssignments();
+  const canSeeContainers = canViewContainers();
+  const canCreateContainer = canAddContainers();
+  const canChangeContainers = canEditContainers();
 
   const loadAssignment = () => {
     if (!id) return;
@@ -400,10 +403,11 @@ const AssignmentDetails = () => {
             setIsBasicDialogOpen={setIsBasicDialogOpen}
           />
 
+          {canSeeContainers ? (
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 py-3">
               <div className="flex items-center gap-3">
-                {payableContainers.length && canManage && canEditField("balancePaid") ? (
+                {payableContainers.length && canChangeContainers && canEditField("balancePaid") ? (
                   <Checkbox
                     checked={allPayableSelected}
                     onCheckedChange={(checked) =>
@@ -414,11 +418,11 @@ const AssignmentDetails = () => {
                 ) : null}
                 <CardTitle className="flex items-center text-base">
                   <Package className="mr-2 h-4 w-4 text-amber-600" />
-                  Containers ({assignment?.containers?.length || 0})
+                  Containers ({assignment?.containerCount ?? assignment?.containers?.length ?? 0})
                 </CardTitle>
               </div>
               <div className="flex items-center gap-2">
-                {payableContainers.length && canManage && canEditField("balancePaid") ? (
+                {payableContainers.length && canChangeContainers && canEditField("balancePaid") ? (
                   <Button
                     type="button"
                     size="sm"
@@ -436,7 +440,7 @@ const AssignmentDetails = () => {
                       : ""}
                   </Button>
                 ) : null}
-                {canManage ? (
+                {canCreateContainer ? (
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
                   <Button
@@ -484,12 +488,15 @@ const AssignmentDetails = () => {
               )}
             </CardContent>
           </Card>
+          ) : null}
         </div>
 
+        {canSeeContainers ? (
         <div className="space-y-4 lg:sticky lg:top-20 lg:z-20 lg:self-start print:static">
           <Summary assignment={displayAssignment} />
           <Record assignment={displayAssignment} />
         </div>
+        ) : null}
       </div>
 
       {can(P.LOGS_VIEW) ? (
