@@ -48,7 +48,8 @@ export const LorryOwnerManagement = () => {
   const [editingOwner, setEditingOwner] = useState<LorryOwner | null>(null);
   const [query, setQuery] = useState("");
   const { toast } = useToast();
-  const canManage = can(P.LORRIES_MANAGE);
+  const canAdd = can(P.LORRIES_ADD);
+  const canEdit = can(P.LORRIES_EDIT);
 
   useEntitySync("lorry", (payload) => {
     setOwners((prev) => upsertById(prev, payload));
@@ -117,8 +118,9 @@ export const LorryOwnerManagement = () => {
             className="h-10 pl-9"
           />
         </div>
-        {canManage ? (
+        {canAdd || canEdit ? (
         <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
+          {canAdd ? (
           <DialogTrigger asChild>
             <Button
               onClick={handleAdd}
@@ -128,6 +130,7 @@ export const LorryOwnerManagement = () => {
               Add Owner
             </Button>
           </DialogTrigger>
+          ) : null}
           <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-2xl">
             <DialogHeader>
               <DialogTitle>
@@ -195,7 +198,7 @@ export const LorryOwnerManagement = () => {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    {canManage ? (
+                    {canEdit ? (
                     <Button
                       variant="outline"
                       size="sm"

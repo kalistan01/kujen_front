@@ -50,21 +50,21 @@ function readSidebarOpen() {
 
 const allMenuItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/", permission: null },
-  { id: "users", label: "Users", icon: Users, path: "/users", permission: [P.USERS_VIEW, P.USERS_MANAGE] },
-  { id: "roles", label: "Roles", icon: Shield, path: "/roles", permission: [P.ROLES_MANAGE] },
+  { id: "users", label: "Users", icon: Users, path: "/users", permission: [P.USERS_VIEW, P.USERS_ADD, P.USERS_EDIT] },
+  { id: "roles", label: "Roles", icon: Shield, path: "/roles", permission: [P.ROLES_VIEW, P.ROLES_ADD, P.ROLES_EDIT] },
   {
     id: "lorry-owners",
     label: "Lorry Owners",
     icon: Truck,
     path: "/lorry-owners",
-    permission: [P.LORRIES_VIEW, P.LORRIES_MANAGE],
+    permission: [P.LORRIES_VIEW, P.LORRIES_ADD, P.LORRIES_EDIT],
   },
   {
     id: "settings",
     label: "Settings",
     icon: Settings,
     path: "/settings",
-    permission: [P.DESTINATIONS_VIEW, P.DESTINATIONS_MANAGE],
+    permission: [P.DESTINATIONS_VIEW, P.DESTINATIONS_ADD, P.DESTINATIONS_EDIT],
   },
   {
     id: "assignments",
@@ -82,7 +82,8 @@ const allMenuItems = [
       P.ASSIGNMENTS_VIEW,
       P.ASSIGNMENTS_MANAGE,
       P.LORRIES_VIEW,
-      P.LORRIES_MANAGE,
+      P.LORRIES_ADD,
+      P.LORRIES_EDIT,
     ],
   },
   {

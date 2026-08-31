@@ -11,8 +11,10 @@ import {
   ALL_PERMISSION_IDS,
   DEFAULT_STAFF_PERMISSIONS,
   FIELD_PERMISSIONS,
-  PAGE_PERMISSIONS,
+  PAGE_ACCESS,
+  PAGE_EXTRA_PERMISSIONS,
   hydrateRolePermissions,
+  type PageAccessItem,
   type PermissionItem,
 } from "@/lib/permissions";
 
@@ -95,10 +97,7 @@ function AddRole({
     resetForm();
   }, [editingRole]);
 
-  const handlePermissionChange = (permissionId: number, checked: boolean) => {
-    const nextAllowed = checked
-      ? [...formData.permission, permissionId]
-      : formData.permission.filter((id) => id !== permissionId);
+  const applyAllowed = (nextAllowed: number[]) => {
     setFormData({
       ...formData,
       ...splitPermissions(nextAllowed),
@@ -109,6 +108,70 @@ function AddRole({
       delete next.form;
       return next;
     });
+  };
+
+  const handlePermissionChange = (permissionId: number, checked: boolean) => {
+    const nextAllowed = checked
+      ? [...formData.permission, permissionId]
+      : formData.permission.filter((id) => id !== permissionId);
+    applyAllowed(nextAllowed);
+  };
+
+  const handlePageAccess = (
+    page: PageAccessItem,
+    which: "view" | "add" | "edit",
+    checked: boolean
+  ) => {
+    const next = new Set(formData.permission);
+    if (which === "view") {
+      if (checked) {
+        next.add(page.viewId);
+      } else {
+        next.delete(page.viewId);
+        if (page.addId) next.delete(page.addId);
+        if (page.editId) next.delete(page.editId);
+      }
+    } else if (which === "add" && page.addId) {
+      if (checked) {
+        next.add(page.viewId);
+        next.add(page.addId);
+      } else {
+        next.delete(page.addId);
+      }
+    } else if (which === "edit" && page.editId) {
+      if (checked) {
+        next.add(page.viewId);
+        next.add(page.editId);
+      } else {
+        next.delete(page.editId);
+      }
+    }
+    applyAllowed([...next]);
+  };
+
+  const handleFieldAccess = (
+    viewId: number,
+    editId: number | undefined,
+    which: "view" | "edit",
+    checked: boolean
+  ) => {
+    const next = new Set(formData.permission);
+    if (which === "view") {
+      if (checked) {
+        next.add(viewId);
+      } else {
+        next.delete(viewId);
+        if (editId) next.delete(editId);
+      }
+    } else if (editId) {
+      if (checked) {
+        next.add(viewId);
+        next.add(editId);
+      } else {
+        next.delete(editId);
+      }
+    }
+    applyAllowed([...next]);
   };
 
   const handleGroupToggle = (items: PermissionItem[], checked: boolean) => {
@@ -233,6 +296,157 @@ function AddRole({
     }
   };
 
+  const renderPageAccess = () => {
+    const isChecked = (id: number) =>
+      formData.admin || formData.permission.includes(id);
+    const viewIds = PAGE_ACCESS.map((page) => page.viewId);
+    const addIds = PAGE_ACCESS.map((page) => page.addId).filter(
+      (id): id is number => Boolean(id)
+    );
+    const editIds = PAGE_ACCESS.map((page) => page.editId).filter(
+      (id): id is number => Boolean(id)
+    );
+    const allView = viewIds.every((id) => formData.permission.includes(id));
+    const allAdd = addIds.every((id) => formData.permission.includes(id));
+    const allEdit = editIds.every((id) => formData.permission.includes(id));
+
+    const toggleColumn = (
+      ids: number[],
+      checked: boolean,
+      extras: number[] = []
+    ) => {
+      const next = new Set(formData.permission);
+      ids.forEach((id) => (checked ? next.add(id) : next.delete(id)));
+      if (checked) extras.forEach((id) => next.add(id));
+      if (!checked && extras.length) extras.forEach((id) => next.delete(id));
+      applyAllowed([...next]);
+    };
+
+    return (
+      <div>
+        <div className="mb-2 flex items-center justify-between">
+          <Label>Pages</Label>
+        </div>
+        <div className="overflow-hidden rounded-lg border border-border/70">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/80">
+              <tr className="border-b border-border/70">
+                <th className="px-3 py-2 text-left font-medium">Page</th>
+                <th className="w-[4.5rem] px-2 py-2 text-center font-medium">
+                  <div className="flex flex-col items-center gap-1">
+                    <span>View</span>
+                    {!formData.admin ? (
+                      <Checkbox
+                        checked={allView}
+                        onCheckedChange={(checked) =>
+                          toggleColumn(
+                            viewIds,
+                            checked === true,
+                            checked === true ? [] : [...addIds, ...editIds]
+                          )
+                        }
+                        aria-label="Toggle all page view"
+                      />
+                    ) : null}
+                  </div>
+                </th>
+                <th className="w-[4.5rem] px-2 py-2 text-center font-medium">
+                  <div className="flex flex-col items-center gap-1">
+                    <span>Add</span>
+                    {!formData.admin ? (
+                      <Checkbox
+                        checked={allAdd}
+                        onCheckedChange={(checked) =>
+                          toggleColumn(
+                            addIds,
+                            checked === true,
+                            checked === true ? viewIds : []
+                          )
+                        }
+                        aria-label="Toggle all page add"
+                      />
+                    ) : null}
+                  </div>
+                </th>
+                <th className="w-[4.5rem] px-2 py-2 text-center font-medium">
+                  <div className="flex flex-col items-center gap-1">
+                    <span>Edit</span>
+                    {!formData.admin ? (
+                      <Checkbox
+                        checked={allEdit}
+                        onCheckedChange={(checked) =>
+                          toggleColumn(
+                            editIds,
+                            checked === true,
+                            checked === true ? viewIds : []
+                          )
+                        }
+                        aria-label="Toggle all page edit"
+                      />
+                    ) : null}
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {PAGE_ACCESS.map((page) => (
+                <tr
+                  key={page.viewId}
+                  className="border-b border-border/50 last:border-0"
+                >
+                  <td className="px-3 py-2">
+                    <div className="font-medium">{page.name}</div>
+                    <p className="text-xs text-muted-foreground">
+                      {page.description}
+                    </p>
+                  </td>
+                  <td className="px-2 py-2 text-center">
+                    <Checkbox
+                      checked={isChecked(page.viewId)}
+                      disabled={formData.admin}
+                      onCheckedChange={(checked) =>
+                        handlePageAccess(page, "view", checked === true)
+                      }
+                      aria-label={`View ${page.name}`}
+                    />
+                  </td>
+                  <td className="px-2 py-2 text-center">
+                    {page.addId ? (
+                      <Checkbox
+                        checked={isChecked(page.addId)}
+                        disabled={formData.admin}
+                        onCheckedChange={(checked) =>
+                          handlePageAccess(page, "add", checked === true)
+                        }
+                        aria-label={`Add ${page.name}`}
+                      />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </td>
+                  <td className="px-2 py-2 text-center">
+                    {page.editId ? (
+                      <Checkbox
+                        checked={isChecked(page.editId)}
+                        disabled={formData.admin}
+                        onCheckedChange={(checked) =>
+                          handlePageAccess(page, "edit", checked === true)
+                        }
+                        aria-label={`Edit ${page.name}`}
+                      />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
   const renderGroup = (title: string, items: PermissionItem[]) => {
     const allChecked = items.every((item) =>
       formData.permission.includes(item.id)
@@ -282,6 +496,149 @@ function AddRole({
     );
   };
 
+  const renderFieldPermissions = () => {
+    const viewIds = FIELD_PERMISSIONS.map((item) => item.id);
+    const editIds = FIELD_PERMISSIONS.map((item) => item.editId).filter(
+      (id): id is number => Boolean(id)
+    );
+    const allView = viewIds.every((id) => formData.permission.includes(id));
+    const allEdit = editIds.every((id) => formData.permission.includes(id));
+    const isChecked = (id: number) =>
+      formData.admin || formData.permission.includes(id);
+
+    return (
+      <div>
+        <div className="mb-2 flex items-center justify-between">
+          <Label>Assignment fields</Label>
+          {!formData.admin && (
+            <button
+              type="button"
+              className="text-xs font-medium text-muted-foreground hover:text-foreground"
+              onClick={() =>
+                handleGroupToggle(
+                  [
+                    ...FIELD_PERMISSIONS,
+                    ...FIELD_PERMISSIONS.filter((item) => item.editId).map(
+                      (item) => ({
+                        ...item,
+                        id: item.editId as number,
+                      })
+                    ),
+                  ],
+                  !(allView && allEdit)
+                )
+              }
+            >
+              {allView && allEdit ? "Clear" : "Select all"}
+            </button>
+          )}
+        </div>
+        <div className="max-h-64 overflow-y-auto rounded-lg border border-border/70">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-muted/80">
+              <tr className="border-b border-border/70">
+                <th className="px-3 py-2 text-left font-medium">Field</th>
+                <th className="w-[4.5rem] px-2 py-2 text-center font-medium">
+                  <div className="flex flex-col items-center gap-1">
+                    <span>View</span>
+                    {!formData.admin ? (
+                      <Checkbox
+                        checked={allView}
+                        onCheckedChange={(checked) => {
+                          const next = new Set(formData.permission);
+                          viewIds.forEach((id) =>
+                            checked ? next.add(id) : next.delete(id)
+                          );
+                          if (!checked) {
+                            editIds.forEach((id) => next.delete(id));
+                          }
+                          applyAllowed([...next]);
+                        }}
+                        aria-label="Toggle all field view"
+                      />
+                    ) : null}
+                  </div>
+                </th>
+                <th className="w-[4.5rem] px-2 py-2 text-center font-medium">
+                  <div className="flex flex-col items-center gap-1">
+                    <span>Edit</span>
+                    {!formData.admin ? (
+                      <Checkbox
+                        checked={allEdit}
+                        onCheckedChange={(checked) => {
+                          const next = new Set(formData.permission);
+                          if (checked) {
+                            viewIds.forEach((id) => next.add(id));
+                            editIds.forEach((id) => next.add(id));
+                          } else {
+                            editIds.forEach((id) => next.delete(id));
+                          }
+                          applyAllowed([...next]);
+                        }}
+                        aria-label="Toggle all field edit"
+                      />
+                    ) : null}
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {FIELD_PERMISSIONS.map((item) => (
+                <tr
+                  key={item.id}
+                  className="border-b border-border/50 last:border-0"
+                >
+                  <td className="px-3 py-2">
+                    <div className="font-medium">{item.name}</div>
+                    <p className="text-xs text-muted-foreground">
+                      {item.description}
+                    </p>
+                  </td>
+                  <td className="px-2 py-2 text-center">
+                    <Checkbox
+                      id={`field-view-${item.id}`}
+                      checked={isChecked(item.id)}
+                      disabled={formData.admin}
+                      onCheckedChange={(checked) =>
+                        handleFieldAccess(
+                          item.id,
+                          item.editId,
+                          "view",
+                          checked === true
+                        )
+                      }
+                      aria-label={`View ${item.name}`}
+                    />
+                  </td>
+                  <td className="px-2 py-2 text-center">
+                    {item.editId ? (
+                      <Checkbox
+                        id={`field-edit-${item.editId}`}
+                        checked={isChecked(item.editId)}
+                        disabled={formData.admin}
+                        onCheckedChange={(checked) =>
+                          handleFieldAccess(
+                            item.id,
+                            item.editId,
+                            "edit",
+                            checked === true
+                          )
+                        }
+                        aria-label={`Edit ${item.name}`}
+                      />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-4">
       {errors.form ? (
@@ -313,8 +670,9 @@ function AddRole({
           </p>
         ) : null}
       </div>
-      {renderGroup("Pages", PAGE_PERMISSIONS)}
-      {renderGroup("Assignment fields", FIELD_PERMISSIONS)}
+      {renderPageAccess()}
+      {renderGroup("Assignments and logs", PAGE_EXTRA_PERMISSIONS)}
+      {renderFieldPermissions()}
       <div className="flex items-center space-x-2">
         <Checkbox
           id="admin"

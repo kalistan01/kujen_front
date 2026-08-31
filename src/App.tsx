@@ -45,7 +45,7 @@ const App = () => (
                 <Route
                   path="/settings"
                   element={
-                    <RequirePermission ids={[P.DESTINATIONS_VIEW, P.DESTINATIONS_MANAGE]}>
+                    <RequirePermission ids={[P.DESTINATIONS_VIEW, P.DESTINATIONS_ADD, P.DESTINATIONS_EDIT]}>
                       <SettingsPage />
                     </RequirePermission>
                   }
@@ -53,7 +53,7 @@ const App = () => (
                 <Route
                   path="/destinations"
                   element={
-                    <RequirePermission ids={[P.DESTINATIONS_VIEW, P.DESTINATIONS_MANAGE]}>
+                    <RequirePermission ids={[P.DESTINATIONS_VIEW, P.DESTINATIONS_ADD, P.DESTINATIONS_EDIT]}>
                       <Navigate to="/settings" replace />
                     </RequirePermission>
                   }
@@ -61,7 +61,7 @@ const App = () => (
                 <Route
                   path="/users"
                   element={
-                    <RequirePermission ids={[P.USERS_VIEW, P.USERS_MANAGE]}>
+                    <RequirePermission ids={[P.USERS_VIEW, P.USERS_ADD, P.USERS_EDIT]}>
                       <UserManagement />
                     </RequirePermission>
                   }
@@ -69,7 +69,7 @@ const App = () => (
                 <Route
                   path="/roles"
                   element={
-                    <RequirePermission ids={[P.ROLES_MANAGE]}>
+                    <RequirePermission ids={[P.ROLES_VIEW, P.ROLES_ADD, P.ROLES_EDIT]}>
                       <RoleManagement />
                     </RequirePermission>
                   }
@@ -85,7 +85,7 @@ const App = () => (
                 <Route
                   path="/lorry-owners"
                   element={
-                    <RequirePermission ids={[P.LORRIES_VIEW, P.LORRIES_MANAGE]}>
+                    <RequirePermission ids={[P.LORRIES_VIEW, P.LORRIES_ADD, P.LORRIES_EDIT]}>
                       <LorryOwnerManagement />
                     </RequirePermission>
                   }
@@ -98,7 +98,8 @@ const App = () => (
                         P.ASSIGNMENTS_VIEW,
                         P.ASSIGNMENTS_MANAGE,
                         P.LORRIES_VIEW,
-                        P.LORRIES_MANAGE,
+                        P.LORRIES_ADD,
+                        P.LORRIES_EDIT,
                       ]}
                     >
                       <ReportsPage />

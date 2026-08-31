@@ -21,7 +21,7 @@ export function ReportsPage() {
   const location = useLocation();
   const { toast } = useToast();
   const canAssignments = can(P.ASSIGNMENTS_VIEW) || can(P.ASSIGNMENTS_MANAGE);
-  const canLorries = can(P.LORRIES_VIEW) || can(P.LORRIES_MANAGE);
+  const canLorries = can(P.LORRIES_VIEW) || can(P.LORRIES_ADD) || can(P.LORRIES_EDIT);
   const isLorryTab = location.pathname.endsWith("/lorries");
 
   const [assignments, setAssignments] = useState<any[]>([]);

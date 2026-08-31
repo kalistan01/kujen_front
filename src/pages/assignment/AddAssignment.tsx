@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode, cloneElement, isValidElement } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,7 +26,7 @@ import { todayDateInput, applyAdvancedDate } from "./lib/financials";
 import { emptyFcl, parseFcl, type FclState } from "./lib/fcl";
 import FclRecord from "./components/FclRecord";
 import { formatVocNo } from "./lib/voc";
-import { canSeeField, omitHiddenContainerFields } from "@/lib/permissions";
+import { canEditField, canSeeField, omitHiddenContainerFields } from "@/lib/permissions";
 import {
   firstErrorMessage,
   mapContainerApiError,
@@ -54,13 +54,29 @@ function Field({
   error?: string;
 }) {
   if (field && !canSeeField(field)) return null;
+  const locked = Boolean(field && !canEditField(field));
+  const child =
+    locked && isValidElement(children)
+      ? cloneElement(children as React.ReactElement<{ disabled?: boolean; className?: string }>, {
+          disabled:
+            Boolean(
+              (children.props as { disabled?: boolean }).disabled
+            ) || locked,
+          className: [
+            (children.props as { className?: string }).className,
+            "bg-muted",
+          ]
+            .filter(Boolean)
+            .join(" "),
+        })
+      : children;
   return (
     <div className={`space-y-1.5 ${className}`}>
       <Label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
         {label}
         {required ? <span className="text-destructive"> *</span> : null}
       </Label>
-      {children}
+      {child}
       {error ? (
         <p className="text-xs font-medium text-destructive">{error}</p>
       ) : null}

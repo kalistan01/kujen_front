@@ -25,7 +25,7 @@ import AddRole from "./AddRole";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
-import { PAGE_PERMISSIONS } from "@/lib/permissions";
+import { PAGE_PERMISSIONS, can, P } from "@/lib/permissions";
 import { useEntitySync } from "@/hooks/useEntitySync";
 import { upsertById } from "@/lib/socket";
 import TablePagination from "@/components/TablePagination";
@@ -66,6 +66,8 @@ export const RoleManagement = () => {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const { toast } = useToast();
+  const canAdd = can(P.ROLES_ADD);
+  const canEdit = can(P.ROLES_EDIT);
 
   const handleAdd = () => {
     setEditingRole(null);
@@ -190,16 +192,18 @@ export const RoleManagement = () => {
           />
         </div>
         <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
-          <DialogTrigger asChild>
-            <Button
-              onClick={handleAdd}
-              className="gap-2 bg-[hsl(var(--brand-navy))] text-white hover:bg-[hsl(var(--brand-navy-muted))]"
-            >
-              <Plus className="h-4 w-4" />
-              Add Role
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+          {canAdd ? (
+            <DialogTrigger asChild>
+              <Button
+                onClick={handleAdd}
+                className="gap-2 bg-[hsl(var(--brand-navy))] text-white hover:bg-[hsl(var(--brand-navy-muted))]"
+              >
+                <Plus className="h-4 w-4" />
+                Add Role
+              </Button>
+            </DialogTrigger>
+          ) : null}
+          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
             <DialogHeader>
               <DialogTitle>
                 {editingRole ? "Edit Role" : "Add New Role"}
@@ -314,7 +318,7 @@ export const RoleManagement = () => {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {!role.admin ? (
+                          {!role.admin && canEdit ? (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -331,7 +335,7 @@ export const RoleManagement = () => {
                           {formatCreatedAt(role.createdAt)}
                         </TableCell>
                         <TableCell className="text-right">
-                          {!role.admin && (
+                          {!role.admin && canEdit && (
                             <Button
                               variant="outline"
                               size="sm"

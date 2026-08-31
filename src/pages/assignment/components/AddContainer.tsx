@@ -21,7 +21,7 @@ import DestinationSelect, {
 } from "./DestinationSelect";
 import { todayDateInput, applyAdvancedDate } from "../lib/financials";
 import { formatVocNo } from "../lib/voc";
-import { omitHiddenContainerFields } from "@/lib/permissions";
+import { fieldLockProps, omitHiddenContainerFields } from "@/lib/permissions";
 import { FieldGate } from "@/components/RequirePermission";
 import {
   firstErrorMessage,
@@ -343,7 +343,7 @@ function AddContainer({
                     updateContainer("weight", parseFloat(e.target.value) || 0)
                   }
                   placeholder="Enter weight"
-                  className={errors.weight ? "border-destructive" : ""}
+                  {...fieldLockProps("weight", errors.weight ? "border-destructive" : "")}
                 />
                 {errors.weight ? (
                   <p className="text-xs font-medium text-destructive">
@@ -362,7 +362,7 @@ function AddContainer({
                     updateContainer("dayHire", parseFloat(e.target.value) || 0)
                   }
                   placeholder="Enter day hire"
-                  className={errors.dayHire ? "border-destructive" : ""}
+                  {...fieldLockProps("dayHire", errors.dayHire ? "border-destructive" : "")}
                 />
                 {errors.dayHire ? (
                   <p className="text-xs font-medium text-destructive">
@@ -381,7 +381,7 @@ function AddContainer({
                     updateContainer("advanced", parseFloat(e.target.value) || 0)
                   }
                   placeholder="Enter advanced amount"
-                  className={errors.advanced ? "border-destructive" : ""}
+                  {...fieldLockProps("advanced", errors.advanced ? "border-destructive" : "")}
                 />
                 {errors.advanced ? (
                   <p className="text-xs font-medium text-destructive">
@@ -399,7 +399,11 @@ function AddContainer({
                   onChange={(e) =>
                     updateContainer("advancedDate", e.target.value)
                   }
-                  disabled={!(Number(containers.advanced) > 0)}
+                  {...fieldLockProps("advancedDate")}
+                  disabled={
+                    !(Number(containers.advanced) > 0) ||
+                    fieldLockProps("advancedDate").disabled
+                  }
                 />
               </div>
             </FieldGate>
@@ -413,6 +417,7 @@ function AddContainer({
                     updateContainer("outHire", parseFloat(e.target.value) || 0)
                   }
                   placeholder="Enter out hire"
+                  {...fieldLockProps("outHire")}
                 />
               </div>
             </FieldGate>
@@ -426,6 +431,7 @@ function AddContainer({
                     updateContainer("other", parseFloat(e.target.value) || 0)
                   }
                   placeholder="Enter other amount"
+                  {...fieldLockProps("other")}
                 />
               </div>
             </FieldGate>
@@ -439,6 +445,7 @@ function AddContainer({
                     updateContainer("agentFee", parseFloat(e.target.value) || 0)
                   }
                   placeholder="Enter agent fee"
+                  {...fieldLockProps("agentFee")}
                 />
               </div>
             </FieldGate>
@@ -455,6 +462,7 @@ function AddContainer({
                     )
                   }
                   placeholder="Enter transport commission"
+                  {...fieldLockProps("transportCommission")}
                 />
               </div>
             </FieldGate>
@@ -468,6 +476,7 @@ function AddContainer({
                     updateContainer("return", parseFloat(e.target.value) || 0)
                   }
                   placeholder="Enter return amount"
+                  {...fieldLockProps("return")}
                 />
               </div>
             </FieldGate>

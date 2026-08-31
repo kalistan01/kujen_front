@@ -56,7 +56,8 @@ export const UserManagement = () => {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const { toast } = useToast();
-  const canManage = can(P.USERS_MANAGE);
+  const canAdd = can(P.USERS_ADD);
+  const canEdit = can(P.USERS_EDIT);
 
   const loadUsers = () => {
     setLoading(true);
@@ -241,17 +242,19 @@ export const UserManagement = () => {
             className="h-10 pl-9"
           />
         </div>
-        {canManage ? (
+        {canAdd || canEdit ? (
           <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
-            <DialogTrigger asChild>
-              <Button
-                onClick={handleAdd}
-                className="gap-2 bg-[hsl(var(--brand-navy))] text-white hover:bg-[hsl(var(--brand-navy-muted))]"
-              >
-                <Plus className="h-4 w-4" />
-                Add User
-              </Button>
-            </DialogTrigger>
+            {canAdd ? (
+              <DialogTrigger asChild>
+                <Button
+                  onClick={handleAdd}
+                  className="gap-2 bg-[hsl(var(--brand-navy))] text-white hover:bg-[hsl(var(--brand-navy-muted))]"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add User
+                </Button>
+              </DialogTrigger>
+            ) : null}
             <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
               <DialogHeader>
                 <DialogTitle>
@@ -351,7 +354,7 @@ export const UserManagement = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col items-start gap-1">
-                          {canManage && user?.roleName !== "admin" ? (
+                          {canEdit && user?.roleName !== "admin" ? (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -396,7 +399,7 @@ export const UserManagement = () => {
                             <Eye className="h-4 w-4" />
                             View
                           </Button>
-                          {canManage ? (
+                          {canEdit ? (
                             <Button
                               variant="outline"
                               size="sm"

@@ -33,7 +33,7 @@ import {
   toAmount,
   type HeldUpRateOption,
 } from "../lib/financials";
-import { canSeeField, canManageAssignments } from "@/lib/permissions";
+import { canEditField, canSeeField, canManageAssignments } from "@/lib/permissions";
 import { parseFcl, type FclState } from "../lib/fcl";
 import FclRecord from "./FclRecord";
 interface ContainerType {
@@ -265,7 +265,7 @@ function Containers({
     <div className={`space-y-3 rounded-lg border border-l-4 border-border/80 p-4 ${statusTone}`}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex min-w-0 items-start gap-3">
-          {balance > 0 && container?._id && onSelect && canManage ? (
+          {balance > 0 && container?._id && onSelect && canManage && canEditField("balancePaid") ? (
             <Checkbox
               className="mt-1"
               checked={selected}
@@ -302,7 +302,7 @@ function Containers({
               {(status || "pending").replace(/-/g, " ")}
             </span>
           )}
-          {canManage && canSeeField("heldUp") ? (
+          {canManage && canEditField("heldUp") ? (
             <Button
               type="button"
               variant="outline"
@@ -449,7 +449,7 @@ function Containers({
             <span className="font-bold">{formatMoney(balance)}</span>
           </p>
         </div>
-        {balance > 0 && canManage && canSeeField("balancePaid") ? (
+        {balance > 0 && canManage && canEditField("balancePaid") ? (
           <Dialog
             open={isPayOpen}
             onOpenChange={(open) => {

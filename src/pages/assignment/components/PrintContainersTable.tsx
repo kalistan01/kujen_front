@@ -19,6 +19,8 @@ const SHORT_LABELS: Record<string, string> = {
   outHire: "Out Hire",
   other: "Other",
   heldUp: "Held Up",
+  agentFee: "Agent Fee",
+  transportCommission: "Tpt Comm",
   return: "Return",
 };
 
@@ -33,9 +35,7 @@ function PrintContainersTable({
   containers: any[];
   showTotalsRow?: boolean;
 }) {
-  const chargeColumns = visibleChargeColumns().filter(
-    (field) => field.key !== "agentFee" && field.key !== "transportCommission"
-  );
+  const chargeColumns = visibleChargeColumns();
   const showTotals = canSeeField("totals");
 
   const sums = containers.reduce(

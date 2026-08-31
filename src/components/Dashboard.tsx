@@ -67,9 +67,10 @@ const moduleTone: Record<string, string> = {
 
 export const Dashboard = () => {
   const navigate = useNavigate();
-  const canUsers = can(P.USERS_VIEW) || can(P.USERS_MANAGE);
-  const canLorries = can(P.LORRIES_VIEW) || can(P.LORRIES_MANAGE);
-  const canDestinations = can(P.DESTINATIONS_VIEW) || can(P.DESTINATIONS_MANAGE);
+  const canUsers = can(P.USERS_VIEW) || can(P.USERS_ADD) || can(P.USERS_EDIT);
+  const canLorries = can(P.LORRIES_VIEW) || can(P.LORRIES_ADD) || can(P.LORRIES_EDIT);
+  const canDestinations =
+    can(P.DESTINATIONS_VIEW) || can(P.DESTINATIONS_ADD) || can(P.DESTINATIONS_EDIT);
   const canAssignments = can(P.ASSIGNMENTS_VIEW) || can(P.ASSIGNMENTS_MANAGE);
   const canLogs = can(P.LOGS_VIEW);
   const [stats, setStats] = useState([
@@ -379,11 +380,11 @@ export const Dashboard = () => {
               .filter((action) => {
                 switch (action.href) {
                   case "/users":
-                    return can(P.USERS_MANAGE);
+                    return can(P.USERS_ADD);
                   case "/lorry-owners":
-                    return can(P.LORRIES_MANAGE);
+                    return can(P.LORRIES_ADD);
                   case "/settings":
-                    return can(P.DESTINATIONS_MANAGE);
+                    return can(P.DESTINATIONS_ADD);
                   case "/assignments":
                     return can(P.ASSIGNMENTS_MANAGE);
                   default:

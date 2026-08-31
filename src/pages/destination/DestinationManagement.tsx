@@ -66,7 +66,8 @@ export const DestinationManagement = ({
     useState<Destination | null>(null);
   const [query, setQuery] = useState("");
   const { toast } = useToast();
-  const canManage = can(P.DESTINATIONS_MANAGE);
+  const canAdd = can(P.DESTINATIONS_ADD);
+  const canEdit = can(P.DESTINATIONS_EDIT);
 
   useEffect(() => {
     setLoading(true);
@@ -173,17 +174,19 @@ export const DestinationManagement = ({
           className="h-10 pl-9"
         />
       </div>
-      {canManage ? (
+      {canAdd || canEdit ? (
         <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
-          <DialogTrigger asChild>
-            <Button
-              onClick={handleAdd}
-              className="gap-2 bg-[hsl(var(--brand-navy))] text-white hover:bg-[hsl(var(--brand-navy-muted))]"
-            >
-              <Plus className="h-4 w-4" />
-              Add Route
-            </Button>
-          </DialogTrigger>
+          {canAdd ? (
+            <DialogTrigger asChild>
+              <Button
+                onClick={handleAdd}
+                className="gap-2 bg-[hsl(var(--brand-navy))] text-white hover:bg-[hsl(var(--brand-navy-muted))]"
+              >
+                <Plus className="h-4 w-4" />
+                Add Route
+              </Button>
+            </DialogTrigger>
+          ) : null}
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>
@@ -277,7 +280,7 @@ export const DestinationManagement = ({
                     </TableCell>
                     <TableCell>{destination.location}</TableCell>
                     <TableCell>
-                      {canManage ? (
+                      {canEdit ? (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -296,7 +299,7 @@ export const DestinationManagement = ({
                       {formatCreatedAt(destination.createdAt)}
                     </TableCell>
                     <TableCell className="text-right">
-                      {canManage ? (
+                      {canEdit ? (
                       <Button
                         variant="outline"
                         size="sm"

@@ -9,7 +9,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Package, Printer, Trash2, Plus, ArrowLeft, FileDown, FileSpreadsheet, Banknote } from "lucide-react";
+import { Package, Printer, Trash2, Plus, ArrowLeft, FileDown, FileSpreadsheet, Banknote, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/apiError";
 import baseUrl from "@/api/baseUrl";
@@ -30,7 +30,7 @@ import {
   todayDateInput,
   type HeldUpRateOption,
 } from "./lib/financials";
-import { can, canManageAssignments, canSeeField, P } from "@/lib/permissions";
+import { can, canEditField, canManageAssignments, P } from "@/lib/permissions";
 import { useEntitySync } from "@/hooks/useEntitySync";
 import { upsertById } from "@/lib/socket";
 
@@ -39,6 +39,10 @@ const AssignmentDetails = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [adminEmail, setAdminEmail] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isBasicDialogOpen, setIsBasicDialogOpen] = useState(false);
   const [open, setOpen] = useState(false);
@@ -259,11 +263,31 @@ const AssignmentDetails = () => {
       });
   };
 
+  const resetDeleteForm = () => {
+    setAdminEmail("");
+    setAdminPassword("");
+    setShowAdminPassword(false);
+    setDeleting(false);
+  };
+
+  const handleDeleteDialog = (open: boolean) => {
+    setIsEditDialogOpen(open);
+    if (!open) resetDeleteForm();
+  };
+
   const confrimDelete = () => {
+    if (!id || !adminEmail.trim() || !adminPassword || deleting) return;
+    setDeleting(true);
     baseUrl
-      .delete("/assignlorry/" + id)
+      .delete("/assignlorry/" + id, {
+        data: {
+          email: adminEmail.trim(),
+          password: adminPassword,
+        },
+      })
       .then(async () => {
         setIsEditDialogOpen(false);
+        resetDeleteForm();
         toast({
           title: "Assignment Deleted",
           description: "Assignment has been successfully deleted.",
@@ -280,6 +304,9 @@ const AssignmentDetails = () => {
           ),
           variant: "destructive",
         });
+      })
+      .finally(() => {
+        setDeleting(false);
       });
   };
 
@@ -376,7 +403,7 @@ const AssignmentDetails = () => {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 py-3">
               <div className="flex items-center gap-3">
-                {payableContainers.length && canManage ? (
+                {payableContainers.length && canManage && canEditField("balancePaid") ? (
                   <Checkbox
                     checked={allPayableSelected}
                     onCheckedChange={(checked) =>
@@ -391,7 +418,7 @@ const AssignmentDetails = () => {
                 </CardTitle>
               </div>
               <div className="flex items-center gap-2">
-                {payableContainers.length && canManage && canSeeField("balancePaid") ? (
+                {payableContainers.length && canManage && canEditField("balancePaid") ? (
                   <Button
                     type="button"
                     size="sm"
@@ -548,23 +575,81 @@ const AssignmentDetails = () => {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+      <Dialog open={isEditDialogOpen} onOpenChange={handleDeleteDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Delete Assignment</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
             This will permanently remove the assignment and cannot be undone.
+            An administrator must confirm with their email and password.
           </p>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="admin-email">Admin email</Label>
+              <Input
+                id="admin-email"
+                type="email"
+                autoComplete="off"
+                value={adminEmail}
+                onChange={(e) => setAdminEmail(e.target.value)}
+                placeholder="admin@example.com"
+                disabled={deleting}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="admin-password">Admin password</Label>
+              <div className="relative">
+                <Input
+                  id="admin-password"
+                  type={showAdminPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                  placeholder="Enter admin password"
+                  className="pr-10"
+                  disabled={deleting}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-1.5 top-1/2 h-8 w-8 -translate-y-1/2 p-0"
+                  onClick={() => setShowAdminPassword((open) => !open)}
+                  disabled={deleting}
+                >
+                  {showAdminPassword ? (
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
           <div className="flex justify-end gap-2">
             <Button
               variant="outline"
-              onClick={() => setIsEditDialogOpen(false)}
+              onClick={() => handleDeleteDialog(false)}
+              disabled={deleting}
             >
               Cancel
             </Button>
-            <Button variant="destructive" onClick={() => confrimDelete()}>
-              Delete
+            <Button
+              variant="destructive"
+              onClick={() => confrimDelete()}
+              disabled={
+                deleting || !adminEmail.trim() || !adminPassword
+              }
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
             </Button>
           </div>
         </DialogContent>

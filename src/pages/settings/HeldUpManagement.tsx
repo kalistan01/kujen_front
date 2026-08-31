@@ -118,7 +118,7 @@ export const HeldUpManagement = () => {
             className="h-10 pl-9"
           />
         </div>
-        {can(P.DESTINATIONS_MANAGE) ? (
+        {can(P.DESTINATIONS_ADD) ? (
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button className="gap-2 bg-[hsl(var(--brand-navy))] text-white hover:bg-[hsl(var(--brand-navy-muted))]">
