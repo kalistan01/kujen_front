@@ -1,14 +1,7 @@
 import { useMemo, useState } from "react";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
+import { Input } from "@/components/ui/input";
 import {
   Popover,
   PopoverContent,
@@ -37,6 +30,10 @@ function labelOf(lorry: LorryOption) {
   return [lorry.lorryNum, lorry.capacity, owner].filter(Boolean).join(" - ");
 }
 
+function stopScrollLock(event: React.WheelEvent | React.TouchEvent) {
+  event.stopPropagation();
+}
+
 function LorrySelect({
   lorries,
   value,
@@ -63,7 +60,14 @@ function LorrySelect({
   );
 
   return (
-    <Popover open={open} onOpenChange={setOpen} modal={false}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) setSearch("");
+      }}
+      modal
+    >
       <PopoverTrigger asChild>
         <Button
           type="button"
@@ -82,40 +86,57 @@ function LorrySelect({
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[var(--radix-popover-trigger-width)] p-0"
+        className="z-[100] w-[var(--radix-popover-trigger-width)] p-0"
         align="start"
+        onOpenAutoFocus={(event) => event.preventDefault()}
+        onCloseAutoFocus={(event) => event.preventDefault()}
+        onWheel={stopScrollLock}
+        onTouchMove={stopScrollLock}
       >
-        <Command shouldFilter={false}>
-          <CommandInput
-            placeholder="Search lorry number or owner"
+        <div className="border-b p-2">
+          <Input
+            autoFocus
             value={search}
-            onValueChange={setSearch}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search lorry number or owner"
+            className="h-9"
           />
-          <CommandList>
-            <CommandEmpty>No lorry found.</CommandEmpty>
-            <CommandGroup>
-              {filtered.map((lorry) => (
-                <CommandItem
-                  key={lorry._id}
-                  value={lorry._id}
-                  onSelect={() => {
-                    onChange(lorry._id);
-                    setOpen(false);
-                    setSearch("");
-                  }}
-                >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      selectedId === lorry._id ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  {labelOf(lorry)}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
+        </div>
+        <div
+          className="max-h-60 overflow-y-auto overscroll-contain p-1"
+          onWheel={stopScrollLock}
+          onTouchMove={stopScrollLock}
+        >
+          {filtered.length ? (
+            filtered.map((lorry) => (
+              <button
+                key={lorry._id}
+                type="button"
+                className={cn(
+                  "flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground",
+                  selectedId === lorry._id ? "bg-accent" : ""
+                )}
+                onClick={() => {
+                  onChange(lorry._id);
+                  setOpen(false);
+                  setSearch("");
+                }}
+              >
+                <Check
+                  className={cn(
+                    "mr-2 h-4 w-4 shrink-0",
+                    selectedId === lorry._id ? "opacity-100" : "opacity-0"
+                  )}
+                />
+                <span className="truncate">{labelOf(lorry)}</span>
+              </button>
+            ))
+          ) : (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              No lorry found.
+            </p>
+          )}
+        </div>
       </PopoverContent>
     </Popover>
   );
