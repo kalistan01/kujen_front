@@ -64,7 +64,7 @@ interface ContainerType {
   agentFee?: number;
   transportCommission?: number;
   return?: number;
-  status?: "pending" | "in-progress" | "completed";
+  status?: "pending" | "in-progress" | "advanced" | "completed";
   fcl?: unknown;
   note?: string;
 }
@@ -117,9 +117,9 @@ function Containers({
 
   const { toast } = useToast();
   const { id } = useParams();
-  const [status, setStatus] = useState<"pending" | "in-progress" | "completed">(
-    container?.status || "pending"
-  );
+  const [status, setStatus] = useState<
+    "pending" | "in-progress" | "advanced" | "completed"
+  >(container?.status || "pending");
   const [fcl, setFcl] = useState<FclState>(() => parseFcl(container?.fcl));
 
   useEffect(() => {
@@ -128,7 +128,7 @@ function Containers({
   }, [container?.status, container?.fcl]);
 
   const toggleStatus = (
-    containerId: "pending" | "in-progress" | "completed"
+    containerId: "pending" | "in-progress" | "advanced" | "completed"
   ) => {
     const previous = status;
     setStatus(containerId);
@@ -260,7 +260,9 @@ function Containers({
       ? "border-l-emerald-500"
       : status === "in-progress"
         ? "border-l-sky-500"
-        : "border-l-amber-500";
+        : status === "advanced"
+          ? "border-l-violet-500"
+          : "border-l-amber-500";
 
   return (
     <div className={`space-y-3 rounded-lg border border-l-4 border-border/80 p-4 ${statusTone}`}>
@@ -285,7 +287,9 @@ function Containers({
           {canManage ? (
           <Select
             defaultValue={container?.status}
-            onValueChange={(value: "pending" | "in-progress" | "completed") => {
+            onValueChange={(
+              value: "pending" | "in-progress" | "advanced" | "completed"
+            ) => {
               toggleStatus(value);
             }}
           >
@@ -293,6 +297,7 @@ function Containers({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="advanced">Advanced</SelectItem>
               <SelectItem value="pending">Pending</SelectItem>
               <SelectItem value="in-progress">In Progress</SelectItem>
               <SelectItem value="completed">Completed</SelectItem>

@@ -191,6 +191,7 @@ export function AssignmentReports({
       ["Containers", overview.containers],
       ["Pending", overview.status.pending],
       ["In progress", overview.status["in-progress"]],
+      ["Advanced", overview.status.advanced],
       ["Completed", overview.status.completed],
       ...(money
         ? [
@@ -272,7 +273,11 @@ function OverviewView({
         />
         <KpiCard
           label="In progress"
-          value={String(overview.status["in-progress"] + overview.status.pending)}
+          value={String(
+            overview.status["in-progress"] +
+              overview.status.pending +
+              overview.status.advanced
+          )}
           hint={`${overview.status.completed} completed`}
           tone="text-amber-600"
         />
@@ -303,6 +308,10 @@ function OverviewView({
             <KpiCard
               label="Pending"
               value={String(overview.status.pending)}
+            />
+            <KpiCard
+              label="Advanced"
+              value={String(overview.status.advanced)}
             />
             <KpiCard
               label="Completed"

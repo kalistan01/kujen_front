@@ -63,7 +63,7 @@ interface Container {
   transportCommission?: number;
   return?: number;
   ot?: number;
-  status?: "pending" | "in-progress" | "completed";
+  status?: "pending" | "in-progress" | "advanced" | "completed";
   note?: string;
 }
 
@@ -99,7 +99,7 @@ function AddContainer({
     transportCommission: 0,
     return: 0,
     ot: 0,
-    status: "pending" as "pending" | "in-progress" | "completed",
+    status: "pending" as "pending" | "in-progress" | "advanced" | "completed",
     note: "",
   };
   const [containers, setContainers] = useState<Container>(intialstate);
@@ -480,6 +480,7 @@ function AddContainer({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="advanced">Advanced</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="in-progress">In Progress</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>

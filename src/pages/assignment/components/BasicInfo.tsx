@@ -33,6 +33,13 @@ function BasicInfo({
     seteditingAssignment(assignment);
   };
 
+  const containers = assignment?.containers || [];
+  const countStatus = (value: string) =>
+    containers.filter(
+      (container: { status?: string }) =>
+        (container?.status || "pending") === value
+    ).length;
+
   const fields = [
     { label: "BL Number", value: assignment?.blNo || "—" },
     {
@@ -91,15 +98,19 @@ function BasicInfo({
           <span className="text-xs text-muted-foreground">Status</span>
           <span className="inline-flex items-center gap-1.5">
             <StatusBadge status="in-progress" />
-            {assignment?.["in-progress"] ?? 0}
+            {countStatus("in-progress")}
           </span>
           <span className="inline-flex items-center gap-1.5">
             <StatusBadge status="pending" />
-            {assignment?.pending ?? 0}
+            {countStatus("pending")}
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <StatusBadge status="advanced" />
+            {countStatus("advanced")}
           </span>
           <span className="inline-flex items-center gap-1.5">
             <StatusBadge status="completed" />
-            {assignment?.completed ?? 0}
+            {countStatus("completed")}
           </span>
         </div>
       </CardContent>

@@ -134,7 +134,7 @@ export function assignmentOverview(rows: ContainerRow[]) {
   const assignmentIds = new Set(
     rows.map((row) => idOf(row.assignment)).filter(Boolean)
   );
-  const status = { pending: 0, "in-progress": 0, completed: 0 };
+  const status = { pending: 0, "in-progress": 0, advanced: 0, completed: 0 };
   const money = emptyMoney();
   rows.forEach((row) => {
     const key = (row.container?.status || "pending") as keyof typeof status;

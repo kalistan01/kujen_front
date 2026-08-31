@@ -45,6 +45,7 @@ import { upsertById } from "@/lib/socket";
 
 const CONTAINER_STATUSES = [
   { value: "all", label: "All status" },
+  { value: "advanced", label: "Advanced" },
   { value: "pending", label: "Pending" },
   { value: "in-progress", label: "In Progress" },
   { value: "completed", label: "Completed" },
@@ -297,7 +298,7 @@ export const AssignmentManagement = () => {
   ]);
 
   useEffect(() => {
-    if (!isContainers && status === "in-progress") {
+    if (!isContainers && (status === "in-progress" || status === "advanced")) {
       setStatus("all");
     }
   }, [isContainers, status]);
