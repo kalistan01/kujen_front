@@ -671,7 +671,7 @@ function AddRole({
         ) : null}
       </div>
       {renderPageAccess()}
-      {renderGroup("Assignments and logs", PAGE_EXTRA_PERMISSIONS)}
+      {renderGroup("Logs", PAGE_EXTRA_PERMISSIONS)}
       {renderFieldPermissions()}
       <div className="flex items-center space-x-2">
         <Checkbox

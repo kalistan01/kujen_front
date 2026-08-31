@@ -20,7 +20,7 @@ import { buildContainerRows, filterRows } from "./lib";
 export function ReportsPage() {
   const location = useLocation();
   const { toast } = useToast();
-  const canAssignments = can(P.ASSIGNMENTS_VIEW) || can(P.ASSIGNMENTS_MANAGE);
+  const canAssignments = can(P.ASSIGNMENTS_VIEW) || can(P.ASSIGNMENTS_ADD) || can(P.ASSIGNMENTS_EDIT);
   const canLorries = can(P.LORRIES_VIEW) || can(P.LORRIES_ADD) || can(P.LORRIES_EDIT);
   const isLorryTab = location.pathname.endsWith("/lorries");
 

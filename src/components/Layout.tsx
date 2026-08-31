@@ -71,7 +71,7 @@ const allMenuItems = [
     label: "Assignments",
     icon: ClipboardList,
     path: "/assignments",
-    permission: [P.ASSIGNMENTS_VIEW, P.ASSIGNMENTS_MANAGE],
+    permission: [P.ASSIGNMENTS_VIEW, P.ASSIGNMENTS_ADD, P.ASSIGNMENTS_EDIT],
   },
   {
     id: "reports",
@@ -80,7 +80,8 @@ const allMenuItems = [
     path: "/reports",
     permission: [
       P.ASSIGNMENTS_VIEW,
-      P.ASSIGNMENTS_MANAGE,
+      P.ASSIGNMENTS_ADD,
+      P.ASSIGNMENTS_EDIT,
       P.LORRIES_VIEW,
       P.LORRIES_ADD,
       P.LORRIES_EDIT,

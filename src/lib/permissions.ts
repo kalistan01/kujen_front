@@ -7,6 +7,7 @@ export const P = {
   LORRIES_VIEW: 3,
   LORRIES_ADD: 4,
   LORRIES_MANAGE: 4,
+  ASSIGNMENTS_ADD: 5,
   ASSIGNMENTS_MANAGE: 5,
   DESTINATIONS_VIEW: 6,
   DESTINATIONS_ADD: 7,
@@ -20,6 +21,7 @@ export const P = {
   LORRIES_EDIT: 13,
   DESTINATIONS_EDIT: 14,
   ROLES_EDIT: 15,
+  ASSIGNMENTS_EDIT: 16,
   WEIGHT: 20,
   DAY_HIRE: 21,
   ADVANCED: 22,
@@ -95,6 +97,13 @@ export const PAGE_ACCESS: PageAccessItem[] = [
     addId: P.DESTINATIONS_ADD,
     editId: P.DESTINATIONS_EDIT,
   },
+  {
+    name: "Assignments",
+    description: "BLs, containers, and payments",
+    viewId: P.ASSIGNMENTS_VIEW,
+    addId: P.ASSIGNMENTS_ADD,
+    editId: P.ASSIGNMENTS_EDIT,
+  },
 ];
 
 export const PAGE_PERMISSIONS: PermissionItem[] = [
@@ -111,13 +120,12 @@ export const PAGE_PERMISSIONS: PermissionItem[] = [
   { id: P.DESTINATIONS_ADD, name: "Add Destinations", description: "Create routes and held up rates", group: "pages" },
   { id: P.DESTINATIONS_EDIT, name: "Edit Destinations", description: "Update and disable routes", group: "pages" },
   { id: P.ASSIGNMENTS_VIEW, name: "View Assignments", description: "Open assignments and details", group: "pages" },
-  { id: P.ASSIGNMENTS_MANAGE, name: "Manage Assignments", description: "Create, edit, pay, and delete assignments", group: "pages" },
+  { id: P.ASSIGNMENTS_ADD, name: "Add Assignments", description: "Create assignments", group: "pages" },
+  { id: P.ASSIGNMENTS_EDIT, name: "Edit Assignments", description: "Update, pay, and delete assignments", group: "pages" },
   { id: P.LOGS_VIEW, name: "View Logs", description: "Open the activity log", group: "pages" },
 ];
 
 export const PAGE_EXTRA_PERMISSIONS: PermissionItem[] = [
-  { id: P.ASSIGNMENTS_VIEW, name: "View Assignments", description: "Open assignments and details", group: "pages" },
-  { id: P.ASSIGNMENTS_MANAGE, name: "Manage Assignments", description: "Create, edit, pay, and delete assignments", group: "pages" },
   { id: P.LOGS_VIEW, name: "View Logs", description: "Open the activity log", group: "pages" },
 ];
 
@@ -126,6 +134,7 @@ const LEGACY_ADD_TO_EDIT: Array<[number, number]> = [
   [P.LORRIES_ADD, P.LORRIES_EDIT],
   [P.DESTINATIONS_ADD, P.DESTINATIONS_EDIT],
   [P.ROLES_ADD, P.ROLES_EDIT],
+  [P.ASSIGNMENTS_ADD, P.ASSIGNMENTS_EDIT],
 ];
 
 export const FIELD_PERMISSIONS: PermissionItem[] = [
@@ -176,7 +185,8 @@ const MUST_GRANT = new Set<number>([
   P.USERS_EDIT,
   P.LORRIES_ADD,
   P.LORRIES_EDIT,
-  P.ASSIGNMENTS_MANAGE,
+  P.ASSIGNMENTS_ADD,
+  P.ASSIGNMENTS_EDIT,
   P.DESTINATIONS_ADD,
   P.DESTINATIONS_EDIT,
   P.ROLES_ADD,
@@ -241,8 +251,16 @@ export function canEditField(key: string, user: AuthUser | null = getAuthUser())
   return can(id, user);
 }
 
+export function canAddAssignments(user: AuthUser | null = getAuthUser()) {
+  return can(P.ASSIGNMENTS_ADD, user);
+}
+
+export function canEditAssignments(user: AuthUser | null = getAuthUser()) {
+  return can(P.ASSIGNMENTS_EDIT, user);
+}
+
 export function canManageAssignments(user: AuthUser | null = getAuthUser()) {
-  return can(P.ASSIGNMENTS_MANAGE, user);
+  return canEditAssignments(user);
 }
 
 export function fieldLockProps(key: string, extraClass = "") {

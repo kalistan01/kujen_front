@@ -17,7 +17,7 @@ import baseUrl from "@/api/baseUrl";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/apiError";
-import { canManageAssignments, canSeeField } from "@/lib/permissions";
+import { canAddAssignments, canEditAssignments, canSeeField } from "@/lib/permissions";
 import {
   containerCapacity,
   containerDestination,
@@ -76,7 +76,7 @@ export const AssignmentManagement = () => {
   const pageSize = 10;
   const { toast } = useToast();
   const canPay =
-    canManageAssignments() && canSeeField("balancePaid");
+    canEditAssignments() && canSeeField("balancePaid");
 
   const handleAdd = () => {
     setEditingAssignment(null);
@@ -597,7 +597,7 @@ export const AssignmentManagement = () => {
           <FileSpreadsheet className="h-4 w-4" />
           {exporting === "excel" ? "Excel..." : "Excel"}
         </Button>
-        {canManageAssignments() ? (
+        {canAddAssignments() ? (
           <AddAssignmentDialog
             open={isDialogOpen}
             onOpenChange={setIsDialogOpen}

@@ -71,7 +71,8 @@ export const Dashboard = () => {
   const canLorries = can(P.LORRIES_VIEW) || can(P.LORRIES_ADD) || can(P.LORRIES_EDIT);
   const canDestinations =
     can(P.DESTINATIONS_VIEW) || can(P.DESTINATIONS_ADD) || can(P.DESTINATIONS_EDIT);
-  const canAssignments = can(P.ASSIGNMENTS_VIEW) || can(P.ASSIGNMENTS_MANAGE);
+  const canAssignments =
+    can(P.ASSIGNMENTS_VIEW) || can(P.ASSIGNMENTS_ADD) || can(P.ASSIGNMENTS_EDIT);
   const canLogs = can(P.LOGS_VIEW);
   const [stats, setStats] = useState([
     {
@@ -386,7 +387,7 @@ export const Dashboard = () => {
                   case "/settings":
                     return can(P.DESTINATIONS_ADD);
                   case "/assignments":
-                    return can(P.ASSIGNMENTS_MANAGE);
+                    return can(P.ASSIGNMENTS_ADD);
                   default:
                     return true;
                 }

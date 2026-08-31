@@ -30,7 +30,7 @@ import {
   todayDateInput,
   type HeldUpRateOption,
 } from "./lib/financials";
-import { can, canEditField, canManageAssignments, P } from "@/lib/permissions";
+import { can, canEditField, canEditAssignments, P } from "@/lib/permissions";
 import { useEntitySync } from "@/hooks/useEntitySync";
 import { upsertById } from "@/lib/socket";
 
@@ -54,7 +54,7 @@ const AssignmentDetails = () => {
   const [bulkPayDate, setBulkPayDate] = useState(todayDateInput());
   const [bulkPaying, setBulkPaying] = useState<"pay" | "print" | false>(false);
   const [printOnlyIds, setPrintOnlyIds] = useState<string[] | null>(null);
-  const canManage = canManageAssignments();
+  const canManage = canEditAssignments();
 
   const loadAssignment = () => {
     if (!id) return;

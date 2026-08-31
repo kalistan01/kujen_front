@@ -34,7 +34,7 @@ const App = () => (
                 <Route
                   path="/assignments"
                   element={
-                    <RequirePermission ids={[P.ASSIGNMENTS_VIEW, P.ASSIGNMENTS_MANAGE]}>
+                    <RequirePermission ids={[P.ASSIGNMENTS_VIEW, P.ASSIGNMENTS_ADD, P.ASSIGNMENTS_EDIT]}>
                       <AssignmentManagement />
                     </RequirePermission>
                   }
@@ -96,7 +96,8 @@ const App = () => (
                     <RequirePermission
                       ids={[
                         P.ASSIGNMENTS_VIEW,
-                        P.ASSIGNMENTS_MANAGE,
+                        P.ASSIGNMENTS_ADD,
+                        P.ASSIGNMENTS_EDIT,
                         P.LORRIES_VIEW,
                         P.LORRIES_ADD,
                         P.LORRIES_EDIT,
@@ -112,7 +113,7 @@ const App = () => (
                 <Route
                   path="/assignment/:id"
                   element={
-                    <RequirePermission ids={[P.ASSIGNMENTS_VIEW, P.ASSIGNMENTS_MANAGE]}>
+                    <RequirePermission ids={[P.ASSIGNMENTS_VIEW, P.ASSIGNMENTS_ADD, P.ASSIGNMENTS_EDIT]}>
                       <AssignmentDetails />
                     </RequirePermission>
                   }
