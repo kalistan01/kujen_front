@@ -9,6 +9,7 @@ interface ImportMetaEnv {
   readonly VITE_BRAND_LOGO?: string;
   readonly VITE_VOC_PREFIX?: string;
   readonly VITE_BRAND_EMAIL_PLACEHOLDER?: string;
+  readonly VITE_THEME_COLOR?: string;
 }
 
 interface ImportMeta {

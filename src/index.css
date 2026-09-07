@@ -8,26 +8,30 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 211 28% 97%;
-    --foreground: 211 40% 12%;
+    --brand-h: 211;
+    --brand-s: 71%;
+    --brand-l: 36%;
+
+    --background: var(--brand-h) 28% 97%;
+    --foreground: var(--brand-h) 40% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 211 40% 12%;
+    --card-foreground: var(--brand-h) 40% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 211 40% 12%;
+    --popover-foreground: var(--brand-h) 40% 12%;
 
-    --primary: 211 71% 36%;
+    --primary: var(--brand-h) var(--brand-s) var(--brand-l);
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 211 32% 95%;
-    --secondary-foreground: 211 40% 12%;
+    --secondary: var(--brand-h) 32% 95%;
+    --secondary-foreground: var(--brand-h) 40% 12%;
 
-    --muted: 211 28% 95%;
-    --muted-foreground: 211 12% 42%;
+    --muted: var(--brand-h) 28% 95%;
+    --muted-foreground: var(--brand-h) 12% 42%;
 
-    --accent: 211 32% 94%;
-    --accent-foreground: 211 71% 28%;
+    --accent: var(--brand-h) 32% 94%;
+    --accent-foreground: var(--brand-h) var(--brand-s) 28%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
@@ -38,70 +42,70 @@ All colors MUST be HSL.
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
 
-    --border: 211 20% 88%;
-    --input: 211 20% 88%;
-    --ring: 211 71% 36%;
+    --border: var(--brand-h) 20% 88%;
+    --input: var(--brand-h) 20% 88%;
+    --ring: var(--brand-h) var(--brand-s) var(--brand-l);
 
     --radius: 0.5rem;
 
-    --sidebar-background: 211 71% 36%;
+    --sidebar-background: var(--brand-h) var(--brand-s) var(--brand-l);
     --sidebar-foreground: 0 0% 100%;
     --sidebar-primary: 0 0% 100%;
-    --sidebar-primary-foreground: 211 71% 36%;
-    --sidebar-accent: 211 62% 30%;
+    --sidebar-primary-foreground: var(--brand-h) var(--brand-s) var(--brand-l);
+    --sidebar-accent: var(--brand-h) 62% 30%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 211 50% 48%;
-    --sidebar-ring: 211 71% 36%;
+    --sidebar-border: var(--brand-h) 50% 48%;
+    --sidebar-ring: var(--brand-h) var(--brand-s) var(--brand-l);
 
-    --brand-navy: 211 71% 36%;
-    --brand-navy-muted: 211 72% 28%;
-    --brand-gold: 210 9% 72%;
-    --brand-gold-soft: 210 12% 82%;
-    --brand-silver: 210 9% 72%;
+    --brand-navy: var(--brand-h) var(--brand-s) var(--brand-l);
+    --brand-navy-muted: var(--brand-h) var(--brand-s) 28%;
+    --brand-gold: var(--brand-h) 9% 72%;
+    --brand-gold-soft: var(--brand-h) 12% 82%;
+    --brand-silver: var(--brand-h) 9% 72%;
   }
 
   .dark {
-    --background: 222 47% 6%;
-    --foreground: 210 40% 98%;
+    --background: var(--brand-h) 47% 6%;
+    --foreground: var(--brand-h) 40% 98%;
 
-    --card: 222 40% 9%;
-    --card-foreground: 210 40% 98%;
+    --card: var(--brand-h) 40% 9%;
+    --card-foreground: var(--brand-h) 40% 98%;
 
-    --popover: 222 40% 9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: var(--brand-h) 40% 9%;
+    --popover-foreground: var(--brand-h) 40% 98%;
 
-    --primary: 211 62% 48%;
+    --primary: var(--brand-h) 62% 48%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: var(--brand-h) 32.6% 17.5%;
+    --secondary-foreground: var(--brand-h) 40% 98%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: var(--brand-h) 32.6% 17.5%;
+    --muted-foreground: var(--brand-h) 20.2% 65.1%;
 
-    --accent: 211 32% 18%;
-    --accent-foreground: 210 40% 98%;
+    --accent: var(--brand-h) 32% 18%;
+    --accent-foreground: var(--brand-h) 40% 98%;
 
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: var(--brand-h) 40% 98%;
 
-    --border: 217 25% 18%;
-    --input: 217 25% 18%;
-    --ring: 211 62% 48%;
-    --sidebar-background: 222 47% 8%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 211 62% 48%;
+    --border: var(--brand-h) 25% 18%;
+    --input: var(--brand-h) 25% 18%;
+    --ring: var(--brand-h) 62% 48%;
+    --sidebar-background: var(--brand-h) 47% 8%;
+    --sidebar-foreground: var(--brand-h) 40% 98%;
+    --sidebar-primary: var(--brand-h) 62% 48%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 32% 16%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217 25% 16%;
-    --sidebar-ring: 211 62% 48%;
+    --sidebar-accent: var(--brand-h) 32% 16%;
+    --sidebar-accent-foreground: var(--brand-h) 40% 98%;
+    --sidebar-border: var(--brand-h) 25% 16%;
+    --sidebar-ring: var(--brand-h) 62% 48%;
 
-    --brand-navy: 211 71% 36%;
-    --brand-navy-muted: 211 62% 48%;
-    --brand-gold: 210 9% 72%;
-    --brand-gold-soft: 210 12% 82%;
-    --brand-silver: 210 9% 72%;
+    --brand-navy: var(--brand-h) var(--brand-s) var(--brand-l);
+    --brand-navy-muted: var(--brand-h) 62% 48%;
+    --brand-gold: var(--brand-h) 9% 72%;
+    --brand-gold-soft: var(--brand-h) 12% 82%;
+    --brand-silver: var(--brand-h) 9% 72%;
   }
 }
 
@@ -118,12 +122,12 @@ All colors MUST be HSL.
     background-image: linear-gradient(
       135deg,
       hsl(var(--brand-navy)) 0%,
-      hsl(211 62% 48%) 100%
+      hsl(var(--brand-h) 62% 48%) 100%
     );
   }
 
   .shadow-shell {
-    box-shadow: 0 10px 40px -12px hsl(211 71% 36% / 0.22);
+    box-shadow: 0 10px 40px -12px hsl(var(--primary) / 0.22);
   }
 
   .surface-card {
@@ -192,7 +196,7 @@ input::-webkit-inner-spin-button {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: #1b5a9d !important;
+    background: hsl(var(--brand-navy)) !important;
     color: #fff !important;
     padding: 14px 16px;
     border-radius: 6px;
@@ -212,7 +216,7 @@ input::-webkit-inner-spin-button {
     height: 36px;
     border-radius: 8px;
     background: #111111 !important;
-    color: #1b5a9d !important;
+    color: hsl(var(--brand-navy)) !important;
     font-weight: 800;
     font-size: 10px;
     display: flex;
@@ -270,7 +274,7 @@ input::-webkit-inner-spin-button {
     font-weight: 700;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: #1b5a9d;
+    color: hsl(var(--brand-navy));
     border-bottom: 2px solid #c5ccd4;
     padding-bottom: 4px;
   }
@@ -389,9 +393,9 @@ input::-webkit-inner-spin-button {
   }
 
   .print-balance {
-    background: #1b5a9d !important;
+    background: hsl(var(--brand-navy)) !important;
     color: #fff !important;
-    border-color: #1b5a9d !important;
+    border-color: hsl(var(--brand-navy)) !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
@@ -459,7 +463,7 @@ input::-webkit-inner-spin-button {
   .print-remain td {
     border-bottom: 0;
     font-size: 13px;
-    color: #1b5a9d;
+    color: hsl(var(--brand-navy));
     padding-top: 8px;
   }
 
@@ -500,7 +504,7 @@ input::-webkit-inner-spin-button {
   }
 
   .print-table thead th {
-    background: #1b5a9d !important;
+    background: hsl(var(--brand-navy)) !important;
     color: #fff !important;
     font-size: 7px;
     font-weight: 700;
@@ -512,7 +516,7 @@ input::-webkit-inner-spin-button {
   }
 
   .print-table tbody tr:nth-child(even) td {
-    background: #f3f6fa !important;
+    background: hsl(var(--brand-h) 28% 97%) !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
@@ -547,7 +551,7 @@ input::-webkit-inner-spin-button {
 
   .print-table tfoot td {
     font-weight: 700;
-    background: #e8eef6 !important;
+    background: hsl(var(--brand-h) 32% 94%) !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
@@ -560,13 +564,13 @@ input::-webkit-inner-spin-button {
   .print-summary-table td {
     font-size: 9px;
     font-weight: 700;
-    background: #e8eef6 !important;
+    background: hsl(var(--brand-h) 32% 94%) !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
   .print-summary-table .remain {
-    background: #1b5a9d !important;
+    background: hsl(var(--brand-navy)) !important;
     color: #fff !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
