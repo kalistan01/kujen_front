@@ -1,4 +1,5 @@
 import { formatDate } from "../lib/dates";
+import { brand } from "@/lib/brand";
 import type { ContainerListRow } from "./ContainerListTable";
 import PrintBlTable from "./PrintBlTable";
 import PrintContainersTable from "./PrintContainersTable";
@@ -35,10 +36,10 @@ function ContainerListPrint({
     <div className="hidden print:block print-document print-wide">
       <header className="print-hero">
         <div className="print-brand">
-          <div className="print-mark">RG</div>
+          <div className="print-mark">{brand.mark}</div>
           <div>
-            <h1>RG Business transport</h1>
-            <p>Ship line</p>
+            <h1>{brand.name}</h1>
+            <p>{brand.tagline}</p>
           </div>
         </div>
         <div className="print-bl">
@@ -74,7 +75,7 @@ function ContainerListPrint({
       </section>
 
       <p className="print-note">
-        Printed on {formatDate(new Date())} · RG Business transport
+        Printed on {formatDate(new Date())} · {brand.name}
       </p>
     </div>
   );

@@ -1,6 +1,7 @@
 import PrintBlTable from "./PrintBlTable";
 import PrintContainersTable from "./PrintContainersTable";
 import PrintSummaryTable from "./PrintSummaryTable";
+import { brand } from "@/lib/brand";
 
 const formatDateTime = (value?: string) => {
   if (!value) return "—";
@@ -37,10 +38,10 @@ function AssignmentPrint({
     <div className="hidden print:block print-document print-wide">
       <header className="print-hero">
         <div className="print-brand">
-          <div className="print-mark">RG</div>
+          <div className="print-mark">{brand.mark}</div>
           <div>
-            <h1>RG Business transport</h1>
-            <p>Ship line</p>
+            <h1>{brand.name}</h1>
+            <p>{brand.tagline}</p>
           </div>
         </div>
         <div className="print-bl">
@@ -75,8 +76,8 @@ function AssignmentPrint({
       </section>
 
       <p className="print-note">
-        Printed on {formatDateTime(new Date().toISOString())} · RG Business transport
-        Ship line
+        Printed on {formatDateTime(new Date().toISOString())} · {brand.name}{" "}
+        {brand.tagline}
       </p>
     </div>
   );

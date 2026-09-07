@@ -17,6 +17,7 @@ import baseUrl from "@/api/baseUrl";
 import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/apiError";
+import { brandFile } from "@/lib/brand";
 import { canAddAssignments, canEditContainers, canViewContainers, canSeeField } from "@/lib/permissions";
 import {
   containerCapacity,
@@ -387,7 +388,7 @@ export const AssignmentManagement = () => {
       return;
     }
     const previousTitle = document.title;
-    document.title = "RG-Brothers-Containers";
+    document.title = brandFile("Containers");
     const style = document.createElement("style");
     style.setAttribute("data-print-page", "");
     style.textContent =
@@ -510,7 +511,7 @@ export const AssignmentManagement = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `RG-Brothers-Assignments.${ext}`;
+      link.download = `${brandFile("Assignments")}.${ext}`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -555,7 +556,7 @@ export const AssignmentManagement = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "RG-Brothers-Containers.pdf";
+      link.download = `${brandFile("Containers")}.pdf`;
       document.body.appendChild(link);
       link.click();
       link.remove();

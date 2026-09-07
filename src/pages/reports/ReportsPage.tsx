@@ -16,6 +16,7 @@ import { AssignmentReports } from "./AssignmentReports";
 import { LorryReports } from "./LorryReports";
 import { DateRangeFilters, ReportSearch } from "./shared";
 import { buildContainerRows, filterRows } from "./lib";
+import { brand } from "@/lib/brand";
 
 export function ReportsPage() {
   const location = useLocation();
@@ -172,7 +173,7 @@ export function ReportsPage() {
         </CardHeader>
         <CardContent className="p-3 sm:p-4">
           <h1 className="mb-4 hidden text-xl font-bold print:block">
-            RG Business transport {isLorryTab ? "Lorry" : "Assignment"} Reports
+            {brand.name} {isLorryTab ? "Lorry" : "Assignment"} Reports
           </h1>
           {loading ? (
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

@@ -39,6 +39,7 @@ import {
   ReportTable,
   SubNav,
 } from "./shared";
+import { brandFile } from "@/lib/brand";
 
 const VIEWS = [
   { id: "overview", label: "Overview" },
@@ -55,7 +56,7 @@ const monthChartConfig = {
 } satisfies ChartConfig;
 
 function printTitle(view: string) {
-  return `RG-Brothers-Assignment-${view}-Report`;
+  return brandFile(`Assignment-${view}-Report`);
 }
 
 export function AssignmentReports({
@@ -79,7 +80,7 @@ export function AssignmentReports({
   const exportCsv = () => {
     if (view === "outstanding") {
       downloadCsv(
-        "RG-Brothers-Outstanding",
+        brandFile("Outstanding"),
         [
           "BL",
           "Container",
@@ -108,7 +109,7 @@ export function AssignmentReports({
     }
     if (view === "destinations") {
       downloadCsv(
-        "RG-Brothers-Destinations",
+        brandFile("Destinations"),
         [
           "Destination",
           "BLs",
@@ -126,7 +127,7 @@ export function AssignmentReports({
     }
     if (view === "parties") {
       downloadCsv(
-        "RG-Brothers-Exporters",
+        brandFile("Exporters"),
         [
           "Exporter",
           "BLs",
@@ -144,7 +145,7 @@ export function AssignmentReports({
     }
     if (view === "heldup") {
       downloadCsv(
-        "RG-Brothers-HeldUp",
+        brandFile("HeldUp"),
         [
           "BL",
           "Container",
@@ -170,7 +171,7 @@ export function AssignmentReports({
     }
     if (view === "monthly") {
       downloadCsv(
-        "RG-Brothers-Monthly",
+        brandFile("Monthly"),
         [
           "Month",
           "BLs",
@@ -186,7 +187,7 @@ export function AssignmentReports({
       );
       return;
     }
-    downloadCsv("RG-Brothers-Assignment-Overview", ["Metric", "Value"], [
+    downloadCsv(brandFile("Assignment-Overview"), ["Metric", "Value"], [
       ["Assignments", overview.assignments],
       ["Containers", overview.containers],
       ["Pending", overview.status.pending],

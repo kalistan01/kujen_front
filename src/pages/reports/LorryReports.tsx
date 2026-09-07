@@ -27,6 +27,7 @@ import {
   ReportTable,
   SubNav,
 } from "./shared";
+import { brandFile } from "@/lib/brand";
 
 const VIEWS = [
   { id: "overview", label: "Overview" },
@@ -91,7 +92,7 @@ export function LorryReports({
   const exportCsv = () => {
     if (view === "owners") {
       downloadCsv(
-        "RG-Brothers-Owner-Report",
+        brandFile("Owner-Report"),
         [
           "Owner",
           "Company",
@@ -115,7 +116,7 @@ export function LorryReports({
     }
     if (view === "idle") {
       downloadCsv(
-        "RG-Brothers-Idle-Lorries",
+        brandFile("Idle-Lorries"),
         ["Lorry", "Capacity", "Owner", "Company"],
         idle.map((item) => [
           item.lorryNum,
@@ -127,7 +128,7 @@ export function LorryReports({
       return;
     }
     downloadCsv(
-      view === "overview" ? "RG-Brothers-Fleet-Overview" : "RG-Brothers-Lorry-Report",
+      view === "overview" ? brandFile("Fleet-Overview") : brandFile("Lorry-Report"),
       [
         "Lorry",
         "Capacity",
@@ -158,7 +159,7 @@ export function LorryReports({
         <div className="flex items-center gap-2">
           <Badge variant="secondary">{lorryStats.length} lorries</Badge>
           <ReportActions
-            onPrint={() => handlePrint(`RG-Brothers-Lorry-${view}-Report`)}
+            onPrint={() => handlePrint(brandFile(`Lorry-${view}-Report`))}
             onCsv={exportCsv}
           />
         </div>

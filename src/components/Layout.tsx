@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+import { brand } from "@/lib/brand";
 import { getAuthUser, userInitials } from "@/lib/auth";
 import { can, P } from "@/lib/permissions";
 
@@ -182,9 +183,9 @@ export const Layout = () => {
             <div className="relative border-b border-sidebar-border px-3 py-5">
               <div className="flex items-center gap-3">
                 <img
-                  src="/logo.png"
-                  alt="RG Business transport"
-                  title="RG Business transport"
+                  src={brand.logo}
+                  alt={brand.name}
+                  title={brand.name}
                   className="h-11 w-11 shrink-0 rounded-lg bg-white object-cover ring-1 ring-sidebar-foreground/40"
                 />
                 <div
@@ -194,10 +195,10 @@ export const Layout = () => {
                   )}
                 >
                   <h1 className="text-[15px] font-bold leading-tight tracking-tight text-sidebar-foreground">
-                    RG Business transport
+                    {brand.name}
                   </h1>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sidebar-foreground/80">
-                    Ship line
+                    {brand.tagline}
                   </p>
                 </div>
                 <Button
@@ -289,7 +290,7 @@ export const Layout = () => {
                     {user?.fullName || "Administrator"}
                   </p>
                   <p className="truncate text-xs text-sidebar-foreground/75">
-                    {user?.roleName || "RG Business transport"}
+                    {user?.roleName || brand.name}
                   </p>
                 </div>
                 <Button
@@ -352,7 +353,7 @@ export const Layout = () => {
               </Button>
               <div className="min-w-0">
                 <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                  RG Business transport
+                  {brand.name}
                 </p>
                 <h2 className="truncate text-lg font-semibold leading-tight tracking-tight text-foreground">
                   {currentItem.label}
@@ -382,7 +383,7 @@ export const Layout = () => {
                       {user?.fullName || "Administrator"}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {user?.roleName || user?.email || "RG Business transport"}
+                      {user?.roleName || user?.email || brand.name}
                     </p>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />

@@ -12,6 +12,7 @@ import {
 import { Package, Printer, Trash2, Plus, ArrowLeft, FileDown, FileSpreadsheet, Banknote, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/apiError";
+import { brand, brandFile } from "@/lib/brand";
 import baseUrl from "@/api/baseUrl";
 import Containers from "./components/Containers";
 import Summary from "./components/Summary";
@@ -141,7 +142,7 @@ const AssignmentDetails = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `RG-Brothers-BL-${assignment?.blNo || id}.${ext}`;
+      link.download = `${brandFile(`BL-${assignment?.blNo || id}`)}.${ext}`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -163,7 +164,7 @@ const AssignmentDetails = () => {
 
   const handlePrint = (onDone?: () => void) => {
     const previousTitle = document.title;
-    document.title = `RG Business transport - BL ${assignment?.blNo || ""}`.trim();
+    document.title = `${brand.name} - BL ${assignment?.blNo || ""}`.trim();
     const style = document.createElement("style");
     style.setAttribute("data-print-page", "");
     style.textContent =
