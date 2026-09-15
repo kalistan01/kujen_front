@@ -35,6 +35,12 @@ import {
 } from "../lib/financials";
 import { canEditField, canSeeField, canEditContainers } from "@/lib/permissions";
 import { parseFcl, type FclState } from "../lib/fcl";
+import {
+  containerCapacity,
+  containerDestination,
+  containerLorry,
+  containerOwner,
+} from "../lib/containerDisplay";
 import FclRecord from "./FclRecord";
 interface ContainerType {
   _id?: string;
@@ -352,14 +358,18 @@ function Containers({
         <div>
           <p className="text-xs text-muted-foreground">Assigned Lorry</p>
           <p className="font-medium">
-            {container?.lorryNum || "Unassigned"}
-            {container?.capacity ? ` · ${container.capacity} ft` : ""}
-            {container?.lorryOwner ? ` (${container.lorryOwner.toUpperCase()})` : ""}
+            {containerLorry(container)}
+            {containerCapacity(container)
+              ? ` · ${containerCapacity(container)} ft`
+              : ""}
+            {containerOwner(container)
+              ? ` (${String(containerOwner(container)).toUpperCase()})`
+              : ""}
           </p>
         </div>
         <div>
           <p className="text-xs text-muted-foreground">Destination</p>
-          <p className="font-medium">{container?.destinationlocation || "—"}</p>
+          <p className="font-medium">{containerDestination(container)}</p>
         </div>
         <div>
           <p className="text-xs text-muted-foreground">Loading / Demount</p>

@@ -31,6 +31,7 @@ import {
   todayDateInput,
   type HeldUpRateOption,
 } from "./lib/financials";
+import { containerCapacity, containerLorry, mergePopulatedAssignment } from "./lib/containerDisplay";
 import { can, canEditField, canEditAssignments, canViewContainers, canAddContainers, canEditContainers, P } from "@/lib/permissions";
 import { useEntitySync } from "@/hooks/useEntitySync";
 import { upsertById } from "@/lib/socket";
@@ -234,7 +235,11 @@ const AssignmentDetails = () => {
       })
       .then((response) => {
         const paidAssignment = response.data?.data;
-        if (paidAssignment) setAssignment(paidAssignment);
+        if (paidAssignment) {
+          setAssignment((prev) =>
+            mergePopulatedAssignment(prev, paidAssignment)
+          );
+        }
         toast({
           title: "Balances paid",
           description: `${selectedContainers.length} container${
@@ -524,8 +529,10 @@ const AssignmentDetails = () => {
                       {c.containerNo || "—"}
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
-                      Lorry {c.lorryNum || "Unassigned"}
-                      {c.capacity ? ` · ${c.capacity} ft` : ""}
+                      Lorry {containerLorry(c)}
+                      {containerCapacity(c)
+                        ? ` · ${containerCapacity(c)} ft`
+                        : ""}
                     </p>
                   </div>
                   <span className="shrink-0 font-semibold">

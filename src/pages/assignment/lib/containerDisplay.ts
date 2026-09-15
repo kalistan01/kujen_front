@@ -11,6 +11,42 @@ export function containerLorry(container: any) {
   return container?.lorryNum || container?.lorryId?.lorryNum || "Unassigned";
 }
 
+function isPopulatedRef(value: any) {
+  return Boolean(value && typeof value === "object" && (value._id || value.lorryNum || value.location));
+}
+
+export function mergePopulatedAssignment(previous: any, updated: any) {
+  if (!updated) return previous;
+  if (!previous) return updated;
+  const previousById = new Map(
+    (previous.containers || []).map((container: any) => [
+      String(container?._id),
+      container,
+    ])
+  );
+  return {
+    ...previous,
+    ...updated,
+    containers: (updated.containers || []).map((container: any) => {
+      const prev = previousById.get(String(container?._id));
+      if (!prev) return container;
+      return {
+        ...prev,
+        ...container,
+        lorryId: isPopulatedRef(container.lorryId) ? container.lorryId : prev.lorryId,
+        lorryNum: container.lorryNum || prev.lorryNum,
+        capacity: container.capacity || prev.capacity,
+        lorryOwner: container.lorryOwner || prev.lorryOwner,
+        destination: isPopulatedRef(container.destination)
+          ? container.destination
+          : prev.destination,
+        destinationlocation:
+          container.destinationlocation || prev.destinationlocation,
+      };
+    }),
+  };
+}
+
 export function containerCapacity(container: any) {
   return container?.capacity || container?.lorryId?.capacity;
 }

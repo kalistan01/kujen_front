@@ -28,6 +28,7 @@ import {
   containerMatchesOwner,
   containerOwner,
   containerOwnerKey,
+  mergePopulatedAssignment,
 } from "./lib/containerDisplay";
 import { parseDay } from "./lib/dates";
 import {
@@ -76,6 +77,7 @@ export const AssignmentManagement = () => {
   const [bulkPayDate, setBulkPayDate] = useState(todayDateInput());
   const [bulkPaying, setBulkPaying] = useState<"pay" | "print" | false>(false);
   const [printTitle, setPrintTitle] = useState<string | undefined>();
+  const [printOnlyIds, setPrintOnlyIds] = useState<string[] | null>(null);
   const pageSize = 10;
   const { toast } = useToast();
   const canPay =
@@ -355,6 +357,11 @@ export const AssignmentManagement = () => {
   const payableSelectedRows = selectedRows.filter(
     (row) => containerBalance(row.container) > 0
   );
+  const printRows = useMemo(() => {
+    if (!printOnlyIds?.length) return selectedRows;
+    const paid = new Set(printOnlyIds.map(String));
+    return selectedRows.filter((row) => paid.has(String(row.container?._id)));
+  }, [printOnlyIds, selectedRows]);
   const selectedTotal = payableSelectedRows.reduce(
     (sum, row) => sum + containerBalance(row.container),
     0
@@ -408,6 +415,7 @@ export const AssignmentManagement = () => {
       restorePage();
       window.removeEventListener("afterprint", finishPrint);
       setPrintTitle(undefined);
+      setPrintOnlyIds(null);
       onDone?.();
     };
     window.addEventListener("afterprint", finishPrint);
@@ -418,6 +426,9 @@ export const AssignmentManagement = () => {
 
   const handleBulkPay = (andPrint = false) => {
     if (bulkPaying || !payableSelectedRows.length) return;
+    const paidIds = payableSelectedRows
+      .map((row) => String(row.container?._id || ""))
+      .filter(Boolean);
     const groups = new Map<string, string[]>();
     payableSelectedRows.forEach((row) => {
       const assignmentId = row.assignment?._id;
@@ -449,7 +460,9 @@ export const AssignmentManagement = () => {
               const index = next.findIndex(
                 (item) => String(item?._id) === String(updated?._id)
               );
-              if (index >= 0) next[index] = updated;
+              if (index >= 0) {
+                next[index] = mergePopulatedAssignment(next[index], updated);
+              }
             });
             return next;
           });
@@ -463,6 +476,7 @@ export const AssignmentManagement = () => {
         setIsBulkPayOpen(false);
         if (andPrint) {
           setPrintTitle("Balance payment");
+          setPrintOnlyIds(paidIds);
           window.setTimeout(() => {
             handlePrintSelected(() => {
               setSelectedIds([]);
@@ -854,7 +868,7 @@ export const AssignmentManagement = () => {
         </DialogContent>
       </Dialog>
     </div>
-    <ContainerListPrint rows={selectedRows} title={printTitle} />
+    <ContainerListPrint rows={printRows} title={printTitle} />
     </>
   );
 };
