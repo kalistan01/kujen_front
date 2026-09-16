@@ -230,6 +230,7 @@ const MUST_GRANT = new Set<number>([
   P.USERS_VIEW,
   P.USERS_ADD,
   P.USERS_EDIT,
+  P.LORRIES_VIEW,
   P.LORRIES_ADD,
   P.LORRIES_EDIT,
   P.ASSIGNMENTS_ADD,
@@ -358,6 +359,10 @@ export function canAddContainers(user: AuthUser | null = getAuthUser()) {
 
 export function canEditContainers(user: AuthUser | null = getAuthUser()) {
   return can(P.CONTAINERS_EDIT, user);
+}
+
+export function canViewLorryOwnerDetails(user: AuthUser | null = getAuthUser()) {
+  return can(P.LORRIES_VIEW, user) || can(P.LORRIES_ADD, user) || can(P.LORRIES_EDIT, user);
 }
 
 export function fieldLockProps(

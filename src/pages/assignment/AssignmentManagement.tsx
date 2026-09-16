@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { NavLink, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +18,9 @@ import { PageHeader } from "@/components/PageHeader";
 import { useToast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/apiError";
 import { brandFile } from "@/lib/brand";
-import { canAddAssignments, canEditContainers, canViewContainers, canSeeField } from "@/lib/permissions";
+import { canAddAssignments, canEditContainers, canViewContainers, canSeeField, canViewLorryOwnerDetails } from "@/lib/permissions";
+import { isAdminUser } from "@/lib/auth";
+import { isLorryOwnerAllowed, scopeAssignments, scopeLorryOwners } from "@/lib/lorryScope";
 import {
   containerCapacity,
   containerDestination,
@@ -30,7 +32,7 @@ import {
   containerOwnerKey,
   mergePopulatedAssignment,
 } from "./lib/containerDisplay";
-import { parseDay } from "./lib/dates";
+import { createdStamp, parseDay } from "./lib/dates";
 import {
   containerBalance,
   formatMoney,
@@ -53,6 +55,23 @@ const CONTAINER_STATUSES = [
   { value: "completed", label: "Completed" },
 ];
 
+function slimLorryOwner(owner: any) {
+  if (!owner) return owner;
+  return {
+    _id: owner._id,
+    id: owner.id,
+    ownerName: owner.ownerName,
+    companyName: owner.companyName,
+    lorries: (owner.lorries || []).map((lorry: any) => ({
+      _id: lorry._id,
+      lorryNum: lorry.lorryNum,
+      capacity: lorry.capacity,
+      owner: lorry.owner,
+      inUse: lorry.inUse,
+    })),
+  };
+}
+
 export const AssignmentManagement = () => {
   const [assignments, setAssignments] = useState<any[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -69,19 +88,29 @@ export const AssignmentManagement = () => {
   const [exporting, setExporting] = useState<"pdf" | "excel" | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isContainers = location.pathname.endsWith("/containers");
   const canSeeContainers = canViewContainers();
-  const [page, setPage] = useState(1);
+  const page = Math.max(1, Number.parseInt(searchParams.get("page") || "1", 10) || 1);
+  const skipPageReset = useRef(true);
+  const setPage = (next: number) => {
+    const nextPage = Math.max(1, Math.floor(next) || 1);
+    const params = new URLSearchParams(searchParams);
+    if (nextPage <= 1) params.delete("page");
+    else params.set("page", String(nextPage));
+    setSearchParams(params, { replace: true });
+  };
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isBulkPayOpen, setIsBulkPayOpen] = useState(false);
   const [bulkPayDate, setBulkPayDate] = useState(todayDateInput());
   const [bulkPaying, setBulkPaying] = useState<"pay" | "print" | false>(false);
   const [printTitle, setPrintTitle] = useState<string | undefined>();
   const [printOnlyIds, setPrintOnlyIds] = useState<string[] | null>(null);
-  const pageSize = 10;
+  const pageSize = isContainers ? 10 : 100;
   const { toast } = useToast();
   const canPay =
     canEditContainers() && canSeeField("balancePaid");
+  const canSeeOwnerDetails = canViewLorryOwnerDetails();
 
   const handleAdd = () => {
     setEditingAssignment(null);
@@ -92,7 +121,7 @@ export const AssignmentManagement = () => {
     baseUrl
       .get("/assignlorry")
       .then((response) => {
-        setAssignments(asList(response.data?.data));
+        setAssignments(scopeAssignments(asList(response.data?.data)));
       })
       .catch((error) => {
         toast({
@@ -119,7 +148,12 @@ export const AssignmentManagement = () => {
     baseUrl
       .get("/lorry")
       .then((response) => {
-        setLorryOwners(asList(response.data?.data));
+        const rows = asList(response.data?.data);
+        setLorryOwners(
+          (canSeeOwnerDetails ? rows : rows.map(slimLorryOwner)).filter((row: any) =>
+            isLorryOwnerAllowed(row._id || row.id)
+          )
+        );
       })
       .catch(() => {
         setLorryOwners([]);
@@ -127,11 +161,30 @@ export const AssignmentManagement = () => {
   }, []);
 
   useEntitySync("assignment", (payload) => {
-    setAssignments((prev) => upsertById(prev, payload));
+    setAssignments((prev) =>
+      scopeAssignments(upsertById(prev, payload))
+    );
   });
 
   useEntitySync("lorry", (payload) => {
-    setLorryOwners((prev) => upsertById(prev, payload));
+    setLorryOwners((prev) => {
+      const ownerId = String(payload.id || payload.data?._id || "");
+      if (ownerId && !isLorryOwnerAllowed(ownerId)) {
+        return prev.filter((row) => String(row._id || row.id) !== ownerId);
+      }
+      const next = upsertById(prev, {
+        ...payload,
+        data:
+          payload.data && !canSeeOwnerDetails
+            ? slimLorryOwner(payload.data)
+            : payload.data,
+      });
+      const scoped = scopeLorryOwners(next);
+      if (canSeeOwnerDetails) return scoped;
+      return scoped.map((row) =>
+        String(row._id || row.id) === ownerId ? slimLorryOwner(row) : row
+      );
+    });
   });
 
   const ownerOptions = useMemo(() => {
@@ -190,40 +243,42 @@ export const AssignmentManagement = () => {
     const from = parseDay(fromDate);
     const to = parseDay(toDate, true);
 
-    return assignments.filter((assignment) => {
-      if (status !== "all" && assignment.status !== status) return false;
-      if (q) {
-        const match = [
-          assignment.blNo,
-          assignment.item,
-          assignment.exporter,
-          assignment.importer,
-          assignment.status,
-        ]
-          .filter(Boolean)
-          .some((value) => String(value).toLowerCase().includes(q));
-        if (!match) return false;
-      }
-      if (from || to) {
-        const date = assignment.cusdecDate
-          ? new Date(assignment.cusdecDate)
-          : null;
-        if (!date || Number.isNaN(date.getTime())) return false;
-        if (from && date < from) return false;
-        if (to && date > to) return false;
-      }
-      const containers = assignment.containers || [];
-      if (
-        (balanceFilter === "unpaid" ||
-          advancedFilter === "yes" ||
-          owner !== "all" ||
-          destination !== "all") &&
-        !containers.some((container: any) => matchesExtraFilters(container))
-      ) {
-        return false;
-      }
-      return true;
-    });
+    return assignments
+      .filter((assignment) => {
+        if (status !== "all" && assignment.status !== status) return false;
+        if (q) {
+          const match = [
+            assignment.blNo,
+            assignment.item,
+            assignment.exporter,
+            assignment.importer,
+            assignment.status,
+          ]
+            .filter(Boolean)
+            .some((value) => String(value).toLowerCase().includes(q));
+          if (!match) return false;
+        }
+        if (from || to) {
+          const date = assignment.cusdecDate
+            ? new Date(assignment.cusdecDate)
+            : null;
+          if (!date || Number.isNaN(date.getTime())) return false;
+          if (from && date < from) return false;
+          if (to && date > to) return false;
+        }
+        const containers = assignment.containers || [];
+        if (
+          (balanceFilter === "unpaid" ||
+            advancedFilter === "yes" ||
+            owner !== "all" ||
+            destination !== "all") &&
+          !containers.some((container: any) => matchesExtraFilters(container))
+        ) {
+          return false;
+        }
+        return true;
+      })
+      .sort((a, b) => createdStamp(b.createdAt) - createdStamp(a.createdAt));
   }, [
     assignments,
     query,
@@ -241,7 +296,8 @@ export const AssignmentManagement = () => {
     const from = parseDay(fromDate);
     const to = parseDay(toDate, true);
 
-    return assignments.flatMap((assignment) =>
+    return assignments
+      .flatMap((assignment) =>
       (assignment.containers || [])
         .filter((container: any) => {
           if (
@@ -281,7 +337,12 @@ export const AssignmentManagement = () => {
           return true;
         })
         .map((container: any) => ({ assignment, container }))
-    );
+    )
+      .sort(
+        (a, b) =>
+          createdStamp(b.container?.createdAt || b.assignment?.createdAt) -
+          createdStamp(a.container?.createdAt || a.assignment?.createdAt)
+      );
   }, [
     assignments,
     query,
@@ -295,6 +356,10 @@ export const AssignmentManagement = () => {
   ]);
 
   useEffect(() => {
+    if (skipPageReset.current) {
+      skipPageReset.current = false;
+      return;
+    }
     setPage(1);
   }, [
     query,
@@ -326,6 +391,11 @@ export const AssignmentManagement = () => {
     currentPage * pageSize
   );
 
+  useEffect(() => {
+    if (!assignments.length) return;
+    if (page > pages) setPage(pages);
+  }, [assignments.length, page, pages]);
+
   const hasFilters = Boolean(
     query.trim() ||
       status !== "all" ||
@@ -355,7 +425,9 @@ export const AssignmentManagement = () => {
     [allContainerRows, selectedIds]
   );
   const payableSelectedRows = selectedRows.filter(
-    (row) => containerBalance(row.container) > 0
+    (row) =>
+      containerBalance(row.container) > 0 &&
+      (row.container?.status !== "completed" || isAdminUser())
   );
   const printRows = useMemo(() => {
     if (!printOnlyIds?.length) return selectedRows;
@@ -674,7 +746,7 @@ export const AssignmentManagement = () => {
                 variant="outline"
                 className="h-8"
                 disabled={!selectedRows.length}
-                onClick={handlePrintSelected}
+                onClick={() => handlePrintSelected()}
               >
                 <Printer className="h-4 w-4" />
                 Print

@@ -214,7 +214,7 @@ export const DestinationManagement = ({
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {embedded ? (
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-end">
           {toolbar}

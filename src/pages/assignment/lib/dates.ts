@@ -22,3 +22,9 @@ export const parseDay = (value: string, endOfDay = false) => {
   else date.setHours(0, 0, 0, 0);
   return date;
 };
+
+export const createdStamp = (value?: string | Date | null) => {
+  if (!value) return 0;
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? 0 : time;
+};

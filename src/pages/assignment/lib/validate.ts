@@ -81,3 +81,35 @@ export function mapContainerApiError(message: string): keyof ContainerFieldError
   if (/advanced/i.test(message)) return "advanced";
   return "form";
 }
+
+function isFilledAmount(value: unknown) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0;
+}
+
+export function missingCompleteFields(container: {
+  weight?: number;
+  dayHire?: number;
+  advanced?: number;
+}) {
+  const missing: string[] = [];
+  if (!isFilledAmount(container.weight)) missing.push("weight");
+  if (!isFilledAmount(container.dayHire)) missing.push("day hire");
+  if (!isFilledAmount(container.advanced)) missing.push("advanced");
+  return missing;
+}
+
+export function completeRequiresMessage(container: {
+  weight?: number;
+  dayHire?: number;
+  advanced?: number;
+}) {
+  const missing = missingCompleteFields(container);
+  if (!missing.length) return null;
+  if (missing.length === 1) {
+    return `Fill ${missing[0]} before completing this container.`;
+  }
+  const last = missing[missing.length - 1];
+  const rest = missing.slice(0, -1).join(", ");
+  return `Fill ${rest} and ${last} before completing this container.`;
+}

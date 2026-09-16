@@ -11,7 +11,9 @@ import {
 import { Button } from "@/components/ui/button";
 import EditDetail from "./EditDetail";
 import { StatusBadge } from "@/components/StatusBadge";
+import { Badge } from "@/components/ui/badge";
 import { canEditAssignments, canViewContainers } from "@/lib/permissions";
+import { containerSourceId, containerTripKind } from "../lib/containerDisplay";
 
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString("en-US", {
@@ -39,6 +41,16 @@ function BasicInfo({
       (container: { status?: string }) =>
         (container?.status || "pending") === value
     ).length;
+  const onwardSourceIds = new Set(
+    containers
+      .map((container: any) => containerSourceId(container))
+      .filter(Boolean)
+  );
+  const yardCount = containers.filter(
+    (container: any) =>
+      containerTripKind(container) === "yard" &&
+      !onwardSourceIds.has(String(container?._id || ""))
+  ).length;
 
   const fields = [
     { label: "BL Number", value: assignment?.blNo || "—" },
@@ -46,6 +58,12 @@ function BasicInfo({
       label: "Cusdec Date",
       value: assignment?.cusdecDate
         ? formatDate(assignment.cusdecDate)
+        : "—",
+    },
+    {
+      label: "FCL Due Date",
+      value: assignment?.fclDueDate
+        ? formatDate(assignment.fclDueDate)
         : "—",
     },
     { label: "Cusdec Number", value: assignment?.cusdecNo || "—" },
@@ -112,6 +130,12 @@ function BasicInfo({
           <span className="inline-flex items-center gap-1.5">
             <StatusBadge status="completed" />
             {countStatus("completed")}
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <Badge className="border-transparent bg-[hsl(var(--brand-navy))] text-white hover:bg-[hsl(var(--brand-navy))]">
+              At yard
+            </Badge>
+            {yardCount}
           </span>
         </div>
         ) : null}

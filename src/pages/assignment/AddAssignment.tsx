@@ -116,6 +116,7 @@ interface Assignment {
   id: string;
   blNo: string;
   cusdecDate: string;
+  fclDueDate: string;
   cusdecNo: string;
   regNo: string;
   item: string;
@@ -179,6 +180,7 @@ function AddAssignment({
   const [formData, setFormData] = useState({
     blNo: "",
     cusdecDate: "",
+    fclDueDate: "",
     cusdecNo: "",
     regNo: "",
     item: "",
@@ -345,6 +347,7 @@ function AddAssignment({
       setFormData({
         blNo: "",
         cusdecDate: "",
+        fclDueDate: "",
         cusdecNo: "",
         regNo: "",
         item: "",
@@ -440,7 +443,7 @@ function AddAssignment({
     }
   };
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {errors.form ? (
         <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
           {errors.form}
@@ -483,6 +486,17 @@ function AddAssignment({
                 });
               }}
               className={`h-10 ${errors.cusdecDate ? "border-destructive" : ""}`}
+            />
+          </Field>
+          <Field label="FCL Due Date">
+            <Input
+              id="fclDueDate"
+              type="date"
+              value={formData.fclDueDate}
+              onChange={(e) =>
+                setFormData({ ...formData, fclDueDate: e.target.value })
+              }
+              className="h-10"
             />
           </Field>
           <Field label="Cusdec Number" required error={errors.cusdecNo}>

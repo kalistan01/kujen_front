@@ -9,7 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ClipboardList, Eye } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { StatusBadge } from "@/components/StatusBadge";
 import TablePagination from "@/components/TablePagination";
 import { canSeeField } from "@/lib/permissions";
@@ -206,6 +206,7 @@ function ContainerListTable({
   onSelectPage?: (containerIds: string[], checked: boolean) => void;
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const chargeColumns = visibleChargeColumns();
   const selectableIds = rows
     .filter((row) => row.container?._id)
@@ -245,7 +246,7 @@ function ContainerListTable({
                   )}
                 </TableHead>
               ) : null}
-              <TableHead>BL Number</TableHead>
+              <TableHead>BL NO</TableHead>
               <TableHead>Container</TableHead>
               <TableHead>VOC</TableHead>
               <TableHead>Lorry</TableHead>
@@ -273,7 +274,11 @@ function ContainerListTable({
                 key={row.container?._id || `${row.assignment?._id}-${index}`}
                 assignment={row.assignment}
                 container={row.container}
-                onView={(id) => navigate(`/assignment/${id}`)}
+                onView={(id) =>
+                  navigate(`/assignment/${id}`, {
+                    state: { from: `${location.pathname}${location.search}` },
+                  })
+                }
                 canSelect={canSelect}
                 selected={selectedIds.includes(row.container?._id)}
                 onSelect={onSelect}

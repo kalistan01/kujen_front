@@ -10,7 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ChevronDown, ClipboardList, Eye, Package } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { StatusBadge } from "@/components/StatusBadge";
 import TablePagination from "@/components/TablePagination";
 import { canSeeField } from "@/lib/permissions";
@@ -387,6 +387,7 @@ function AssignmentTable({
   onSelectPage?: (containerIds: string[], checked: boolean) => void;
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
 
   return (
     <>
@@ -399,8 +400,8 @@ function AssignmentTable({
               <TableHead className="w-10 pr-0">
                 <span className="sr-only">Expand</span>
               </TableHead>
-              <TableHead>Registration Number</TableHead>
-              <TableHead>BL Number</TableHead>
+              <TableHead>REG NO</TableHead>
+              <TableHead>BL NO</TableHead>
               <TableHead>Cusdec Date</TableHead>
               <TableHead>Item</TableHead>
               <TableHead>Containers</TableHead>
@@ -415,7 +416,11 @@ function AssignmentTable({
               <AssignmentRow
                 key={assignment._id || index}
                 assignment={assignment}
-                onView={(id) => navigate(`/assignment/${id}`)}
+                onView={(id) =>
+                  navigate(`/assignment/${id}`, {
+                    state: { from: `${location.pathname}${location.search}` },
+                  })
+                }
                 selectedIds={selectedIds}
                 onSelect={onSelect}
                 onSelectPage={onSelectPage}

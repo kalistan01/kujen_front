@@ -30,7 +30,7 @@ export function KpiCard({
     <Card className="overflow-hidden">
       <CardContent className="p-4">
         <p className="text-xs font-medium text-muted-foreground">{label}</p>
-        <p className={cn("mt-1 text-2xl font-bold tracking-tight", tone)}>
+        <p className={cn("mt-1 text-lg font-bold tracking-tight", tone)}>
           {value}
         </p>
         {hint ? (

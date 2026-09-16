@@ -16,9 +16,10 @@ function PrintBlTable({
     <table className="print-table">
       <thead>
         <tr>
-          <th>BL Number</th>
+          <th>BL NO</th>
           <th>Status</th>
           <th>Cusdec Date</th>
+          <th>FCL Due Date</th>
           <th>Cusdec No.</th>
           <th>Reg. No.</th>
           <th>Item</th>
@@ -32,6 +33,7 @@ function PrintBlTable({
             <td className="mono">{assignment?.blNo || "—"}</td>
             <td className="status">{statusLabel(assignment?.status)}</td>
             <td className="nowrap">{formatDate(assignment?.cusdecDate)}</td>
+            <td className="nowrap">{formatDate(assignment?.fclDueDate)}</td>
             <td>{assignment?.cusdecNo || "—"}</td>
             <td>{assignment?.regNo || "—"}</td>
             <td>{assignment?.item || "—"}</td>

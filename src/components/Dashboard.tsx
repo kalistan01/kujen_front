@@ -199,17 +199,17 @@ export const Dashboard = () => {
   ];
 
   return (
-    <div className="space-y-6">
-      <section className="relative overflow-hidden rounded-2xl bg-[hsl(var(--brand-navy))] px-6 py-7 text-white shadow-shell">
+    <div className="space-y-4">
+      <section className="relative overflow-hidden rounded-xl bg-[hsl(var(--brand-navy))] px-4 py-4 text-white shadow-shell">
         <div className="pointer-events-none absolute -right-10 -top-16 h-48 w-48 rounded-full bg-white/10 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-16 left-1/3 h-40 w-40 rounded-full bg-sky-400/15 blur-3xl" />
         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/45">
           {brand.name}
         </p>
-        <h2 className="mt-2 max-w-xl text-2xl font-bold tracking-tight sm:text-3xl">
+        <h2 className="mt-1.5 max-w-xl text-xl font-bold tracking-tight">
           Operations overview
         </h2>
-        <p className="mt-2 max-w-lg text-sm text-white/65">
+        <p className="mt-1.5 max-w-lg text-xs text-white/65">
           Live counts and activity from the full users, fleet, routes, and
           assignment records.
         </p>
@@ -242,25 +242,25 @@ export const Dashboard = () => {
             >
               <Card className="group relative overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
                 <div
-                  className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${stat.accent}`}
+                  className={`absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r ${stat.accent}`}
                 />
-                <CardContent className="p-5">
-                  <div className="flex items-start justify-between gap-3">
+                <CardContent className="p-3.5">
+                  <div className="flex items-start justify-between gap-2">
                     <div>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         {stat.title}
                       </p>
-                      <p className="mt-2 text-3xl font-bold tracking-tight">
+                      <p className="mt-1 text-2xl font-bold tracking-tight">
                         {stat.value}
                       </p>
                     </div>
                     <div
-                      className={`flex h-11 w-11 items-center justify-center rounded-xl ${stat.iconWrap}`}
+                      className={`flex h-8 w-8 items-center justify-center rounded-lg ${stat.iconWrap}`}
                     >
-                      <Icon className="h-5 w-5" />
+                      <Icon className="h-4 w-4" />
                     </div>
                   </div>
-                  <p className="mt-4 flex items-center gap-1 text-xs font-medium text-muted-foreground group-hover:text-foreground">
+                  <p className="mt-2.5 flex items-center gap-1 text-[11px] font-medium text-muted-foreground group-hover:text-foreground">
                     {stat.hint}
                     <ArrowUpRight className="h-3.5 w-3.5" />
                   </p>
@@ -271,13 +271,13 @@ export const Dashboard = () => {
         })}
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {canLogs ? (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center justify-between text-lg">
+            <CardTitle className="flex items-center justify-between text-sm">
               <span className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-amber-500" />
+                <TrendingUp className="h-4 w-4 text-amber-500" />
                 Recent activity
               </span>
               <button
@@ -289,22 +289,22 @@ export const Dashboard = () => {
               </button>
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-2">
             {activities.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">
+              <p className="py-5 text-center text-xs text-muted-foreground">
                 No activity recorded yet.
               </p>
             ) : (
               activities.map((item) => (
                 <div
                   key={item._id}
-                  className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/30 px-3 py-3"
+                  className="flex items-center gap-2.5 rounded-lg border border-border/70 bg-muted/30 px-2.5 py-2"
                 >
                   <span
                     className={`h-2.5 w-2.5 shrink-0 rounded-full ${moduleTone[item.module || ""] || "bg-slate-400"}`}
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">
+                    <p className="truncate text-xs font-medium">
                       {item.summary || item.action}
                     </p>
                     <p className="text-xs text-muted-foreground">
@@ -321,9 +321,9 @@ export const Dashboard = () => {
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center justify-between text-lg">
+            <CardTitle className="flex items-center justify-between text-sm">
               <span className="flex items-center gap-2">
-                <ClipboardList className="h-5 w-5 text-[hsl(var(--brand-navy))]" />
+                <ClipboardList className="h-4 w-4 text-[hsl(var(--brand-navy))]" />
                 Latest assignments
               </span>
               <button
@@ -337,7 +337,7 @@ export const Dashboard = () => {
           </CardHeader>
           <CardContent className="space-y-3">
             {recentAssignments.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">
+              <p className="py-5 text-center text-xs text-muted-foreground">
                 No assignments yet.
               </p>
             ) : (
@@ -346,13 +346,13 @@ export const Dashboard = () => {
                   key={item._id}
                   type="button"
                   onClick={() => navigate(`/assignment/${item._id}`)}
-                  className="flex w-full items-center gap-3 rounded-xl border border-border/70 bg-muted/30 px-3 py-3 text-left transition-colors hover:bg-muted/50"
+                  className="flex w-full items-center gap-2.5 rounded-lg border border-border/70 bg-muted/30 px-2.5 py-2 text-left transition-colors hover:bg-muted/50"
                 >
                   <span className="inline-flex rounded-md border border-[hsl(var(--brand-navy))]/15 bg-[hsl(var(--brand-navy))]/8 px-2 py-1 font-mono text-[11px] font-semibold text-[hsl(var(--brand-navy))]">
                     {item.blNo || "—"}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">
+                    <p className="truncate text-xs font-medium">
                       {item.item || "Assignment"}
                     </p>
                     <p className="text-xs text-muted-foreground">
@@ -371,8 +371,8 @@ export const Dashboard = () => {
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <ClipboardList className="h-5 w-5 text-[hsl(var(--brand-navy))]" />
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <ClipboardList className="h-4 w-4 text-[hsl(var(--brand-navy))]" />
             Quick actions
           </CardTitle>
         </CardHeader>
@@ -398,15 +398,15 @@ export const Dashboard = () => {
               return (
                 <button
                   key={action.label}
-                  className="rounded-xl border border-border/70 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-[hsl(var(--brand-navy))]/40 hover:bg-muted/40"
+                  className="rounded-lg border border-border/70 p-3 text-left transition-all hover:-translate-y-0.5 hover:border-[hsl(var(--brand-navy))]/40 hover:bg-muted/40"
                   onClick={() => navigate(action.href)}
                 >
                   <div
-                    className={`mb-3 flex h-10 w-10 items-center justify-center rounded-lg ${action.tone}`}
+                    className={`mb-2 flex h-8 w-8 items-center justify-center rounded-md ${action.tone}`}
                   >
-                    <Icon className="h-5 w-5" />
+                    <Icon className="h-4 w-4" />
                   </div>
-                  <p className="text-sm font-semibold">{action.label}</p>
+                  <p className="text-xs font-semibold">{action.label}</p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     {action.hint}
                   </p>

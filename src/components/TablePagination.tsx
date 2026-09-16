@@ -21,35 +21,35 @@ function TablePagination({
   const to = Math.min(current * limit, total);
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-2">
-      <p className="text-sm text-muted-foreground">
+    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-3 py-1.5">
+      <p className="text-xs text-muted-foreground">
         Showing {from}–{to} of {total}
       </p>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <Button
           type="button"
           variant="outline"
           size="sm"
-          className="h-8"
+          className="h-7"
           disabled={current <= 1}
           onClick={() => onPageChange(current - 1)}
         >
-          <ChevronLeft className="h-4 w-4" />
+          <ChevronLeft className="h-3.5 w-3.5" />
           Previous
         </Button>
-        <span className="min-w-[88px] text-center text-sm text-muted-foreground">
+        <span className="min-w-[80px] text-center text-xs text-muted-foreground">
           Page {current} of {safePages}
         </span>
         <Button
           type="button"
           variant="outline"
           size="sm"
-          className="h-8"
+          className="h-7"
           disabled={current >= safePages}
           onClick={() => onPageChange(current + 1)}
         >
           Next
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className="h-3.5 w-3.5" />
         </Button>
       </div>
     </div>

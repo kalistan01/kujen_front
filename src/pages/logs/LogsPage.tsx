@@ -133,7 +133,7 @@ export const LogsPage = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Logs"
         description="Activity history for every create, update, delete, login, and export action."

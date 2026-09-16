@@ -38,6 +38,8 @@ interface Role {
   roleName: string;
   permission: number[];
   denied: number[];
+  allowedLorryOwners?: unknown[];
+  restrictLorryOwners?: boolean;
   status: boolean;
   admin: boolean;
   createdAt: string;
@@ -174,7 +176,7 @@ export const RoleManagement = () => {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Roles"
         description="Control what staff can see and change across the system."

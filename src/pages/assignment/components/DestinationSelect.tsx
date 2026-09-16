@@ -26,7 +26,7 @@ export type DestinationOption = {
 };
 
 function labelOf(dest: DestinationOption) {
-  return `${dest.type} - ${dest.location}`;
+  return dest.location || dest._id;
 }
 
 function destinationId(value: string | { _id?: string } | undefined) {

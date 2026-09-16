@@ -16,6 +16,7 @@ interface Assignment {
   _id: string;
   blNo: string;
   cusdecDate: string;
+  fclDueDate?: string;
   cusdecNo: string;
   regNo: string;
   item: string;
@@ -45,6 +46,7 @@ function EditDetail({
   const [formData, setFormData] = useState({
     blNo: "",
     cusdecDate: "",
+    fclDueDate: "",
     cusdecNo: "",
     regNo: "",
     item: "",
@@ -57,6 +59,7 @@ function EditDetail({
     setFormData({
       blNo: editingAssignment.blNo || "",
       cusdecDate: toDateInput(editingAssignment.cusdecDate),
+      fclDueDate: toDateInput(editingAssignment.fclDueDate),
       cusdecNo: editingAssignment.cusdecNo || "",
       regNo: editingAssignment.regNo || "",
       item: editingAssignment.item || "",
@@ -70,6 +73,7 @@ function EditDetail({
     setFormData({
       blNo: "",
       cusdecDate: "",
+      fclDueDate: "",
       cusdecNo: "",
       regNo: "",
       item: "",
@@ -118,6 +122,7 @@ function EditDetail({
     const payload = {
       blNo: formData.blNo.trim(),
       cusdecDate: formData.cusdecDate,
+      fclDueDate: formData.fclDueDate,
       cusdecNo: formData.cusdecNo.trim(),
       regNo: formData.regNo.trim(),
       item: formData.item.trim(),
@@ -160,14 +165,14 @@ function EditDetail({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {errors.form ? (
         <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
           {errors.form}
         </p>
       ) : null}
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           <div className="space-y-1.5">
             <Label htmlFor="blNo">BL Number *</Label>
             <Input
@@ -203,6 +208,17 @@ function EditDetail({
                 {errors.cusdecDate}
               </p>
             ) : null}
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="fclDueDate">FCL Due Date</Label>
+            <Input
+              id="fclDueDate"
+              type="date"
+              value={formData.fclDueDate}
+              onChange={(e) => {
+                setFormData({ ...formData, fclDueDate: e.target.value });
+              }}
+            />
           </div>
         </div>
 

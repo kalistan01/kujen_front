@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -31,14 +31,24 @@ import {
   todayDateInput,
   type HeldUpRateOption,
 } from "./lib/financials";
-import { containerCapacity, containerLorry, mergePopulatedAssignment } from "./lib/containerDisplay";
+import { containerCapacity, containerLorry, containerSourceId, containersGroupedByYardTrip, mergePopulatedAssignment } from "./lib/containerDisplay";
 import { can, canEditField, canEditAssignments, canViewContainers, canAddContainers, canEditContainers, P } from "@/lib/permissions";
+import { isAdminUser } from "@/lib/auth";
+import { scopeAssignmentContainers } from "@/lib/lorryScope";
 import { useEntitySync } from "@/hooks/useEntitySync";
 import { upsertById } from "@/lib/socket";
 
 const AssignmentDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const listPath =
+    typeof location.state === "object" &&
+    location.state &&
+    "from" in location.state &&
+    typeof (location.state as { from?: unknown }).from === "string"
+      ? (location.state as { from: string }).from
+      : "/assignments";
   const { toast } = useToast();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [adminEmail, setAdminEmail] = useState("");
@@ -61,13 +71,27 @@ const AssignmentDetails = () => {
   const canCreateContainer = canAddContainers();
   const canChangeContainers = canEditContainers();
 
+  const patchLocalContainer = (containerId: string, patch: Record<string, unknown>) => {
+    setAssignment((previous) => {
+      if (!previous) return previous;
+      return {
+        ...previous,
+        containers: (previous.containers || []).map((container: any) =>
+          String(container?._id) === String(containerId)
+            ? { ...container, ...patch }
+            : container
+        ),
+      };
+    });
+  };
+
   const loadAssignment = () => {
     if (!id) return;
     baseUrl
       .get("/assignlorry/" + id)
       .then(async (response) => {
         setLoadError(null);
-        setAssignment(response.data.data);
+        setAssignment(scopeAssignmentContainers(response.data.data));
       })
       .catch((error) => {
         setAssignment(null);
@@ -110,7 +134,7 @@ const AssignmentDetails = () => {
       navigate("/assignments", { replace: true });
       return;
     }
-    if (payload.data) setAssignment(payload.data);
+    if (payload.data) setAssignment(scopeAssignmentContainers(payload.data));
   });
 
   useEntitySync("heldup", (payload) => {
@@ -196,8 +220,17 @@ const AssignmentDetails = () => {
   const displayAssignment = assignment;
 
   const containers = displayAssignment?.containers || [];
+  const containerGroups = containersGroupedByYardTrip(containers);
+  const onwardSourceIds = new Set(
+    containers
+      .map((container: any) => containerSourceId(container))
+      .filter(Boolean)
+  );
   const payableContainers = containers.filter(
-    (c: any) => c?._id && containerBalance(c) > 0
+    (c: any) =>
+      c?._id &&
+      containerBalance(c) > 0 &&
+      (c.status !== "completed" || isAdminUser())
   );
   const selectedContainers = payableContainers.filter((c: any) =>
     selectedIds.includes(c._id)
@@ -326,7 +359,7 @@ const AssignmentDetails = () => {
           <Button
             variant="outline"
             size="icon"
-            onClick={() => navigate("/assignments")}
+            onClick={() => navigate(listPath)}
             className="h-9 w-9 shrink-0"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -348,7 +381,7 @@ const AssignmentDetails = () => {
           <Button
             variant="outline"
             size="icon"
-            onClick={() => navigate("/assignments")}
+            onClick={() => navigate(listPath)}
             className="h-9 w-9 shrink-0"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -462,30 +495,46 @@ const AssignmentDetails = () => {
                   <DialogHeader>
                     <DialogTitle>Add Container</DialogTitle>
                   </DialogHeader>
-                  <AddContainer setIsDialogOpen={setIsDialogOpen} />
+                  <AddContainer
+                    setIsDialogOpen={setIsDialogOpen}
+                    onSaved={loadAssignment}
+                  />
                 </DialogContent>
               </Dialog>
                 ) : null}
               </div>
             </CardHeader>
             <CardContent className="space-y-3 pb-4">
-              {containers.length ? (
-                containers.map((container: any, index: number) => (
-                  <Containers
-                    key={container._id || index}
-                    container={container}
-                    heldUpRates={heldUpRates}
-                    setOpen={setOpen}
-                    onPaid={() => {
-                      setSelectedIds((prev) =>
-                        prev.filter((cid) => cid !== container._id)
-                      );
-                      loadAssignment();
-                    }}
-                    onChanged={loadAssignment}
-                    selected={selectedIds.includes(container._id)}
-                    onSelect={toggleSelected}
-                  />
+              {containerGroups.length ? (
+                containerGroups.map((group: any[], groupIndex: number) => (
+                  <div
+                    key={group.map((container) => container._id).join("-") || groupIndex}
+                    className={
+                      group.length > 1
+                        ? "space-y-3 rounded-xl border border-[hsl(var(--brand-navy))]/20 bg-[hsl(var(--brand-navy))]/5 p-2"
+                        : undefined
+                    }
+                  >
+                    {group.map((container: any, index: number) => (
+                      <Containers
+                        key={container._id || `${groupIndex}-${index}`}
+                        container={container}
+                        heldUpRates={heldUpRates}
+                        setOpen={setOpen}
+                        onPaid={() => {
+                          setSelectedIds((prev) =>
+                            prev.filter((cid) => cid !== container._id)
+                          );
+                          loadAssignment();
+                        }}
+                        onChanged={loadAssignment}
+                        onLocalUpdate={patchLocalContainer}
+                        selected={selectedIds.includes(container._id)}
+                        onSelect={toggleSelected}
+                        hasOnwardTrip={onwardSourceIds.has(String(container._id))}
+                      />
+                    ))}
+                  </div>
                 ))
               ) : (
                 <p className="py-6 text-center text-sm text-muted-foreground">

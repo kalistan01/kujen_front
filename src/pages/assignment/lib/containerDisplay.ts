@@ -42,6 +42,10 @@ export function mergePopulatedAssignment(previous: any, updated: any) {
           : prev.destination,
         destinationlocation:
           container.destinationlocation || prev.destinationlocation,
+        destinationtype: container.destinationtype || prev.destinationtype,
+        sourceContainerId:
+          container.sourceContainerId || prev.sourceContainerId,
+        tripKind: container.tripKind || prev.tripKind,
       };
     }),
   };
@@ -76,6 +80,78 @@ export function containerMatchesOwner(container: any, value: string) {
   return containerOwnerKey(container) === String(value).trim().toLowerCase();
 }
 
+export function containerSourceId(container: any) {
+  const value = container?.sourceContainerId;
+  if (!value) return "";
+  if (typeof value === "object") return String(value._id || "");
+  return String(value);
+}
+
+export function containerTripKind(container: any) {
+  if (container?.tripKind === "yard" || container?.tripKind === "onward") {
+    return container.tripKind;
+  }
+  if (containerSourceId(container)) return "onward";
+  return "";
+}
+
+export function orderContainersWithStoreTrips(containers: any[] = []) {
+  const list = containers.filter(Boolean);
+  const byId = new Map(
+    list
+      .filter((container) => container?._id)
+      .map((container) => [String(container._id), container])
+  );
+  const childrenBySource = new Map<string, any[]>();
+  for (const container of list) {
+    const sourceId = containerSourceId(container);
+    if (!sourceId || !byId.has(sourceId)) continue;
+    const group = childrenBySource.get(sourceId) || [];
+    group.push(container);
+    childrenBySource.set(sourceId, group);
+  }
+  const placed = new Set<string>();
+  const ordered: any[] = [];
+  for (const container of list) {
+    const id = String(container?._id || "");
+    if (id && placed.has(id)) continue;
+    const sourceId = containerSourceId(container);
+    if (sourceId && byId.has(sourceId)) continue;
+    ordered.push(container);
+    if (id) placed.add(id);
+    for (const child of childrenBySource.get(id) || []) {
+      const childId = String(child?._id || "");
+      if (childId && placed.has(childId)) continue;
+      ordered.push(child);
+      if (childId) placed.add(childId);
+    }
+  }
+  for (const container of list) {
+    const id = String(container?._id || "");
+    if (id && placed.has(id)) continue;
+    ordered.push(container);
+    if (id) placed.add(id);
+  }
+  return ordered;
+}
+
+export function containersGroupedByYardTrip(containers: any[] = []) {
+  const ordered = orderContainersWithStoreTrips(containers);
+  const groups: any[][] = [];
+  for (let index = 0; index < ordered.length; index += 1) {
+    const current = ordered[index];
+    const next = ordered[index + 1];
+    const currentId = String(current?._id || "");
+    if (next && currentId && containerSourceId(next) === currentId) {
+      groups.push([current, next]);
+      index += 1;
+    } else {
+      groups.push([current]);
+    }
+  }
+  return groups;
+}
+
 export function containerDestination(container: any) {
   return (
     container?.destinationlocation || container?.destination?.location || "—"
@@ -93,9 +169,7 @@ export function containerDestinationOption(container: any) {
   if (dest && typeof dest === "object" && (dest._id || dest.location)) {
     return {
       value: String(dest._id || dest.location),
-      label: dest.type
-        ? `${dest.type} - ${dest.location}`
-        : dest.location || dest._id,
+      label: dest.location || dest._id,
     };
   }
   const location = container?.destinationlocation;

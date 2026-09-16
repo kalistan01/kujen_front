@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/apiError";
 import baseUrl from "@/api/baseUrl";
+import { asList } from "@/lib/utils";
 import {
   ALL_PERMISSION_IDS,
   DEFAULT_STAFF_PERMISSIONS,
@@ -24,6 +25,8 @@ interface Role {
   roleName: string;
   permission: number[];
   denied: number[];
+  allowedLorryOwners?: string[] | Array<{ _id?: string }>;
+  restrictLorryOwners?: boolean;
   status: boolean;
   admin: boolean;
   createdAt: string;
@@ -31,6 +34,7 @@ interface Role {
 
 type FormErrors = {
   roleName?: string;
+  owners?: string;
   form?: string;
 };
 
@@ -46,6 +50,8 @@ const emptyForm = {
   denied: ALL_PERMISSION_IDS.filter(
     (id) => !DEFAULT_STAFF_PERMISSIONS.includes(id)
   ),
+  allowedLorryOwners: [] as string[],
+  restrictLorryOwners: false,
   status: true,
   admin: false,
 };
@@ -65,6 +71,9 @@ function AddRole({
   const [formData, setFormData] = useState(emptyForm);
   const [errors, setErrors] = useState<FormErrors>({});
   const [saving, setSaving] = useState(false);
+  const [owners, setOwners] = useState<
+    Array<{ _id?: string; ownerName?: string; companyName?: string }>
+  >([]);
 
   const resetForm = () => {
     setFormData({
@@ -73,6 +82,8 @@ function AddRole({
       denied: ALL_PERMISSION_IDS.filter(
         (id) => !DEFAULT_STAFF_PERMISSIONS.includes(id)
       ),
+      allowedLorryOwners: [],
+      restrictLorryOwners: false,
     });
     setErrors({});
   };
@@ -87,6 +98,12 @@ function AddRole({
         roleName: editingRole.roleName,
         permission: access.permission,
         denied: access.denied,
+        allowedLorryOwners: (editingRole.allowedLorryOwners || []).map((id) =>
+          String(typeof id === "object" ? id._id || "" : id)
+        ).filter(Boolean),
+        restrictLorryOwners:
+          Boolean(editingRole.restrictLorryOwners) ||
+          Boolean((editingRole.allowedLorryOwners || []).length),
         status: editingRole.status,
         admin: editingRole.admin,
       });
@@ -96,6 +113,17 @@ function AddRole({
 
     resetForm();
   }, [editingRole]);
+
+  useEffect(() => {
+    baseUrl
+      .get("/lorry")
+      .then((response) => {
+        setOwners(asList(response.data?.data));
+      })
+      .catch(() => {
+        setOwners([]);
+      });
+  }, []);
 
   const applyAllowed = (nextAllowed: number[]) => {
     setFormData({
@@ -221,6 +249,14 @@ function AddRole({
       }
     }
 
+    if (
+      !formData.admin &&
+      formData.restrictLorryOwners &&
+      !formData.allowedLorryOwners.length
+    ) {
+      next.owners = "Select at least one lorry owner for a restricted role.";
+    }
+
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -241,10 +277,16 @@ function AddRole({
           roleName: formData.roleName.trim(),
           permission: [...ALL_PERMISSION_IDS],
           denied: [] as number[],
+          restrictLorryOwners: false,
+          allowedLorryOwners: [] as string[],
         }
       : {
           ...formData,
           roleName: formData.roleName.trim(),
+          restrictLorryOwners: formData.restrictLorryOwners,
+          allowedLorryOwners: formData.restrictLorryOwners
+            ? formData.allowedLorryOwners
+            : [],
         };
 
     setSaving(true);
@@ -713,6 +755,106 @@ function AddRole({
     );
   };
 
+  const renderLorryOwnerScope = () => {
+    const selected = new Set(formData.allowedLorryOwners);
+    const restricted = formData.restrictLorryOwners && !formData.admin;
+    const toggleOwner = (id: string, checked: boolean) => {
+      const next = checked
+        ? Array.from(new Set([...formData.allowedLorryOwners, id]))
+        : formData.allowedLorryOwners.filter((value) => value !== id);
+      setFormData({ ...formData, allowedLorryOwners: next });
+      setErrors((prev) => {
+        if (!prev.owners) return prev;
+        const nextErrors = { ...prev };
+        delete nextErrors.owners;
+        return nextErrors;
+      });
+    };
+    return (
+      <div>
+        <div className="mb-2 flex items-center justify-between">
+          <Label>Lorry owners</Label>
+        </div>
+        <p className="mb-2 text-xs text-muted-foreground">
+          Default roles see every lorry owner, including owners added later.
+          Restricted roles only see the owners you tick, so new owners stay hidden.
+        </p>
+        {formData.admin ? (
+          <p className="rounded-lg border border-border/70 px-3 py-2 text-sm text-muted-foreground">
+            Admin roles always see every lorry owner.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-start space-x-3 rounded-lg border border-border/70 p-3">
+              <Checkbox
+                id="restrict-lorry-owners"
+                checked={restricted}
+                onCheckedChange={(checked) =>
+                  setFormData({
+                    ...formData,
+                    restrictLorryOwners: checked === true,
+                    allowedLorryOwners:
+                      checked === true ? formData.allowedLorryOwners : [],
+                  })
+                }
+              />
+              <div className="flex-1">
+                <Label htmlFor="restrict-lorry-owners" className="text-sm font-medium">
+                  Restrict to selected lorry owners
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Off: this role sees all owners. On: only the owners selected below.
+                </p>
+              </div>
+            </div>
+            {restricted ? (
+              <div className="max-h-48 space-y-3 overflow-y-auto rounded-lg border border-border/70 p-3">
+                {owners.length ? (
+                  owners.map((owner) => {
+                    const id = String(owner._id || "");
+                    const label =
+                      owner.ownerName || owner.companyName || "Unnamed owner";
+                    return (
+                      <div key={id} className="flex items-start space-x-3">
+                        <Checkbox
+                          id={`owner-scope-${id}`}
+                          checked={selected.has(id)}
+                          onCheckedChange={(checked) =>
+                            toggleOwner(id, checked === true)
+                          }
+                        />
+                        <div className="flex-1">
+                          <Label
+                            htmlFor={`owner-scope-${id}`}
+                            className="text-sm font-medium"
+                          >
+                            {label}
+                          </Label>
+                          {owner.companyName && owner.ownerName ? (
+                            <p className="text-xs text-muted-foreground">
+                              {owner.companyName}
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No lorry owners found yet.
+                  </p>
+                )}
+              </div>
+            ) : null}
+            {errors.owners ? (
+              <p className="text-xs font-medium text-destructive">{errors.owners}</p>
+            ) : null}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-4">
       {errors.form ? (
@@ -745,6 +887,7 @@ function AddRole({
         ) : null}
       </div>
       {renderPageAccess()}
+      {renderLorryOwnerScope()}
       {renderGroup("Logs", PAGE_EXTRA_PERMISSIONS)}
       {renderFieldPermissions()}
       <div className="flex items-center space-x-2">
@@ -756,7 +899,12 @@ function AddRole({
               ...formData,
               admin: checked as boolean,
               ...(checked
-                ? { permission: [...ALL_PERMISSION_IDS], denied: [] }
+                ? {
+                    permission: [...ALL_PERMISSION_IDS],
+                    denied: [],
+                    allowedLorryOwners: [],
+                    restrictLorryOwners: false,
+                  }
                 : {}),
             })
           }

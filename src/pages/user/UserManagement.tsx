@@ -214,7 +214,7 @@ export const UserManagement = () => {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Users"
         description="Manage staff accounts and the roles assigned to them."

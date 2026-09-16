@@ -7,6 +7,8 @@ export type AuthUser = {
   admin?: boolean;
   permission?: number[];
   denied?: number[];
+  allowedLorryOwners?: string[];
+  restrictLorryOwners?: boolean;
 };
 
 function toIdList(value: unknown) {
@@ -35,6 +37,10 @@ export function getAuthUser(): AuthUser | null {
         admin: Boolean(parsed.admin) || roleName === "admin",
         permission: toIdList(parsed.permission),
         denied: toIdList(parsed.denied),
+        allowedLorryOwners: Array.isArray(parsed.allowedLorryOwners)
+          ? parsed.allowedLorryOwners.map((id: unknown) => String(id || "")).filter(Boolean)
+          : [],
+        restrictLorryOwners: Boolean(parsed.restrictLorryOwners),
       };
     }
     return null;

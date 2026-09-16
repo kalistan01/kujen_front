@@ -46,7 +46,7 @@ All colors MUST be HSL.
     --input: var(--brand-h) 20% 88%;
     --ring: var(--brand-h) var(--brand-s) var(--brand-l);
 
-    --radius: 0.5rem;
+    --radius: 0.4rem;
 
     --sidebar-background: var(--brand-h) var(--brand-s) var(--brand-l);
     --sidebar-foreground: 0 0% 100%;
@@ -140,10 +140,15 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
+  html {
+    font-size: 14px;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
     font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
     color-scheme: light;
+    line-height: 1.45;
   }
 
   .dark body {
@@ -159,6 +164,10 @@ input::-webkit-inner-spin-button {
   @page {
     size: A4 portrait;
     margin: 12mm;
+  }
+
+  html {
+    font-size: 16px;
   }
 
   html,

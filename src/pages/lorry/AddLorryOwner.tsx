@@ -75,7 +75,6 @@ const emptyForm = {
 };
 
 function AddLorryOwner({
-  owners = [],
   setOwners,
   setIsDialogOpen,
   editingOwner,
@@ -143,18 +142,7 @@ function AddLorryOwner({
       (lorry, index) =>
         index !== skipIndex && lorry.lorryNum?.trim().toLowerCase() === value
     );
-    if (inForm) return "This lorry number is already in the list.";
-
-    const takenElsewhere = owners.some(
-      (owner) =>
-        owner._id !== editingOwner?._id &&
-        owner.lorries?.some(
-          (lorry) => lorry.lorryNum?.trim().toLowerCase() === value
-        )
-    );
-    if (takenElsewhere) {
-      return `Lorry number "${lorryNum.trim()}" is already registered.`;
-    }
+    if (inForm) return "This owner already has that lorry number.";
 
     return null;
   };

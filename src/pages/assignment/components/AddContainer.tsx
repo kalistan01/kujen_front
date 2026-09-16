@@ -28,8 +28,10 @@ import { FieldGate } from "@/components/RequirePermission";
 
 const addLock = (key: string, extra = "") => fieldLockProps(key, extra, "add");
 import {
+  completeRequiresMessage,
   firstErrorMessage,
   mapContainerApiError,
+  missingCompleteFields,
   validateContainer,
   type ContainerFieldErrors,
 } from "../lib/validate";
@@ -71,8 +73,14 @@ interface Container {
 
 function AddContainer({
   setIsDialogOpen,
+  sourceContainerId,
+  lockedContainerNo,
+  onSaved,
 }: {
   setIsDialogOpen: (isOpen: boolean) => void;
+  sourceContainerId?: string;
+  lockedContainerNo?: string;
+  onSaved?: () => void;
 }) {
   const { toast } = useToast();
   const { id } = useParams();
@@ -82,7 +90,7 @@ function AddContainer({
   const [errors, setErrors] = useState<ContainerFieldErrors>({});
   const [formError, setFormError] = useState("");
   const intialstate :Container ={
-    containerNo: "",
+    containerNo: lockedContainerNo || "",
     vocNo: formatVocNo(1),
     lorryId: "",
     loadingDate: "",
@@ -180,11 +188,21 @@ function AddContainer({
     }
 
     const nextErrors = validateContainer(containers);
+    if (containers.status === "completed") {
+      missingCompleteFields(containers).forEach((field) => {
+        if (field === "weight") nextErrors.weight = "Weight is required to complete.";
+        if (field === "day hire") nextErrors.dayHire = "Day hire is required to complete.";
+        if (field === "advanced") nextErrors.advanced = "Advanced is required to complete.";
+      });
+    }
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) {
       toast({
         title: "Missing details",
         description:
+          (containers.status === "completed"
+            ? completeRequiresMessage(containers)
+            : null) ||
           firstErrorMessage(nextErrors) ||
           "Please correct the highlighted fields and try again.",
         variant: "destructive",
@@ -198,16 +216,21 @@ function AddContainer({
         `assignlorry/${id}/containers`,
         omitHiddenContainerFields({
           ...applyAdvancedDate(containers),
+          containerNo: lockedContainerNo || containers.containerNo,
+          sourceContainerId: sourceContainerId || undefined,
           destination: containers.destination || undefined,
           demoundDate: containers.demoundDate || undefined,
         }, "add")
       );
       toast({
         title: "Success",
-        description: "Container added successfully.",
+        description: sourceContainerId
+          ? "Store trip added as a new paid record."
+          : "Container added successfully.",
       });
       setIsDialogOpen(false);
       resetForm();
+      onSaved?.();
     } catch (error: unknown) {
       const message = getApiErrorMessage(
         error,
@@ -227,7 +250,7 @@ function AddContainer({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {formError ? (
         <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
           {formError}
@@ -242,7 +265,14 @@ function AddContainer({
                 value={containers.containerNo}
                 onChange={(e) => updateContainer("containerNo", e.target.value)}
                 placeholder="Enter container number"
-                className={errors.containerNo ? "border-destructive" : ""}
+                readOnly={Boolean(lockedContainerNo)}
+                className={
+                  errors.containerNo
+                    ? "border-destructive"
+                    : lockedContainerNo
+                      ? "bg-muted"
+                      : ""
+                }
               />
               {errors.containerNo ? (
                 <p className="text-xs font-medium text-destructive">
@@ -519,6 +549,8 @@ function AddContainer({
               <Loader2 className="h-4 w-4 animate-spin" />
               Saving...
             </>
+          ) : sourceContainerId ? (
+            "Create store trip"
           ) : (
             "Create"
           )}

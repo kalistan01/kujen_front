@@ -5,7 +5,7 @@ import { HeldUpManagement } from "./HeldUpManagement";
 
 export const SettingsPage = () => {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Settings"
         description="Manage destinations and held up rates."

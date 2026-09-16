@@ -16,13 +16,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Banknote, Clock, Edit } from "lucide-react";
+import { Banknote, Clock, Edit, Warehouse } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import baseUrl from "@/api/baseUrl";
 import { useToast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/apiError";
 import { useParams } from "react-router-dom";
 import EditContainer from "./EditContainer";
+import AddContainer from "./AddContainer";
 import {
   containerChargesTotal,
   formatMoney,
@@ -33,13 +35,16 @@ import {
   toAmount,
   type HeldUpRateOption,
 } from "../lib/financials";
-import { canEditField, canSeeField, canEditContainers } from "@/lib/permissions";
+import { canEditField, canSeeField, canEditContainers, canAddContainers } from "@/lib/permissions";
+import { isAdminUser } from "@/lib/auth";
+import { completeRequiresMessage } from "../lib/validate";
 import { parseFcl, type FclState } from "../lib/fcl";
 import {
   containerCapacity,
   containerDestination,
   containerLorry,
   containerOwner,
+  containerTripKind,
 } from "../lib/containerDisplay";
 import FclRecord from "./FclRecord";
 interface ContainerType {
@@ -54,6 +59,9 @@ interface ContainerType {
   createdBy?: string;
   lorryOwner?: string;
   destinationlocation?: string;
+  destinationtype?: string;
+  sourceContainerId?: string;
+  tripKind?: "yard" | "onward";
   loadingDate?: string | Date;
   demoundDate?: string | Date;
   weight?: number;
@@ -99,8 +107,10 @@ type ContainersProps = {
   setOpen: (isOpen: boolean) => void;
   onPaid?: () => void;
   onChanged?: () => void;
+  onLocalUpdate?: (containerId: string, patch: Record<string, unknown>) => void;
   selected?: boolean;
   onSelect?: (containerId: string, checked: boolean) => void;
+  hasOnwardTrip?: boolean;
 };
 
 function Containers({
@@ -109,10 +119,14 @@ function Containers({
   setOpen,
   onPaid,
   onChanged,
+  onLocalUpdate,
   selected = false,
   onSelect,
+  hasOnwardTrip = false,
 }: ContainersProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isLoadToStoreOpen, setIsLoadToStoreOpen] = useState(false);
+  const [markingYard, setMarkingYard] = useState(false);
   const [isPayOpen, setIsPayOpen] = useState(false);
   const [isHeldUpOpen, setIsHeldUpOpen] = useState(false);
   const [heldUpAmount, setHeldUpAmount] = useState("");
@@ -136,8 +150,30 @@ function Containers({
   const toggleStatus = (
     containerId: "pending" | "in-progress" | "advanced" | "completed"
   ) => {
+    if (containerId === "completed") {
+      const message = completeRequiresMessage(container);
+      if (message) {
+        toast({
+          title: "Cannot complete",
+          description: message,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    if (status === "completed" && !isAdminUser()) {
+      toast({
+        title: "Container locked",
+        description: "Only an administrator can edit a completed container.",
+        variant: "destructive",
+      });
+      return;
+    }
     const previous = status;
     setStatus(containerId);
+    if (container?._id) {
+      onLocalUpdate?.(container._id, { status: containerId });
+    }
     baseUrl
       .patch(`assignlorry/${id}/containers/${container?._id}`, {
         status: containerId,
@@ -150,6 +186,9 @@ function Containers({
       })
       .catch((error) => {
         setStatus(previous);
+        if (container?._id) {
+          onLocalUpdate?.(container._id, { status: previous });
+        }
         toast({
           title: "Update failed",
           description: getApiErrorMessage(
@@ -158,6 +197,36 @@ function Containers({
           ),
           variant: "destructive",
         });
+      });
+  };
+  const markAsYard = () => {
+    if (!id || !container?._id || markingYard) return;
+    setMarkingYard(true);
+    onLocalUpdate?.(container._id, { tripKind: "yard" });
+    baseUrl
+      .patch(`assignlorry/${id}/containers/${container._id}`, {
+        tripKind: "yard",
+      })
+      .then(() => {
+        toast({
+          title: "At yard",
+          description: `${container.containerNo || "Container"} marked as yard. Load to store later from this card.`,
+        });
+        onChanged?.();
+      })
+      .catch((error) => {
+        onLocalUpdate?.(container._id, { tripKind: "" });
+        toast({
+          title: "Could not mark yard",
+          description: getApiErrorMessage(
+            error,
+            "Could not mark this container as yard. Please try again."
+          ),
+          variant: "destructive",
+        });
+      })
+      .finally(() => {
+        setMarkingYard(false);
       });
   };
   const saveFcl = (next: FclState) => {
@@ -260,9 +329,21 @@ function Containers({
   );
   const balance = roundMoney(total - paid);
   const canManage = canEditContainers();
+  const canCreate = canAddContainers();
+  const isCompleted = status === "completed";
+  const canManageCompleted = canManage && (!isCompleted || isAdminUser());
+  const tripKind = containerTripKind(container);
+  const isYardTrip = tripKind === "yard";
+  const isOnwardTrip = tripKind === "onward";
+  const canMarkYard =
+    canManageCompleted && !isYardTrip && !isOnwardTrip && !hasOnwardTrip && Boolean(container?._id);
+  const canLoadToStore =
+    canCreate && isYardTrip && !hasOnwardTrip && Boolean(container?._id);
 
   const statusTone =
-    status === "completed"
+    isYardTrip && !hasOnwardTrip
+      ? "border-l-[hsl(var(--brand-navy))]"
+      : status === "completed"
       ? "border-l-emerald-500"
       : status === "in-progress"
         ? "border-l-sky-500"
@@ -274,7 +355,7 @@ function Containers({
     <div className={`space-y-3 rounded-lg border border-l-4 border-border/80 p-4 ${statusTone}`}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex min-w-0 items-start gap-3">
-          {balance > 0 && container?._id && onSelect && canManage && canEditField("balancePaid") ? (
+          {balance > 0 && container?._id && onSelect && canManageCompleted && canEditField("balancePaid") ? (
             <Checkbox
               className="mt-1"
               checked={selected}
@@ -285,14 +366,27 @@ function Containers({
             />
           ) : null}
           <div>
-            <p className="font-mono text-sm font-semibold">{container?.containerNo}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="font-mono text-sm font-semibold">{container?.containerNo}</p>
+              {isYardTrip && !hasOnwardTrip ? (
+                <Badge className="border-transparent bg-[hsl(var(--brand-navy))] text-white hover:bg-[hsl(var(--brand-navy))]">
+                  At yard
+                </Badge>
+              ) : null}
+              {isOnwardTrip ? (
+                <Badge variant="secondary">From yard</Badge>
+              ) : null}
+              {hasOnwardTrip ? (
+                <Badge variant="outline">Loaded to Store</Badge>
+              ) : null}
+            </div>
             <p className="text-xs text-muted-foreground">VOC {container?.vocNo}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {canManage ? (
+          {canManageCompleted ? (
           <Select
-            defaultValue={container?.status}
+            value={status}
             onValueChange={(
               value: "pending" | "in-progress" | "advanced" | "completed"
             ) => {
@@ -314,7 +408,7 @@ function Containers({
               {(status || "pending").replace(/-/g, " ")}
             </span>
           )}
-          {canManage && canEditField("heldUp") ? (
+          {canManageCompleted && canEditField("heldUp") ? (
             <Button
               type="button"
               variant="outline"
@@ -326,7 +420,45 @@ function Containers({
               {savedHeldUp > 0 ? "Edit Held Up" : "Add Held Up"}
             </Button>
           ) : null}
-          {canManage ? (
+          {canMarkYard ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8"
+              onClick={markAsYard}
+              disabled={markingYard}
+            >
+              <Warehouse className="h-3.5 w-3.5" />
+              {markingYard ? "Saving..." : "To Yard"}
+            </Button>
+          ) : null}
+          {canLoadToStore ? (
+            <Dialog open={isLoadToStoreOpen} onOpenChange={setIsLoadToStoreOpen}>
+              <DialogTrigger asChild>
+                <Button type="button" variant="outline" size="sm" className="h-8">
+                  <Warehouse className="h-3.5 w-3.5" />
+                  Load to Store
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
+                <DialogHeader>
+                  <DialogTitle>Load to Store</DialogTitle>
+                </DialogHeader>
+                <p className="text-sm text-muted-foreground">
+                  Creates a new paid trip for {container.containerNo}. The yard
+                  record stays unchanged.
+                </p>
+                <AddContainer
+                  setIsDialogOpen={setIsLoadToStoreOpen}
+                  sourceContainerId={container._id}
+                  lockedContainerNo={container.containerNo}
+                  onSaved={onChanged}
+                />
+              </DialogContent>
+            </Dialog>
+          ) : null}
+          {canManageCompleted ? (
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button
@@ -385,10 +517,10 @@ function Containers({
         ) : null}
       </div>
 
-      {canManage || parseFcl(fcl).enabled ? (
+      {canManageCompleted || parseFcl(fcl).enabled ? (
         <FclRecord
           fcl={fcl}
-          onChange={canManage ? saveFcl : undefined}
+          onChange={canManageCompleted ? saveFcl : undefined}
           formatStepDate={formatDate}
         />
       ) : null}
@@ -471,7 +603,7 @@ function Containers({
             <span className="font-bold">{formatMoney(balance)}</span>
           </p>
         </div>
-        {balance > 0 && canManage && canEditField("balancePaid") ? (
+        {balance > 0 && canManageCompleted && canEditField("balancePaid") ? (
           <Dialog
             open={isPayOpen}
             onOpenChange={(open) => {

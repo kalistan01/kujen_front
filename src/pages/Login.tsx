@@ -47,7 +47,7 @@ const Login = () => {
 
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
-      <div className="relative hidden overflow-hidden bg-[hsl(var(--brand-navy))] p-10 text-white lg:flex lg:flex-col lg:justify-between">
+      <div className="relative hidden overflow-hidden bg-[hsl(var(--brand-navy))] p-8 text-white lg:flex lg:flex-col lg:justify-between">
         <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-24 left-10 h-64 w-64 rounded-full bg-sky-300/20 blur-3xl" />
 
@@ -55,21 +55,21 @@ const Login = () => {
           <img
             src={brand.logo}
             alt={brand.name}
-            className="h-11 w-11 rounded-lg bg-white object-cover ring-1 ring-white/15"
+            className="h-9 w-9 rounded-md bg-white object-cover ring-1 ring-white/15"
           />
           <div>
-            <p className="text-lg font-bold leading-tight">{brand.name}</p>
+            <p className="text-base font-bold leading-tight">{brand.name}</p>
             <p className="text-[11px] uppercase tracking-[0.18em] text-white/45">
               {brand.tagline}
             </p>
           </div>
         </div>
 
-        <div className="relative max-w-md space-y-6">
-          <h1 className="text-4xl font-bold leading-tight tracking-tight">
+        <div className="relative max-w-md space-y-4">
+          <h1 className="text-3xl font-bold leading-tight tracking-tight">
             Move cargo with clarity and control.
           </h1>
-          <p className="text-base text-white/65">
+          <p className="text-sm text-white/65">
             A professional workspace for assignments, fleet owners,
             destinations, and your operations team.
           </p>
@@ -90,17 +90,17 @@ const Login = () => {
         </p>
       </div>
 
-      <div className="relative flex items-center justify-center bg-background p-6">
+      <div className="relative flex items-center justify-center bg-background p-4">
         <div className="absolute right-4 top-4">
           <ThemeToggle />
         </div>
 
         <div className="w-full max-w-[420px]">
-          <div className="mb-8 flex items-center gap-3 lg:hidden">
+          <div className="mb-5 flex items-center gap-2.5 lg:hidden">
             <img
               src={brand.logo}
               alt={brand.name}
-              className="h-11 w-11 rounded-lg bg-white object-cover"
+              className="h-9 w-9 rounded-md bg-white object-cover"
             />
             <div>
               <p className="font-bold">{brand.name}</p>
@@ -108,15 +108,15 @@ const Login = () => {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-border/80 bg-card p-8 shadow-shell">
-            <div className="mb-8 space-y-2">
-              <h2 className="text-2xl font-bold tracking-tight">Welcome back</h2>
+          <div className="rounded-xl border border-border/80 bg-card p-5 shadow-shell">
+            <div className="mb-5 space-y-1">
+              <h2 className="text-xl font-bold tracking-tight">Welcome back</h2>
               <p className="text-sm text-muted-foreground">
                 Sign in to continue to the {brand.name} dashboard.
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-3.5">
               <div className="space-y-2">
                 <Label htmlFor="email">Email address</Label>
                 <Input
@@ -125,7 +125,7 @@ const Login = () => {
                   placeholder={brand.emailPlaceholder}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="h-11"
+                  className="h-9"
                   required
                 />
               </div>
@@ -138,7 +138,7 @@ const Login = () => {
                     placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="h-11 pr-12"
+                    className="h-9 pr-10"
                     required
                   />
                   <Button
@@ -165,7 +165,7 @@ const Login = () => {
 
               <Button
                 type="submit"
-                className="h-11 w-full bg-[hsl(var(--brand-navy))] font-semibold text-white hover:bg-[hsl(var(--brand-navy-muted))]"
+                className="h-9 w-full bg-[hsl(var(--brand-navy))] font-semibold text-white hover:bg-[hsl(var(--brand-navy-muted))]"
                 disabled={isLoading}
               >
                 {isLoading ? (

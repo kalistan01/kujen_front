@@ -22,10 +22,13 @@ import DestinationSelect, {
 import LorrySelect from "./LorrySelect";
 import { todayDateInput, toDateInput, toDateKey, containerChargesTotal, formatMoney, toAmount, CHARGE_FIELDS, roundMoney, applyAdvancedDate } from "../lib/financials";
 import { canEditField, canSeeField, fieldLockProps, omitHiddenContainerFields } from "@/lib/permissions";
+import { isAdminUser } from "@/lib/auth";
 import { FieldGate } from "@/components/RequirePermission";
 import {
+  completeRequiresMessage,
   firstErrorMessage,
   mapContainerApiError,
+  missingCompleteFields,
   validateContainer,
   type ContainerFieldErrors,
 } from "../lib/validate";
@@ -203,16 +206,37 @@ function EditContainer({
       return;
     }
 
+    if (editingAssignment?.status === "completed" && !isAdminUser()) {
+      const message = "Only an administrator can edit a completed container.";
+      setFormError(message);
+      toast({
+        title: "Container locked",
+        description: message,
+        variant: "destructive",
+      });
+      return;
+    }
+
     const lorryId =
       typeof containers.lorryId === "string"
         ? containers.lorryId
         : (containers.lorryId as any)?._id;
     const nextErrors = validateContainer({ ...containers, lorryId });
+    if (containers.status === "completed") {
+      missingCompleteFields(containers).forEach((field) => {
+        if (field === "weight") nextErrors.weight = "Weight is required to complete.";
+        if (field === "day hire") nextErrors.dayHire = "Day hire is required to complete.";
+        if (field === "advanced") nextErrors.advanced = "Advanced is required to complete.";
+      });
+    }
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) {
       toast({
         title: "Missing details",
         description:
+          (containers.status === "completed"
+            ? completeRequiresMessage(containers)
+            : null) ||
           firstErrorMessage(nextErrors) ||
           "Please correct the highlighted fields and try again.",
         variant: "destructive",
@@ -271,7 +295,7 @@ function EditContainer({
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {formError ? (
         <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
           {formError}

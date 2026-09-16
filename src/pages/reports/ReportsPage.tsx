@@ -17,6 +17,7 @@ import { LorryReports } from "./LorryReports";
 import { DateRangeFilters, ReportSearch } from "./shared";
 import { buildContainerRows, filterRows } from "./lib";
 import { brand } from "@/lib/brand";
+import { isLorryOwnerAllowed, scopeAssignments, scopeLorryOwners } from "@/lib/lorryScope";
 
 export function ReportsPage() {
   const location = useLocation();
@@ -65,8 +66,8 @@ export function ReportsPage() {
       baseUrl.get("/heldup").catch(() => ({ data: { data: [] } })),
     ])
       .then(([assignmentRes, ownerRes, heldUpRes]) => {
-        setAssignments(asList(assignmentRes.data?.data));
-        setOwners(asList(ownerRes.data?.data));
+        setAssignments(scopeAssignments(asList(assignmentRes.data?.data)));
+        setOwners(scopeLorryOwners(asList(ownerRes.data?.data)));
         setRates(asList<HeldUpRateOption>(heldUpRes.data?.data));
       })
       .finally(() => setLoading(false));
@@ -77,10 +78,16 @@ export function ReportsPage() {
   }, [canLorries]);
 
   useEntitySync("assignment", (payload) => {
-    setAssignments((prev) => upsertById(prev, payload));
+    setAssignments((prev) => scopeAssignments(upsertById(prev, payload)));
   });
   useEntitySync("lorry", (payload) => {
-    setOwners((prev) => upsertById(prev, payload));
+    setOwners((prev) => {
+      const ownerId = String(payload.id || payload.data?._id || "");
+      if (ownerId && !isLorryOwnerAllowed(ownerId)) {
+        return prev.filter((row) => String(row._id || row.id) !== ownerId);
+      }
+      return scopeLorryOwners(upsertById(prev, payload));
+    });
   });
   useEntitySync("heldup", (payload) => {
     setRates((prev) => upsertById(prev, payload));

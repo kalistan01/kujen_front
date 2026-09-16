@@ -15,10 +15,11 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/PageHeader";
 import { can } from "@/lib/permissions";
-import { P } from "@/lib/permissions";
+import { P, canViewLorryOwnerDetails } from "@/lib/permissions";
 import { useEntitySync } from "@/hooks/useEntitySync";
 import { upsertById } from "@/lib/socket";
 import { asList } from "@/lib/utils";
+import { isLorryOwnerAllowed, scopeLorryOwners } from "@/lib/lorryScope";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/apiError";
@@ -50,9 +51,16 @@ export const LorryOwnerManagement = () => {
   const { toast } = useToast();
   const canAdd = can(P.LORRIES_ADD);
   const canEdit = can(P.LORRIES_EDIT);
+  const canSeeOwnerDetails = canViewLorryOwnerDetails();
 
   useEntitySync("lorry", (payload) => {
-    setOwners((prev) => upsertById(prev, payload));
+    setOwners((prev) => {
+      const ownerId = String(payload.id || payload.data?._id || "");
+      if (ownerId && !isLorryOwnerAllowed(ownerId)) {
+        return prev.filter((row) => String(row._id || row.id) !== ownerId);
+      }
+      return scopeLorryOwners(upsertById(prev, payload));
+    });
   });
 
   useEffect(() => {
@@ -60,7 +68,7 @@ export const LorryOwnerManagement = () => {
     baseUrl
       .get("/lorry")
       .then((response) => {
-        setOwners(asList<LorryOwner>(response.data?.data));
+        setOwners(scopeLorryOwners(asList<LorryOwner>(response.data?.data)));
       })
       .catch((error) => {
         setOwners([]);
@@ -97,14 +105,18 @@ export const LorryOwnerManagement = () => {
     const q = query.trim().toLowerCase();
     if (!q) return owners;
     return owners.filter((owner) =>
-      [owner.companyName, owner.ownerName, owner.phoneNum, owner.address]
+      [
+        owner.companyName,
+        owner.ownerName,
+        ...(canSeeOwnerDetails ? [owner.phoneNum, owner.address] : []),
+      ]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(q))
     );
-  }, [owners, query]);
+  }, [owners, query, canSeeOwnerDetails]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Lorry Owners"
         description="Manage owners, companies, and the vehicles in each fleet."
@@ -160,7 +172,7 @@ export const LorryOwnerManagement = () => {
         <div className="grid gap-5 xl:grid-cols-2">
           {Array.from({ length: 2 }).map((_, index) => (
             <Card key={index}>
-              <CardContent className="space-y-3 p-6">
+              <CardContent className="space-y-3 p-4">
                 <Skeleton className="h-11 w-11 rounded-xl" />
                 <Skeleton className="h-5 w-40" />
                 <Skeleton className="h-4 w-56" />
@@ -211,6 +223,7 @@ export const LorryOwnerManagement = () => {
                 </div>
               </CardHeader>
               <CardContent className="pt-5">
+                {canSeeOwnerDetails ? (
                 <div className="mb-5 grid gap-3 md:grid-cols-2">
                   <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-2 text-sm">
                     <Phone className="h-4 w-4 text-muted-foreground" />
@@ -221,6 +234,7 @@ export const LorryOwnerManagement = () => {
                     {owner.address}
                   </div>
                 </div>
+                ) : null}
 
                 <div className="mb-2 flex items-center justify-between">
                   <p className="text-sm font-semibold">Fleet</p>

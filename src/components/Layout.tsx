@@ -171,22 +171,22 @@ export const Layout = () => {
           "fixed inset-y-0 left-0 z-50 print:hidden",
           "transition-[width,transform] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] will-change-[width,transform]",
           sidebarOpen
-            ? "w-[250px] translate-x-0"
-            : "w-[250px] -translate-x-full lg:w-[72px] lg:translate-x-0"
+            ? "w-[208px] translate-x-0"
+            : "w-[208px] -translate-x-full lg:w-[60px] lg:translate-x-0"
         )}
       >
         <aside className="relative h-full w-full overflow-hidden bg-sidebar text-sidebar-foreground">
           <div className="pointer-events-none absolute -right-16 top-24 h-56 w-56 rounded-full bg-sidebar-primary/10 blur-3xl" />
           <div className="pointer-events-none absolute -left-10 bottom-16 h-40 w-40 rounded-full bg-primary/15 blur-3xl" />
 
-          <div className="relative flex h-full w-[250px] min-w-[250px] flex-col">
-            <div className="relative border-b border-sidebar-border px-3 py-5">
-              <div className="flex items-center gap-3">
+          <div className="relative flex h-full w-[208px] min-w-[208px] flex-col">
+            <div className="relative border-b border-sidebar-border px-2.5 py-3">
+              <div className="flex items-center gap-2.5">
                 <img
                   src={brand.logo}
                   alt={brand.name}
                   title={brand.name}
-                  className="h-11 w-11 shrink-0 rounded-lg bg-white object-cover ring-1 ring-sidebar-foreground/40"
+                  className="h-8 w-8 shrink-0 rounded-md bg-white object-cover ring-1 ring-sidebar-foreground/40"
                 />
                 <div
                   className={cn(
@@ -194,10 +194,10 @@ export const Layout = () => {
                     sidebarOpen ? "opacity-100 delay-100" : "opacity-0 duration-150"
                   )}
                 >
-                  <h1 className="text-[15px] font-bold leading-tight tracking-tight text-sidebar-foreground">
+                  <h1 className="text-[13px] font-bold leading-tight tracking-tight text-sidebar-foreground">
                     {brand.name}
                   </h1>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sidebar-foreground/80">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sidebar-foreground/80">
                     {brand.tagline}
                   </p>
                 </div>
@@ -205,7 +205,7 @@ export const Layout = () => {
                   variant="ghost"
                   size="icon"
                   onClick={() => setSidebarOpen(false)}
-                  className="h-8 w-8 shrink-0 text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground lg:hidden"
+                  className="h-7 w-7 shrink-0 text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground lg:hidden"
                   aria-label="Close sidebar"
                 >
                   <X className="h-4 w-4" />
@@ -213,10 +213,10 @@ export const Layout = () => {
               </div>
             </div>
 
-            <nav className="relative flex-1 space-y-1 overflow-y-auto px-2 py-4">
+            <nav className="relative flex-1 space-y-0.5 overflow-y-auto px-2 py-3">
               <p
                 className={cn(
-                  "mb-3 overflow-hidden px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-sidebar-foreground/75 transition-opacity duration-200",
+                  "mb-2 overflow-hidden px-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-sidebar-foreground/75 transition-opacity duration-200",
                   sidebarOpen ? "opacity-100 delay-100" : "opacity-0 duration-150"
                 )}
               >
@@ -235,7 +235,7 @@ export const Layout = () => {
                     }}
                     className={({ isActive }) =>
                       cn(
-                        "group relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors duration-200",
+                        "group relative flex items-center gap-2 rounded-md px-2 py-1.5 text-[13px] font-medium transition-colors duration-200",
                         isActive
                           ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-inner"
                           : "text-sidebar-foreground/85 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground"
@@ -245,17 +245,17 @@ export const Layout = () => {
                     {({ isActive }) => (
                       <>
                         {isActive && (
-                          <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-full bg-sidebar-primary" />
+                          <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-sidebar-primary" />
                         )}
                         <span
                           className={cn(
-                            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors",
+                            "flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors",
                             isActive
                               ? "bg-sidebar-primary text-sidebar-primary-foreground"
                               : "bg-sidebar-foreground/10 text-sidebar-foreground group-hover:bg-sidebar-foreground/15"
                           )}
                         >
-                          <Icon className="h-4 w-4" />
+                          <Icon className="h-3.5 w-3.5" />
                         </span>
                         <span
                           className={cn(
@@ -272,10 +272,10 @@ export const Layout = () => {
               })}
             </nav>
 
-            <div className="relative border-t border-sidebar-border p-2.5">
-              <div className="flex items-center gap-2 rounded-xl bg-sidebar-accent px-2 py-2">
+            <div className="relative border-t border-sidebar-border p-2">
+              <div className="flex items-center gap-2 rounded-lg bg-sidebar-accent px-1.5 py-1.5">
                 <div
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sidebar-primary text-xs font-bold text-sidebar-primary-foreground"
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sidebar-primary text-[10px] font-bold text-sidebar-primary-foreground"
                   title={user?.fullName || "Administrator"}
                 >
                   {userInitials(user?.fullName || "AD")}
@@ -286,10 +286,10 @@ export const Layout = () => {
                     sidebarOpen ? "opacity-100 delay-100" : "opacity-0 duration-150"
                   )}
                 >
-                  <p className="truncate text-sm font-semibold text-sidebar-foreground">
+                  <p className="truncate text-xs font-semibold text-sidebar-foreground">
                     {user?.fullName || "Administrator"}
                   </p>
-                  <p className="truncate text-xs text-sidebar-foreground/75">
+                  <p className="truncate text-[11px] text-sidebar-foreground/75">
                     {user?.roleName || brand.name}
                   </p>
                 </div>
@@ -299,7 +299,7 @@ export const Layout = () => {
                   onClick={handleLogout}
                   disabled={loggingOut}
                   className={cn(
-                    "h-8 w-8 shrink-0 text-sidebar-foreground/80 hover:bg-destructive/15 hover:text-destructive transition-opacity duration-200",
+                    "h-7 w-7 shrink-0 text-sidebar-foreground/80 hover:bg-destructive/15 hover:text-destructive transition-opacity duration-200",
                     sidebarOpen ? "opacity-100 delay-100" : "opacity-0 duration-150"
                   )}
                   aria-label="Logout"
@@ -315,13 +315,13 @@ export const Layout = () => {
         <button
           type="button"
           onClick={() => setSidebarOpen((open) => !open)}
-          className="absolute top-[30px] -right-3 z-[60] hidden h-6 w-6 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-md transition duration-300 hover:scale-105 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:flex"
+          className="absolute top-[22px] -right-2.5 z-[60] hidden h-5 w-5 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-md transition duration-300 hover:scale-105 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:flex"
           aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
           title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
         >
           <ChevronLeft
             className={cn(
-              "h-3.5 w-3.5 transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
+              "h-3 w-3 transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
               !sidebarOpen && "rotate-180"
             )}
           />
@@ -332,12 +332,12 @@ export const Layout = () => {
         className={cn(
           "flex min-h-screen flex-col print:block print:min-h-0 print:h-auto print:pl-0",
           "transition-[padding] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]",
-          sidebarOpen ? "lg:pl-[250px]" : "lg:pl-[72px]"
+          sidebarOpen ? "lg:pl-[208px]" : "lg:pl-[60px]"
         )}
       >
         <header className="sticky top-0 z-30 border-b border-border bg-background/90 text-foreground backdrop-blur-xl print:hidden">
-          <div className="flex h-16 items-center justify-between gap-3 px-4 lg:px-8">
-            <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-12 items-center justify-between gap-2.5 px-3 lg:px-4">
+            <div className="flex min-w-0 items-center gap-2">
               <Button
                 variant="ghost"
                 size="icon"
@@ -346,43 +346,43 @@ export const Layout = () => {
                 aria-label={sidebarOpen ? "Close menu" : "Open menu"}
               >
                 {sidebarOpen ? (
-                  <X className="h-5 w-5" />
+                  <X className="h-4 w-4" />
                 ) : (
-                  <Menu className="h-5 w-5" />
+                  <Menu className="h-4 w-4" />
                 )}
               </Button>
               <div className="min-w-0">
-                <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
                   {brand.name}
                 </p>
-                <h2 className="truncate text-lg font-semibold leading-tight tracking-tight text-foreground">
+                <h2 className="truncate text-sm font-semibold leading-tight tracking-tight text-foreground">
                   {currentItem.label}
                 </h2>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <ThemeToggle />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="outline"
-                    className="h-10 gap-2 rounded-full px-2.5"
+                    className="h-8 gap-1.5 rounded-full px-1.5"
                   >
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
                       {userInitials(user?.fullName || "AD")}
                     </span>
-                    <span className="hidden pr-1 text-sm font-medium sm:inline">
+                    <span className="hidden pr-1 text-xs font-medium sm:inline">
                       {user?.fullName?.split(" ")[0] || "Admin"}
                     </span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuContent align="end" className="w-44">
                   <DropdownMenuLabel className="font-normal">
-                    <p className="text-sm font-medium">
+                    <p className="text-xs font-medium">
                       {user?.fullName || "Administrator"}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-[11px] text-muted-foreground">
                       {user?.roleName || user?.email || brand.name}
                     </p>
                   </DropdownMenuLabel>
@@ -392,7 +392,7 @@ export const Layout = () => {
                     disabled={loggingOut}
                     className="cursor-pointer text-destructive focus:text-destructive"
                   >
-                    <LogOut className="mr-2 h-4 w-4" />
+                    <LogOut className="mr-2 h-3.5 w-3.5" />
                     {loggingOut ? "Signing out..." : "Logout"}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -401,7 +401,7 @@ export const Layout = () => {
           </div>
         </header>
 
-        <main className="flex-1 p-4 lg:p-5 print:block print:h-auto print:p-0">
+        <main className="flex-1 p-3 lg:p-3.5 print:block print:h-auto print:p-0">
           <div className="w-full">
             <Outlet />
           </div>
