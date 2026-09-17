@@ -40,6 +40,8 @@ function AssignmentFilters({
   destination = "all",
   onDestinationChange,
   destinations = [],
+  yardFilter = "all",
+  onYardFilterChange,
   className,
   children,
 }: {
@@ -65,6 +67,8 @@ function AssignmentFilters({
   destination?: string;
   onDestinationChange?: (value: string) => void;
   destinations?: { value: string; label: string }[];
+  yardFilter?: string;
+  onYardFilterChange?: (value: string) => void;
   className?: string;
   children?: ReactNode;
 }) {
@@ -157,6 +161,18 @@ function AssignmentFilters({
                 {item.label}
               </SelectItem>
             ))}
+          </SelectContent>
+        </Select>
+      ) : null}
+      {onYardFilterChange ? (
+        <Select value={yardFilter} onValueChange={onYardFilterChange}>
+          <SelectTrigger className="h-8 w-[140px] shrink-0 bg-background">
+            <SelectValue placeholder="To yard" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All yard</SelectItem>
+            <SelectItem value="yes">To yard</SelectItem>
+            <SelectItem value="no">Not to yard</SelectItem>
           </SelectContent>
         </Select>
       ) : null}

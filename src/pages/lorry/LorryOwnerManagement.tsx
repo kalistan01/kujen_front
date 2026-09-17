@@ -8,6 +8,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Plus, Edit, Truck, Phone, MapPin, Search } from "lucide-react";
 import baseUrl from "@/api/baseUrl";
 import AddLorryOwner from "./AddLorryOwner";
@@ -40,6 +48,127 @@ interface LorryOwner {
   companyName: string;
   lorries: Lorry[];
   createdAt: string;
+}
+
+function formatCapacity(capacity?: string) {
+  const value = String(capacity || "").trim();
+  if (!value) return "—";
+  if (/feet/i.test(value)) return value;
+  return `${value} FEET`;
+}
+
+function OwnerCard({
+  owner,
+  search,
+  canEdit,
+  canSeeOwnerDetails,
+  onEdit,
+}: {
+  owner: LorryOwner;
+  search: string;
+  canEdit: boolean;
+  canSeeOwnerDetails: boolean;
+  onEdit: (owner: LorryOwner) => void;
+}) {
+  const lorries = owner.lorries || [];
+
+  return (
+    <Card className="overflow-hidden">
+      <CardHeader className="border-b border-border/70 bg-muted/20 py-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex min-w-0 items-start gap-2">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-brand text-white">
+              <Truck className="h-4 w-4" />
+            </span>
+            <div className="min-w-0">
+              <CardTitle className="text-sm leading-tight">
+                {owner.companyName}
+              </CardTitle>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {owner.ownerName}
+              </p>
+              <Badge variant="secondary" className="mt-1.5">
+                {lorries.length} lorries
+              </Badge>
+            </div>
+          </div>
+          {canEdit ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 w-8 shrink-0 p-0"
+              onClick={() => onEdit(owner)}
+            >
+              <Edit className="h-4 w-4" />
+              <span className="sr-only">Edit</span>
+            </Button>
+          ) : null}
+        </div>
+      </CardHeader>
+      <CardContent className="p-0">
+        {canSeeOwnerDetails ? (
+          <div className="space-y-1.5 border-b border-border/70 p-3">
+            <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <Phone className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{owner.phoneNum || "No phone"}</span>
+            </p>
+            <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <MapPin className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{owner.address || "No address"}</span>
+            </p>
+          </div>
+        ) : null}
+        {lorries.length === 0 ? (
+          <p className="px-4 py-6 text-center text-sm text-muted-foreground">
+            No lorries in this fleet yet.
+          </p>
+        ) : (
+          <div className="max-h-[420px] overflow-y-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
+                  <TableHead>Lorry no</TableHead>
+                  <TableHead>Capacity</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {lorries.map((lorry, index) => {
+                  const matched =
+                    Boolean(search) &&
+                    String(lorry.lorryNum || "")
+                      .toLowerCase()
+                      .includes(search);
+                  return (
+                    <TableRow
+                      key={lorry._id || `${lorry.lorryNum}-${index}`}
+                      className={matched ? "bg-amber-500/10" : undefined}
+                    >
+                      <TableCell className="font-semibold">
+                        {lorry.lorryNum}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {formatCapacity(lorry.capacity)}
+                      </TableCell>
+                      <TableCell>
+                        {lorry.inUse ? (
+                          <Badge variant="secondary">Assigned</Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            Available
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 export const LorryOwnerManagement = () => {
@@ -104,76 +233,78 @@ export const LorryOwnerManagement = () => {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return owners;
-    return owners.filter((owner) =>
-      [
+    return owners.filter((owner) => {
+      const fields = [
         owner.companyName,
         owner.ownerName,
         ...(canSeeOwnerDetails ? [owner.phoneNum, owner.address] : []),
-      ]
+        ...(owner.lorries || []).map((lorry) => lorry.lorryNum),
+      ];
+      return fields
         .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(q))
-    );
+        .some((value) => String(value).toLowerCase().includes(q));
+    });
   }, [owners, query, canSeeOwnerDetails]);
 
   return (
     <div className="space-y-4">
       <PageHeader
         title="Lorry Owners"
-        description="Manage owners, companies, and the vehicles in each fleet."
+        description="Every owner and every lorry is listed. Search by owner, company, or lorry number."
       >
-        <div className="relative w-full sm:w-64">
+        <div className="relative w-full sm:w-72">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search owners..."
+            placeholder="Search owner, company, or lorry no..."
             className="h-10 pl-9"
           />
         </div>
         {canAdd || canEdit ? (
-        <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
-          {canAdd ? (
-          <DialogTrigger asChild>
-            <Button
-              onClick={handleAdd}
-              className="gap-2 bg-[hsl(var(--brand-navy))] text-white hover:bg-[hsl(var(--brand-navy-muted))]"
-            >
-              <Plus className="h-4 w-4" />
-              Add Owner
-            </Button>
-          </DialogTrigger>
-          ) : null}
-          <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>
-                {editingOwner ? "Edit Lorry Owner" : "Add New Lorry Owner"}
-              </DialogTitle>
-              <p className="text-sm text-muted-foreground">
-                {editingOwner
-                  ? "Update owner details and the vehicles in this fleet."
-                  : "Add an owner, company, and the vehicles in their fleet."}
-              </p>
-            </DialogHeader>
-            {isDialogOpen ? (
-              <AddLorryOwner
-                owners={owners}
-                setOwners={setOwners}
-                setIsDialogOpen={setIsDialogOpen}
-                editingOwner={editingOwner}
-                setEditingOwner={setEditingOwner}
-              />
+          <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
+            {canAdd ? (
+              <DialogTrigger asChild>
+                <Button
+                  onClick={handleAdd}
+                  className="gap-2 bg-[hsl(var(--brand-navy))] text-white hover:bg-[hsl(var(--brand-navy-muted))]"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Owner
+                </Button>
+              </DialogTrigger>
             ) : null}
-          </DialogContent>
-        </Dialog>
+            <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-3xl">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingOwner ? "Edit Lorry Owner" : "Add New Lorry Owner"}
+                </DialogTitle>
+                <p className="text-sm text-muted-foreground">
+                  {editingOwner
+                    ? "Update owner details and the full fleet list."
+                    : "Add an owner, then add lorries one by one. Press Enter to add quickly."}
+                </p>
+              </DialogHeader>
+              {isDialogOpen ? (
+                <AddLorryOwner
+                  owners={owners}
+                  setOwners={setOwners}
+                  setIsDialogOpen={setIsDialogOpen}
+                  editingOwner={editingOwner}
+                  setEditingOwner={setEditingOwner}
+                />
+              ) : null}
+            </DialogContent>
+          </Dialog>
         ) : null}
       </PageHeader>
 
       {loading ? (
-        <div className="grid gap-5 xl:grid-cols-2">
-          {Array.from({ length: 2 }).map((_, index) => (
+        <div className="grid grid-cols-3 gap-4">
+          {Array.from({ length: 3 }).map((_, index) => (
             <Card key={index}>
               <CardContent className="space-y-3 p-4">
-                <Skeleton className="h-11 w-11 rounded-xl" />
+                <Skeleton className="h-9 w-9 rounded-lg" />
                 <Skeleton className="h-5 w-40" />
                 <Skeleton className="h-4 w-56" />
               </CardContent>
@@ -186,84 +317,23 @@ export const LorryOwnerManagement = () => {
             <Truck className="mb-3 h-10 w-10 text-muted-foreground/50" />
             <p className="font-medium">No lorry owners found</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Add an owner to start building your fleet directory.
+              {query.trim()
+                ? "Try a different owner, company, or lorry number."
+                : "Add an owner to start building your fleet directory."}
             </p>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-5 xl:grid-cols-2">
+        <div className="grid grid-cols-3 gap-4">
           {filtered.map((owner) => (
-            <Card key={String(owner._id || owner.id)} className="overflow-hidden">
-              <CardHeader className="border-b border-border/70 bg-muted/20">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3">
-                    <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-brand text-white">
-                      <Truck className="h-5 w-5" />
-                    </span>
-                    <div>
-                      <CardTitle className="text-lg">
-                        {owner.companyName}
-                      </CardTitle>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        Owner: {owner.ownerName}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    {canEdit ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEdit(owner)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    ) : null}
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-5">
-                {canSeeOwnerDetails ? (
-                <div className="mb-5 grid gap-3 md:grid-cols-2">
-                  <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-2 text-sm">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    {owner.phoneNum || "No phone number"}
-                  </div>
-                  <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-2 text-sm">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                    {owner.address}
-                  </div>
-                </div>
-                ) : null}
-
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-sm font-semibold">Fleet</p>
-                  <Badge variant="secondary">
-                    {owner?.lorries?.length || 0} lorries
-                  </Badge>
-                </div>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {owner.lorries?.map((lorry, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center gap-3 rounded-xl border border-border/70 p-3"
-                    >
-                      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600">
-                        <Truck className="h-4 w-4" />
-                      </span>
-                      <div>
-                        <div className="text-sm font-semibold">
-                          {lorry.lorryNum}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {lorry.capacity} FEET
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            <OwnerCard
+              key={String(owner._id || owner.id)}
+              owner={owner}
+              search={query.trim().toLowerCase()}
+              canEdit={canEdit}
+              canSeeOwnerDetails={canSeeOwnerDetails}
+              onEdit={handleEdit}
+            />
           ))}
         </div>
       )}

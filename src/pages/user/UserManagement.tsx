@@ -17,10 +17,22 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Edit, Search, Users, Eye, RefreshCw } from "lucide-react";
+import {
+  Plus,
+  Edit,
+  Search,
+  Users,
+  Eye,
+  RefreshCw,
+  KeyRound,
+  EyeOff,
+  Loader2,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/apiError";
+import { getAuthUser, isAdminUser } from "@/lib/auth";
 import baseUrl from "@/api/baseUrl";
+import { Label } from "@/components/ui/label";
 import AddUser from "./AddUser";
 import {
   DeviceLabel,
@@ -53,11 +65,19 @@ export const UserManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [viewingUser, setViewingUser] = useState<User | null>(null);
+  const [passwordUser, setPasswordUser] = useState<User | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const { toast } = useToast();
   const canAdd = can(P.USERS_ADD);
   const canEdit = can(P.USERS_EDIT);
+  const canChangePassword = isAdminUser();
+  const currentUserId = String(getAuthUser()?._id || "");
 
   const loadUsers = () => {
     setLoading(true);
@@ -88,6 +108,57 @@ export const UserManagement = () => {
     setEditingUser(user);
     setIsDialogOpen(true);
   };
+  const resetPasswordDialog = () => {
+    setPasswordUser(null);
+    setNewPassword("");
+    setConfirmPassword("");
+    setShowNewPassword(false);
+    setPasswordError("");
+    setSavingPassword(false);
+  };
+
+  const handleChangePassword = async () => {
+    if (!passwordUser?._id) {
+      setPasswordError("This user cannot be updated because it has no ID.");
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPasswordError("Password must be at least 6 characters.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Passwords do not match.");
+      return;
+    }
+
+    setSavingPassword(true);
+    setPasswordError("");
+    try {
+      await baseUrl.patch(`/user/${passwordUser._id}/password`, {
+        password: newPassword,
+        confirmPassword,
+      });
+      toast({
+        title: "Password updated",
+        description: `A new password was set for ${passwordUser.fullName}.`,
+      });
+      resetPasswordDialog();
+    } catch (error) {
+      const message = getApiErrorMessage(
+        error,
+        "Could not update the password. Please try again."
+      );
+      setPasswordError(message);
+      toast({
+        title: "Password update failed",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setSavingPassword(false);
+    }
+  };
+
   const handleView = (user: User) => {
     setViewingUser(user);
     if (!user._id) return;
@@ -399,6 +470,24 @@ export const UserManagement = () => {
                             <Eye className="h-4 w-4" />
                             View
                           </Button>
+                          {canChangePassword &&
+                          user._id &&
+                          String(user._id) !== currentUserId ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setPasswordUser(user);
+                                setNewPassword("");
+                                setConfirmPassword("");
+                                setShowNewPassword(false);
+                                setPasswordError("");
+                              }}
+                            >
+                              <KeyRound className="h-4 w-4" />
+                              Password
+                            </Button>
+                          ) : null}
                           {canEdit ? (
                             <Button
                               variant="outline"
@@ -441,6 +530,106 @@ export const UserManagement = () => {
             </p>
           </DialogHeader>
           {viewingUser ? <ViewUser user={viewingUser} /> : null}
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={Boolean(passwordUser)}
+        onOpenChange={(open) => {
+          if (!open) resetPasswordDialog();
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Change password</DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              Set a new password for {passwordUser?.fullName || "this user"}.
+            </p>
+          </DialogHeader>
+          <form
+            className="space-y-4"
+            autoComplete="off"
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleChangePassword();
+            }}
+          >
+            {passwordError ? (
+              <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
+                {passwordError}
+              </p>
+            ) : null}
+            <div className="space-y-1.5">
+              <Label htmlFor="admin-set-password">New password</Label>
+              <div className="relative">
+                <Input
+                  id="admin-set-password"
+                  name="admin-set-password"
+                  type={showNewPassword ? "text" : "password"}
+                  autoComplete="new-password"
+                  value={newPassword}
+                  onChange={(e) => {
+                    setNewPassword(e.target.value);
+                    setPasswordError("");
+                  }}
+                  placeholder="At least 6 characters"
+                  className="h-10 pr-12"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-1.5 top-1/2 h-8 w-8 -translate-y-1/2 p-0 text-muted-foreground"
+                  onClick={() => setShowNewPassword((open) => !open)}
+                >
+                  {showNewPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="admin-confirm-password">Confirm password</Label>
+              <Input
+                id="admin-confirm-password"
+                name="admin-confirm-password"
+                type={showNewPassword ? "text" : "password"}
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  setPasswordError("");
+                }}
+                placeholder="Re-enter password"
+                className="h-10"
+              />
+            </div>
+            <div className="flex justify-end gap-2 border-t border-border pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={resetPasswordDialog}
+                disabled={savingPassword}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={savingPassword}
+                className="bg-[hsl(var(--brand-navy))] text-white hover:bg-[hsl(var(--brand-navy-muted))]"
+              >
+                {savingPassword ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save password"
+                )}
+              </Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

@@ -19,6 +19,7 @@ import FclStatusBadge from "./FclStatusBadge";
 import {
   containerCapacity,
   containerDestination,
+  containerIsToYard,
   containerLorry,
   containerMoney,
   containerOwner,
@@ -104,6 +105,15 @@ function ContainerRow({
         ) : null}
       </TableCell>
       <TableCell>{containerDestination(container)}</TableCell>
+      <TableCell>
+        {containerIsToYard(container) ? (
+          <span className="inline-flex rounded-full bg-[hsl(var(--brand-navy))] px-2.5 py-0.5 text-xs font-semibold text-white">
+            Yes
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">No</span>
+        )}
+      </TableCell>
       <TableCell className="whitespace-nowrap text-muted-foreground">
         {formatDate(container?.loadingDate)}
       </TableCell>
@@ -160,6 +170,9 @@ function ContainerRow({
       ) : null}
       <TableCell>
         <StatusBadge status={container?.status} />
+      </TableCell>
+      <TableCell className="whitespace-nowrap text-muted-foreground">
+        {formatDate(assignment?.fclDueDate)}
       </TableCell>
       <TableCell>
         <FclStatusBadge fcl={container?.fcl} />
@@ -251,6 +264,7 @@ function ContainerListTable({
               <TableHead>VOC</TableHead>
               <TableHead>Lorry</TableHead>
               <TableHead>Destination</TableHead>
+              <TableHead>To yard</TableHead>
               <TableHead>Loading</TableHead>
               <TableHead>Demount</TableHead>
               {chargeColumns.map((field) => (
@@ -264,6 +278,7 @@ function ContainerListTable({
                 </>
               ) : null}
               <TableHead>Status</TableHead>
+              <TableHead>FCL Due Date</TableHead>
               <TableHead>FCL Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>

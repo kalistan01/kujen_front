@@ -26,6 +26,7 @@ import {
   containerDestination,
   containerDestinationMatches,
   containerDestinationOption,
+  containerIsToYard,
   containerLorry,
   containerMatchesOwner,
   containerOwner,
@@ -84,6 +85,7 @@ export const AssignmentManagement = () => {
   const [advancedFilter, setAdvancedFilter] = useState("all");
   const [owner, setOwner] = useState("all");
   const [destination, setDestination] = useState("all");
+  const [yardFilter, setYardFilter] = useState("all");
   const [lorryOwners, setLorryOwners] = useState<any[]>([]);
   const [exporting, setExporting] = useState<"pdf" | "excel" | null>(null);
   const location = useLocation();
@@ -106,7 +108,7 @@ export const AssignmentManagement = () => {
   const [bulkPaying, setBulkPaying] = useState<"pay" | "print" | false>(false);
   const [printTitle, setPrintTitle] = useState<string | undefined>();
   const [printOnlyIds, setPrintOnlyIds] = useState<string[] | null>(null);
-  const pageSize = isContainers ? 10 : 100;
+  const pageSize = 100;
   const { toast } = useToast();
   const canPay =
     canEditContainers() && canSeeField("balancePaid");
@@ -235,6 +237,12 @@ export const AssignmentManagement = () => {
     if (destination !== "all" && !containerDestinationMatches(container, destination)) {
       return false;
     }
+    if (yardFilter === "yes" && !containerIsToYard(container)) {
+      return false;
+    }
+    if (yardFilter === "no" && containerIsToYard(container)) {
+      return false;
+    }
     return true;
   };
 
@@ -271,7 +279,8 @@ export const AssignmentManagement = () => {
           (balanceFilter === "unpaid" ||
             advancedFilter === "yes" ||
             owner !== "all" ||
-            destination !== "all") &&
+            destination !== "all" ||
+            yardFilter !== "all") &&
           !containers.some((container: any) => matchesExtraFilters(container))
         ) {
           return false;
@@ -289,6 +298,7 @@ export const AssignmentManagement = () => {
     advancedFilter,
     owner,
     destination,
+    yardFilter,
   ]);
 
   const filteredContainers = useMemo(() => {
@@ -353,6 +363,7 @@ export const AssignmentManagement = () => {
     advancedFilter,
     owner,
     destination,
+    yardFilter,
   ]);
 
   useEffect(() => {
@@ -371,6 +382,7 @@ export const AssignmentManagement = () => {
     advancedFilter,
     owner,
     destination,
+    yardFilter,
   ]);
 
   useEffect(() => {
@@ -404,7 +416,8 @@ export const AssignmentManagement = () => {
       balanceFilter !== "all" ||
       advancedFilter !== "all" ||
       owner !== "all" ||
-      destination !== "all"
+      destination !== "all" ||
+      yardFilter !== "all"
   );
 
   const allContainerRows = useMemo(
@@ -816,6 +829,8 @@ export const AssignmentManagement = () => {
             destination={destination}
             onDestinationChange={setDestination}
             destinations={destinationOptions}
+            yardFilter={yardFilter}
+            onYardFilterChange={setYardFilter}
             onClear={() => {
               setQuery("");
               setStatus("all");
@@ -825,6 +840,7 @@ export const AssignmentManagement = () => {
               setAdvancedFilter("all");
               setOwner("all");
               setDestination("all");
+              setYardFilter("all");
               setPage(1);
             }}
           />

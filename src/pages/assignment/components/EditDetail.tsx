@@ -35,10 +35,12 @@ function EditDetail({
   setIsDialogOpen,
   editingAssignment,
   setEditingAssignment,
+  onSaved,
 }: {
   setIsDialogOpen: (isOpen: boolean) => void;
   editingAssignment?: Assignment;
   setEditingAssignment: (assignment: Assignment | null) => void;
+  onSaved?: (patch: Record<string, string>) => void;
 }) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
@@ -132,7 +134,11 @@ function EditDetail({
 
     setSaving(true);
     try {
-      await baseUrl.patch(`assignlorry/${editingAssignment._id}`, payload);
+      const response = await baseUrl.patch(
+        `assignlorry/${editingAssignment._id}`,
+        payload
+      );
+      onSaved?.(response.data?.data || payload);
       toast({
         title: "Success",
         description: "Assignment updated successfully.",

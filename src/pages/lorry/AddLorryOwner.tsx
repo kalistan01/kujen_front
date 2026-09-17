@@ -1,14 +1,22 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Plus, Trash2, Truck } from "lucide-react";
+import { Loader2, Plus, Search, Trash2, Truck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/apiError";
 import baseUrl from "@/api/baseUrl";
 import { upsertById } from "@/lib/socket";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 function Field({
   label,
@@ -74,6 +82,13 @@ const emptyForm = {
   lorries: [] as Lorry[],
 };
 
+function formatCapacity(capacity?: string) {
+  const value = String(capacity || "").trim();
+  if (!value) return "—";
+  if (/feet/i.test(value)) return value;
+  return `${value} FEET`;
+}
+
 function AddLorryOwner({
   setOwners,
   setIsDialogOpen,
@@ -94,6 +109,7 @@ function AddLorryOwner({
   const [formData, setFormData] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
+  const [fleetQuery, setFleetQuery] = useState("");
 
   useEffect(() => {
     if (editingOwner) {
@@ -106,12 +122,14 @@ function AddLorryOwner({
         lorries: editingOwner.lorries || [],
       });
       setErrors({});
+      setFleetQuery("");
       return;
     }
 
     setFormData(emptyForm);
     setNewLorry({ lorryNum: "", capacity: "" });
     setErrors({});
+    setFleetQuery("");
   }, [editingOwner]);
 
   const resetForm = () => {
@@ -122,6 +140,7 @@ function AddLorryOwner({
     });
     setErrors({});
     setEditingOwner(null);
+    setFleetQuery("");
   };
 
   const clearError = (field: keyof FormErrors) => {
@@ -279,7 +298,7 @@ function AddLorryOwner({
 
     setFormData({
       ...formData,
-      lorries: [...formData.lorries, { lorryNum, capacity }],
+      lorries: [{ lorryNum, capacity }, ...formData.lorries],
     });
     setNewLorry({ lorryNum: "", capacity: "" });
     setErrors((prev) => {
@@ -308,6 +327,25 @@ function AddLorryOwner({
       ...formData,
       lorries: formData.lorries.filter((_, i) => i !== index),
     });
+  };
+
+  const fleetRows = useMemo(() => {
+    const q = fleetQuery.trim().toLowerCase();
+    return formData.lorries
+      .map((lorry, index) => ({ lorry, index }))
+      .filter(
+        ({ lorry }) =>
+          !q ||
+          lorry.lorryNum?.toLowerCase().includes(q) ||
+          String(lorry.capacity || "").toLowerCase().includes(q)
+      );
+  }, [formData.lorries, fleetQuery]);
+
+  const addLorryOnEnter = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      addLorry();
+    }
   };
 
   return (
@@ -409,6 +447,7 @@ function AddLorryOwner({
                   setNewLorry({ ...newLorry, lorryNum: e.target.value });
                   clearError("lorryNum");
                 }}
+                onKeyDown={addLorryOnEnter}
                 className={`h-10 ${errors.lorryNum ? "border-destructive" : ""}`}
               />
             </Field>
@@ -420,6 +459,7 @@ function AddLorryOwner({
                   setNewLorry({ ...newLorry, capacity: e.target.value });
                   clearError("capacity");
                 }}
+                onKeyDown={addLorryOnEnter}
                 className={`h-10 ${errors.capacity ? "border-destructive" : ""}`}
               />
             </Field>
@@ -434,44 +474,76 @@ function AddLorryOwner({
               </Button>
             </div>
           </div>
+          <p className="text-xs text-muted-foreground">
+            Press Enter to add. The full fleet list stays visible below.
+          </p>
 
           {formData.lorries.length > 0 ? (
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {formData.lorries.map((lorry, index) => (
-                <div
-                  key={lorry._id || index}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-border/70 p-3"
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                      <Truck className="h-4 w-4" />
-                    </span>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold">
-                        {lorry.lorryNum}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {lorry.capacity} FEET
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1">
-                    {lorry.inUse && (
-                      <Badge variant="secondary">Assigned</Badge>
-                    )}
-                    {(!editingOwner || !lorry.inUse) && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeLorry(index)}
-                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
+            <div className="space-y-2">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={fleetQuery}
+                  onChange={(e) => setFleetQuery(e.target.value)}
+                  placeholder="Search this fleet..."
+                  className="h-9 pl-9"
+                />
+              </div>
+              {fleetRows.length === 0 ? (
+                <p className="rounded-lg border border-dashed border-border/70 px-3 py-6 text-center text-sm text-muted-foreground">
+                  No lorry matches that search.
+                </p>
+              ) : (
+                <div className="max-h-[360px] overflow-y-auto rounded-lg border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/20 hover:bg-muted/20">
+                        <TableHead>Lorry no</TableHead>
+                        <TableHead>Capacity</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Remove</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {fleetRows.map(({ lorry, index }) => (
+                        <TableRow key={lorry._id || `${lorry.lorryNum}-${index}`}>
+                          <TableCell className="font-semibold">
+                            {lorry.lorryNum}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {formatCapacity(lorry.capacity)}
+                          </TableCell>
+                          <TableCell>
+                            {lorry.inUse ? (
+                              <Badge variant="secondary">Assigned</Badge>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">
+                                Available
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {(!editingOwner || !lorry.inUse) ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeLorry(index)}
+                                className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">
+                                In use
+                              </span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
-              ))}
+              )}
             </div>
           ) : (
             <p className="rounded-lg border border-dashed border-border/70 px-3 py-6 text-center text-sm text-muted-foreground">

@@ -95,6 +95,10 @@ export function containerTripKind(container: any) {
   return "";
 }
 
+export function containerIsToYard(container: any) {
+  return containerTripKind(container) === "yard";
+}
+
 export function orderContainersWithStoreTrips(containers: any[] = []) {
   const list = containers.filter(Boolean);
   const byId = new Map(

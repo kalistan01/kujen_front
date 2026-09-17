@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import {
   containerCapacity,
   containerDestination,
+  containerIsToYard,
   containerLorry,
   containerMoney,
   containerOwner,
@@ -28,7 +29,7 @@ import { assignmentFclStatus } from "../lib/fcl";
 import { formatMoney } from "../lib/financials";
 import FclStatusBadge from "./FclStatusBadge";
 
-const COLUMN_COUNT = 10;
+const COLUMN_COUNT = 11;
 
 function AssignmentEmptyState({ hasFilters }: { hasFilters: boolean }) {
   return (
@@ -95,6 +96,15 @@ function ContainerDetailRow({
         ) : null}
       </td>
       <td className="px-3 py-2.5">{containerDestination(container)}</td>
+      <td className="px-3 py-2.5">
+        {containerIsToYard(container) ? (
+          <span className="inline-flex rounded-full bg-[hsl(var(--brand-navy))] px-2.5 py-0.5 text-xs font-semibold text-white">
+            Yes
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">No</span>
+        )}
+      </td>
       <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">
         {formatDate(container?.loadingDate)}
       </td>
@@ -228,28 +238,16 @@ function AssignmentRow({
             {assignment.item || "—"}
           </p>
         </TableCell>
+        <TableCell className="whitespace-nowrap text-muted-foreground">
+          {formatDate(assignment.fclDueDate)}
+        </TableCell>
         <TableCell>
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-              <Package className="h-3.5 w-3.5 text-amber-600" />
-              <span className="font-medium text-foreground">
-                {containerCount}
-              </span>
+          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+            <Package className="h-3.5 w-3.5 text-amber-600" />
+            <span className="font-medium text-foreground">
+              {containerCount}
             </span>
-            {containers.slice(0, 2).map((c: any, i: number) => (
-              <span
-                key={c._id || i}
-                className="inline-flex items-center gap-1 rounded-md border border-border/80 bg-muted/40 px-1.5 py-0.5 font-mono text-[11px] font-medium"
-              >
-                {c.containerNo}
-              </span>
-            ))}
-            {containers.length > 2 && (
-              <span className="text-[11px] text-muted-foreground">
-                +{containers.length - 2}
-              </span>
-            )}
-          </div>
+          </span>
         </TableCell>
         <TableCell className="max-w-[160px] truncate text-muted-foreground">
           {assignment.exporter || "—"}
@@ -309,6 +307,9 @@ function AssignmentRow({
                   </th>
                   <th className="h-10 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                     Destination
+                  </th>
+                  <th className="h-10 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                    To yard
                   </th>
                   <th className="h-10 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                     Loading
@@ -404,6 +405,7 @@ function AssignmentTable({
               <TableHead>BL NO</TableHead>
               <TableHead>Cusdec Date</TableHead>
               <TableHead>Item</TableHead>
+              <TableHead>FCL Due Date</TableHead>
               <TableHead>Containers</TableHead>
               <TableHead>Exporter</TableHead>
               <TableHead>Status</TableHead>

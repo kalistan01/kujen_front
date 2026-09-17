@@ -440,6 +440,11 @@ const AssignmentDetails = () => {
             assignment={assignment}
             isBasicDialogOpen={isBasicDialogOpen}
             setIsBasicDialogOpen={setIsBasicDialogOpen}
+            onSaved={(patch: Record<string, unknown>) =>
+              setAssignment((previous: any) =>
+                previous ? { ...previous, ...patch } : previous
+              )
+            }
           />
 
           {canSeeContainers ? (

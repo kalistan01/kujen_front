@@ -27,6 +27,7 @@ function BasicInfo({
   assignment,
   isBasicDialogOpen,
   setIsBasicDialogOpen,
+  onSaved,
 }: any) {
   const [editingAssignment, seteditingAssignment] = useState<any>();
 
@@ -98,6 +99,7 @@ function BasicInfo({
               setIsDialogOpen={setIsBasicDialogOpen}
               editingAssignment={editingAssignment}
               setEditingAssignment={seteditingAssignment}
+              onSaved={onSaved}
             />
           </DialogContent>
         </Dialog>
