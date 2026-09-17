@@ -9,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ChevronDown, ClipboardList, Eye, Package } from "lucide-react";
+import { ChevronDown, ClipboardList, Package } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { StatusBadge } from "@/components/StatusBadge";
 import TablePagination from "@/components/TablePagination";
@@ -29,7 +29,7 @@ import { assignmentFclStatus } from "../lib/fcl";
 import { formatMoney } from "../lib/financials";
 import FclStatusBadge from "./FclStatusBadge";
 
-const COLUMN_COUNT = 11;
+const COLUMN_COUNT = 10;
 
 function AssignmentEmptyState({ hasFilters }: { hasFilters: boolean }) {
   return (
@@ -80,9 +80,9 @@ function ContainerDetailRow({
         <p className="font-mono text-xs font-semibold">
           {container?.containerNo || "—"}
         </p>
-      </td>
-      <td className="px-3 py-2.5 text-muted-foreground">
-        {container?.vocNo || "—"}
+        <p className="text-xs text-muted-foreground">
+          VOC {container?.vocNo || "—"}
+        </p>
       </td>
       <td className="px-3 py-2.5">
         <p className="font-medium">
@@ -200,14 +200,20 @@ function AssignmentRow({
 
   return (
     <Fragment>
-      <TableRow>
+      <TableRow
+        className="cursor-pointer"
+        onClick={() => onView(assignment._id)}
+      >
         <TableCell className="w-10 pr-0">
           <Button
             type="button"
             variant="ghost"
             size="icon"
             className="h-8 w-8"
-            onClick={() => setOpen((value) => !value)}
+            onClick={(event) => {
+              event.stopPropagation();
+              setOpen((value) => !value);
+            }}
             disabled={!containers.length}
             aria-expanded={open}
             aria-label={
@@ -258,18 +264,6 @@ function AssignmentRow({
         <TableCell>
           <StatusBadge status={assignmentFclStatus(containers)} />
         </TableCell>
-        <TableCell className="text-right">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={() => onView(assignment._id)}
-            className="h-8 w-8 text-[hsl(var(--brand-navy))] hover:bg-[hsl(var(--brand-navy))]/10 hover:text-[hsl(var(--brand-navy-muted))]"
-            aria-label="View assignment"
-          >
-            <Eye className="h-4 w-4" />
-          </Button>
-        </TableCell>
       </TableRow>
       {open ? (
         <TableRow className="hover:bg-transparent">
@@ -300,16 +294,13 @@ function AssignmentRow({
                     Container
                   </th>
                   <th className="h-10 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                    VOC
-                  </th>
-                  <th className="h-10 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                     Lorry
                   </th>
                   <th className="h-10 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                     Destination
                   </th>
                   <th className="h-10 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                    To yard
+                    Yard
                   </th>
                   <th className="h-10 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                     Loading
@@ -410,7 +401,6 @@ function AssignmentTable({
               <TableHead>Exporter</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>FCL Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

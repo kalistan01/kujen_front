@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
@@ -8,7 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ClipboardList, Eye } from "lucide-react";
+import { ClipboardList } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { StatusBadge } from "@/components/StatusBadge";
 import TablePagination from "@/components/TablePagination";
@@ -66,9 +65,13 @@ function ContainerRow({
   const capacity = containerCapacity(container);
   const owner = containerOwner(container);
   return (
-    <TableRow data-state={selected ? "selected" : undefined}>
+    <TableRow
+      data-state={selected ? "selected" : undefined}
+      className="cursor-pointer"
+      onClick={() => onView(assignment._id)}
+    >
       {canSelect ? (
-        <TableCell className="w-10 pr-0">
+        <TableCell className="w-10 pr-0" onClick={(event) => event.stopPropagation()}>
           {container?._id ? (
             <Checkbox
               checked={selected}
@@ -89,9 +92,9 @@ function ContainerRow({
         <p className="font-mono text-xs font-semibold">
           {container?.containerNo || "—"}
         </p>
-      </TableCell>
-      <TableCell className="text-muted-foreground">
-        {container?.vocNo || "—"}
+        <p className="text-xs text-muted-foreground">
+          VOC {container?.vocNo || "—"}
+        </p>
       </TableCell>
       <TableCell>
         <p className="font-medium">
@@ -177,18 +180,6 @@ function ContainerRow({
       <TableCell>
         <FclStatusBadge fcl={container?.fcl} />
       </TableCell>
-      <TableCell className="text-right">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => onView(assignment._id)}
-          className="h-8 w-8 text-[hsl(var(--brand-navy))] hover:bg-[hsl(var(--brand-navy))]/10 hover:text-[hsl(var(--brand-navy-muted))]"
-          aria-label="View assignment"
-        >
-          <Eye className="h-4 w-4" />
-        </Button>
-      </TableCell>
     </TableRow>
   );
 }
@@ -261,10 +252,9 @@ function ContainerListTable({
               ) : null}
               <TableHead>BL NO</TableHead>
               <TableHead>Container</TableHead>
-              <TableHead>VOC</TableHead>
               <TableHead>Lorry</TableHead>
               <TableHead>Destination</TableHead>
-              <TableHead>To yard</TableHead>
+              <TableHead>Yard</TableHead>
               <TableHead>Loading</TableHead>
               <TableHead>Demount</TableHead>
               {chargeColumns.map((field) => (
@@ -280,7 +270,6 @@ function ContainerListTable({
               <TableHead>Status</TableHead>
               <TableHead>FCL Due Date</TableHead>
               <TableHead>FCL Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
