@@ -109,7 +109,7 @@ function ContainerRow({
       </TableCell>
       <TableCell>{containerDestination(container)}</TableCell>
       <TableCell>
-        {containerIsToYard(container) ? (
+        {containerIsToYard(container, assignment?.containers) ? (
           <span className="inline-flex rounded-full bg-[hsl(var(--brand-navy))] px-2.5 py-0.5 text-xs font-semibold text-white">
             Yes
           </span>

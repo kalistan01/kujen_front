@@ -95,8 +95,15 @@ export function containerTripKind(container: any) {
   return "";
 }
 
-export function containerIsToYard(container: any) {
-  return containerTripKind(container) === "yard";
+export function containerHasLoadedToStore(container: any, siblings: any[] = []) {
+  const id = String(container?._id || "");
+  if (!id) return false;
+  return siblings.some((other) => containerSourceId(other) === id);
+}
+
+export function containerIsToYard(container: any, siblings: any[] = []) {
+  if (containerTripKind(container) !== "yard") return false;
+  return !containerHasLoadedToStore(container, siblings);
 }
 
 export function orderContainersWithStoreTrips(containers: any[] = []) {

@@ -224,7 +224,7 @@ export const AssignmentManagement = () => {
       .map(([value, label]) => ({ value, label }));
   }, [assignments]);
 
-  const matchesExtraFilters = (container: any) => {
+  const matchesExtraFilters = (container: any, siblings: any[] = []) => {
     if (balanceFilter === "unpaid" && containerBalance(container) <= 0) {
       return false;
     }
@@ -237,10 +237,10 @@ export const AssignmentManagement = () => {
     if (destination !== "all" && !containerDestinationMatches(container, destination)) {
       return false;
     }
-    if (yardFilter === "yes" && !containerIsToYard(container)) {
+    if (yardFilter === "yes" && !containerIsToYard(container, siblings)) {
       return false;
     }
-    if (yardFilter === "no" && containerIsToYard(container)) {
+    if (yardFilter === "no" && containerIsToYard(container, siblings)) {
       return false;
     }
     return true;
@@ -281,7 +281,9 @@ export const AssignmentManagement = () => {
             owner !== "all" ||
             destination !== "all" ||
             yardFilter !== "all") &&
-          !containers.some((container: any) => matchesExtraFilters(container))
+          !containers.some((container: any) =>
+            matchesExtraFilters(container, containers)
+          )
         ) {
           return false;
         }
@@ -316,7 +318,9 @@ export const AssignmentManagement = () => {
           ) {
             return false;
           }
-          if (!matchesExtraFilters(container)) return false;
+          if (!matchesExtraFilters(container, assignment.containers || [])) {
+            return false;
+          }
           if (q) {
             const match = [
               assignment.blNo,

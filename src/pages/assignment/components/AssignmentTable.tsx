@@ -47,10 +47,12 @@ function AssignmentEmptyState({ hasFilters }: { hasFilters: boolean }) {
 
 function ContainerDetailRow({
   container,
+  siblings = [],
   selected,
   onSelect,
 }: {
   container: any;
+  siblings?: any[];
   selected?: boolean;
   onSelect?: (containerId: string, checked: boolean) => void;
 }) {
@@ -97,7 +99,7 @@ function ContainerDetailRow({
       </td>
       <td className="px-3 py-2.5">{containerDestination(container)}</td>
       <td className="px-3 py-2.5">
-        {containerIsToYard(container) ? (
+        {containerIsToYard(container, siblings) ? (
           <span className="inline-flex rounded-full bg-[hsl(var(--brand-navy))] px-2.5 py-0.5 text-xs font-semibold text-white">
             Yes
           </span>
@@ -342,6 +344,7 @@ function AssignmentRow({
                   <ContainerDetailRow
                     key={container._id || index}
                     container={container}
+                    siblings={containers}
                     selected={selectedIds.includes(container._id)}
                     onSelect={onSelect}
                   />
