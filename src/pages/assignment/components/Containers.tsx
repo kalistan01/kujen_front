@@ -229,6 +229,36 @@ function Containers({
         setMarkingYard(false);
       });
   };
+  const undoYard = () => {
+    if (!id || !container?._id || markingYard) return;
+    setMarkingYard(true);
+    onLocalUpdate?.(container._id, { tripKind: "" });
+    baseUrl
+      .patch(`assignlorry/${id}/containers/${container._id}`, {
+        tripKind: "",
+      })
+      .then(() => {
+        toast({
+          title: "Yard mark removed",
+          description: `${container.containerNo || "Container"} is no longer marked as yard.`,
+        });
+        onChanged?.();
+      })
+      .catch((error) => {
+        onLocalUpdate?.(container._id, { tripKind: "yard" });
+        toast({
+          title: "Could not reverse yard",
+          description: getApiErrorMessage(
+            error,
+            "Could not reverse the yard mark. Please try again."
+          ),
+          variant: "destructive",
+        });
+      })
+      .finally(() => {
+        setMarkingYard(false);
+      });
+  };
   const saveFcl = (next: FclState) => {
     if (!id || !container?._id) return;
     const previous = fcl;
@@ -339,6 +369,8 @@ function Containers({
     canManageCompleted && !isYardTrip && !isOnwardTrip && !hasOnwardTrip && Boolean(container?._id);
   const canLoadToStore =
     canCreate && isYardTrip && !hasOnwardTrip && Boolean(container?._id);
+  const canUndoYard =
+    isAdminUser() && isYardTrip && !hasOnwardTrip && Boolean(container?._id);
 
   const statusTone =
     isYardTrip && !hasOnwardTrip
@@ -431,6 +463,18 @@ function Containers({
             >
               <Warehouse className="h-3.5 w-3.5" />
               {markingYard ? "Saving..." : "To Yard"}
+            </Button>
+          ) : null}
+          {canUndoYard ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8"
+              onClick={undoYard}
+              disabled={markingYard}
+            >
+              {markingYard ? "Saving..." : "Undo yard"}
             </Button>
           ) : null}
           {canLoadToStore ? (
