@@ -7,6 +7,7 @@ export type SocketModule =
   | "user"
   | "role"
   | "heldup"
+  | "outhire"
   | "log";
 
 export type SocketAction = "created" | "updated" | "deleted";

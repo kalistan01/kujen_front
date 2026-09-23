@@ -13,6 +13,7 @@ import {
   ScrollText,
   Settings,
   BarChart3,
+  MapPinned,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
@@ -65,6 +66,13 @@ const allMenuItems = [
     label: "Settings",
     icon: Settings,
     path: "/settings",
+    permission: [P.DESTINATIONS_VIEW, P.DESTINATIONS_ADD, P.DESTINATIONS_EDIT],
+  },
+  {
+    id: "out-hires",
+    label: "Out Hires",
+    icon: MapPinned,
+    path: "/out-hires",
     permission: [P.DESTINATIONS_VIEW, P.DESTINATIONS_ADD, P.DESTINATIONS_EDIT],
   },
   {
