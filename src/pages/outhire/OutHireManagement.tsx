@@ -224,89 +224,92 @@ export const OutHireManagement = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          {loading ? (
-            <div className="space-y-3 px-4 py-6">
-              {Array.from({ length: 4 }).map((_, index) => (
-                <div key={index} className="flex items-center gap-3">
-                  <Skeleton className="h-8 w-8 rounded-lg" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-32" />
-                    <Skeleton className="h-3 w-48" />
+          {/* ~25 rows visible, then scroll */}
+          <div className="max-h-[min(70vh,calc(2.5rem+25*3.25rem))] overflow-auto">
+            {loading ? (
+              <div className="space-y-3 px-4 py-6">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className="flex items-center gap-3">
+                    <Skeleton className="h-8 w-8 rounded-lg" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-48" />
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
-              <MapPin className="mb-3 h-10 w-10 text-muted-foreground/50" />
-              <p className="font-medium">No out hires found</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Add an out hire rate with location, distance, and amount.
-              </p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/20 hover:bg-muted/20">
-                  <TableHead>Location</TableHead>
-                  <TableHead>Distance</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((item, i) => (
-                  <TableRow key={item._id || i}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-500/10 text-sky-600">
-                          <MapPin className="h-4 w-4" />
-                        </span>
-                        <span className="font-semibold">{item.location}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>{formatDistance(item.distanceKm)}</TableCell>
-                    <TableCell className="font-medium">
-                      {formatAmount(item.amount)}
-                    </TableCell>
-                    <TableCell>
-                      {canEdit ? (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-auto p-0 hover:bg-transparent"
-                          onClick={() =>
-                            toggleStatus(item._id, Boolean(item.status))
-                          }
-                        >
-                          <StatusBadge status={Boolean(item.status)} />
-                        </Button>
-                      ) : (
-                        <StatusBadge status={Boolean(item.status)} />
-                      )}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {formatCreatedAt(item.createdAt)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {canEdit ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(item)}
-                        >
-                          <Edit className="h-4 w-4" />
-                          Edit
-                        </Button>
-                      ) : null}
-                    </TableCell>
-                  </TableRow>
                 ))}
-              </TableBody>
-            </Table>
-          )}
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
+                <MapPin className="mb-3 h-10 w-10 text-muted-foreground/50" />
+                <p className="font-medium">No out hires found</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Add an out hire rate with location, distance, and amount.
+                </p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader className="sticky top-0 z-10 bg-background shadow-[0_1px_0_0_hsl(var(--border))]">
+                  <TableRow className="bg-muted/20 hover:bg-muted/20">
+                    <TableHead>Location</TableHead>
+                    <TableHead>Distance</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((item, i) => (
+                    <TableRow key={item._id || i}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-500/10 text-sky-600">
+                            <MapPin className="h-4 w-4" />
+                          </span>
+                          <span className="font-semibold">{item.location}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>{formatDistance(item.distanceKm)}</TableCell>
+                      <TableCell className="font-medium">
+                        {formatAmount(item.amount)}
+                      </TableCell>
+                      <TableCell>
+                        {canEdit ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-auto p-0 hover:bg-transparent"
+                            onClick={() =>
+                              toggleStatus(item._id, Boolean(item.status))
+                            }
+                          >
+                            <StatusBadge status={Boolean(item.status)} />
+                          </Button>
+                        ) : (
+                          <StatusBadge status={Boolean(item.status)} />
+                        )}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {formatCreatedAt(item.createdAt)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {canEdit ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(item)}
+                          >
+                            <Edit className="h-4 w-4" />
+                            Edit
+                          </Button>
+                        ) : null}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

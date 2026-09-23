@@ -16,6 +16,7 @@ import {
   MapPinned,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { OutHireTableModal } from "@/components/OutHireTableModal";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
@@ -370,6 +371,14 @@ export const Layout = () => {
             </div>
 
             <div className="flex items-center gap-1.5">
+              {can(P.DESTINATIONS_VIEW) ||
+              can(P.DESTINATIONS_ADD) ||
+              can(P.DESTINATIONS_EDIT) ||
+              can(P.ASSIGNMENTS_VIEW) ||
+              can(P.ASSIGNMENTS_ADD) ||
+              can(P.ASSIGNMENTS_EDIT) ? (
+                <OutHireTableModal />
+              ) : null}
               <ThemeToggle />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
