@@ -16,7 +16,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Banknote, Clock, Edit, Warehouse } from "lucide-react";
+import { Banknote, CalendarDays, Clock, Edit, Warehouse } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import baseUrl from "@/api/baseUrl";
@@ -29,6 +29,7 @@ import {
   containerChargesTotal,
   formatMoney,
   todayDateInput,
+  toDateKey,
   CHARGE_FIELDS,
   heldUpSuggestion,
   roundMoney,
@@ -47,6 +48,7 @@ import {
   containerTripKind,
 } from "../lib/containerDisplay";
 import FclRecord from "./FclRecord";
+import { calendarDaysBetween, formatDate as formatDay } from "../lib/dates";
 interface ContainerType {
   _id?: string;
   containerNo?: string;
@@ -80,6 +82,7 @@ interface ContainerType {
   return?: number;
   status?: "pending" | "in-progress" | "advanced" | "completed";
   fcl?: unknown;
+  fclExtendedDate?: string;
   note?: string;
 }
 
@@ -111,6 +114,7 @@ type ContainersProps = {
   selected?: boolean;
   onSelect?: (containerId: string, checked: boolean) => void;
   hasOnwardTrip?: boolean;
+  fclDueDate?: string;
 };
 
 function Containers({
@@ -123,12 +127,16 @@ function Containers({
   selected = false,
   onSelect,
   hasOnwardTrip = false,
+  fclDueDate,
 }: ContainersProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoadToStoreOpen, setIsLoadToStoreOpen] = useState(false);
   const [markingYard, setMarkingYard] = useState(false);
   const [isPayOpen, setIsPayOpen] = useState(false);
   const [isHeldUpOpen, setIsHeldUpOpen] = useState(false);
+  const [isFclExtendedOpen, setIsFclExtendedOpen] = useState(false);
+  const [fclExtendedDate, setFclExtendedDate] = useState("");
+  const [savingFclExtended, setSavingFclExtended] = useState(false);
   const [heldUpAmount, setHeldUpAmount] = useState("");
   const [savingHeldUp, setSavingHeldUp] = useState(false);
   const [payDate, setPayDate] = useState(todayDateInput());
@@ -322,6 +330,57 @@ function Containers({
         setSavingHeldUp(false);
       });
   };
+  const openFclExtendedDialog = () => {
+    const due = toDateKey(fclDueDate);
+    const saved = toDateKey(container.fclExtendedDate);
+    let next = saved || todayDateInput();
+    if (due && next < due) next = due;
+    setFclExtendedDate(next);
+    setIsFclExtendedOpen(true);
+  };
+  const handleSaveFclExtended = (nextDate: string) => {
+    if (!id || !container?._id || savingFclExtended) return;
+    const due = toDateKey(fclDueDate);
+    if (nextDate && due && nextDate < due) {
+      toast({
+        title: "Date not allowed",
+        description: "FCL extended date cannot be before the FCL due date.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const previous = container.fclExtendedDate || "";
+    setSavingFclExtended(true);
+    onLocalUpdate?.(container._id, { fclExtendedDate: nextDate });
+    baseUrl
+      .put(`assignlorry/${id}/containers/${container._id}`, {
+        fclExtendedDate: nextDate,
+      })
+      .then(() => {
+        toast({
+          title: nextDate ? "FCL extended date saved" : "FCL extended date cleared",
+          description: nextDate
+            ? `Extended date set to ${formatDay(nextDate)}.`
+            : "Extended date removed from this container.",
+        });
+        setIsFclExtendedOpen(false);
+        onChanged?.();
+      })
+      .catch((error) => {
+        onLocalUpdate?.(container._id as string, { fclExtendedDate: previous });
+        toast({
+          title: "Could not save FCL extended date",
+          description: getApiErrorMessage(
+            error,
+            "Could not save the FCL extended date. Please try again."
+          ),
+          variant: "destructive",
+        });
+      })
+      .finally(() => {
+        setSavingFclExtended(false);
+      });
+  };
   const handlePayBalance = () => {
     if (!id || !container?._id || paying || balance <= 0) return;
     setPaying(true);
@@ -371,6 +430,13 @@ function Containers({
     canCreate && isYardTrip && !hasOnwardTrip && Boolean(container?._id);
   const canUndoYard =
     isAdminUser() && isYardTrip && !hasOnwardTrip && Boolean(container?._id);
+  const fclDueKey = toDateKey(fclDueDate);
+  const fclDayGap = calendarDaysBetween(fclDueDate, container.fclExtendedDate);
+  const showFclGap = Boolean(toDateKey(container.fclExtendedDate));
+  const previewGap = calendarDaysBetween(fclDueDate, fclExtendedDate);
+  const extendedBeforeDue = Boolean(
+    fclDueKey && fclExtendedDate && fclExtendedDate < fclDueKey
+  );
 
   const statusTone =
     isYardTrip && !hasOnwardTrip
@@ -385,7 +451,13 @@ function Containers({
 
   return (
     <div className={`space-y-3 rounded-lg border border-l-4 border-border/80 p-4 ${statusTone}`}>
-      <div className="flex flex-wrap items-start justify-between gap-2">
+      <div
+        className={`flex flex-wrap items-start justify-between gap-2${
+          showFclGap
+            ? " sm:grid sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center"
+            : ""
+        }`}
+      >
         <div className="flex min-w-0 items-start gap-3">
           {balance > 0 && container?._id && onSelect && canManageCompleted && canEditField("balancePaid") ? (
             <Checkbox
@@ -415,7 +487,27 @@ function Containers({
             <p className="text-xs text-muted-foreground">VOC {container?.vocNo}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        {showFclGap ? (
+          <div className="flex justify-center px-2">
+            <div className="rounded-md border border-border/70 bg-muted/40 px-3 py-1.5 text-center">
+              <p className="whitespace-nowrap text-sm font-semibold tabular-nums">
+                {formatDay(container.fclExtendedDate)}
+                <span className="mx-1.5 font-normal text-muted-foreground">−</span>
+                {fclDueKey ? formatDay(fclDueDate) : "—"}
+                {fclDayGap != null ? (
+                  <>
+                    <span className="mx-1.5 font-normal text-muted-foreground">=</span>
+                    {fclDayGap} {Math.abs(fclDayGap) === 1 ? "day" : "days"}
+                  </>
+                ) : null}
+              </p>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                Extended date − FCL Due Date
+              </p>
+            </div>
+          </div>
+        ) : null}
+        <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:justify-self-end">
           {canManageCompleted ? (
           <Select
             value={status}
@@ -440,6 +532,18 @@ function Containers({
               {(status || "pending").replace(/-/g, " ")}
             </span>
           )}
+          {canManageCompleted ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8"
+              onClick={openFclExtendedDialog}
+            >
+              <CalendarDays className="h-3.5 w-3.5" />
+              FCL Extended Date
+            </Button>
+          ) : null}
           {canManageCompleted && canEditField("heldUp") ? (
             <Button
               type="button"
@@ -700,6 +804,67 @@ function Containers({
         ) : null}
       </div>
       ) : null}
+
+      <Dialog open={isFclExtendedOpen} onOpenChange={setIsFclExtendedOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>FCL Extended Date</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Days shown on the card are this date minus the FCL due date
+              {fclDueKey ? ` (${formatDay(fclDueDate)})` : ""}.
+            </p>
+            <div>
+              <Label>Extended date</Label>
+              <Input
+                type="date"
+                value={fclExtendedDate}
+                min={fclDueKey || undefined}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  if (fclDueKey && next && next < fclDueKey) return;
+                  setFclExtendedDate(next);
+                }}
+              />
+            </div>
+            {fclExtendedDate && previewGap != null ? (
+              <p className="text-sm">
+                Extended date {formatDay(fclExtendedDate)} − FCL Due Date{" "}
+                {formatDay(fclDueDate)} = {previewGap}{" "}
+                {Math.abs(previewGap) === 1 ? "day" : "days"}
+              </p>
+            ) : null}
+            <div className="flex justify-end gap-2 pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsFclExtendedOpen(false)}
+                disabled={savingFclExtended}
+              >
+                Cancel
+              </Button>
+              {toDateKey(container.fclExtendedDate) ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleSaveFclExtended("")}
+                  disabled={savingFclExtended}
+                >
+                  Clear
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                onClick={() => handleSaveFclExtended(fclExtendedDate)}
+                disabled={savingFclExtended || !fclExtendedDate || extendedBeforeDue}
+              >
+                {savingFclExtended ? "Saving..." : "Save"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isHeldUpOpen} onOpenChange={setIsHeldUpOpen}>
         <DialogContent className="sm:max-w-sm">

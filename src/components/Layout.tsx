@@ -153,6 +153,9 @@ export const Layout = () => {
     if (location.pathname === "/assignments/containers") {
       return { label: "Containers" };
     }
+    if (location.pathname === "/assignments/fcl-extended") {
+      return { label: "FCL Extended" };
+    }
     if (location.pathname.startsWith("/reports")) {
       return { label: "Reports" };
     }

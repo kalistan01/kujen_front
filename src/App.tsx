@@ -42,6 +42,7 @@ const App = () => (
                 >
                   <Route index element={null} />
                   <Route path="containers" element={null} />
+                  <Route path="fcl-extended" element={null} />
                 </Route>
                 <Route
                   path="/settings"

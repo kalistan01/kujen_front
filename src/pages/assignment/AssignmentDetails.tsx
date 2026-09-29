@@ -537,6 +537,7 @@ const AssignmentDetails = () => {
                         selected={selectedIds.includes(container._id)}
                         onSelect={toggleSelected}
                         hasOnwardTrip={onwardSourceIds.has(String(container._id))}
+                        fclDueDate={assignment?.fclDueDate}
                       />
                     ))}
                   </div>

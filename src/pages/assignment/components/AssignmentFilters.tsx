@@ -30,6 +30,7 @@ function AssignmentFilters({
   onClear,
   placeholder = "Search BL, item, exporter...",
   statuses = DEFAULT_STATUSES,
+  showStatus = true,
   balanceFilter = "all",
   onBalanceFilterChange,
   advancedFilter = "all",
@@ -42,6 +43,8 @@ function AssignmentFilters({
   destinations = [],
   yardFilter = "all",
   onYardFilterChange,
+  datePreset,
+  onDatePresetChange,
   className,
   children,
 }: {
@@ -57,6 +60,7 @@ function AssignmentFilters({
   onClear: () => void;
   placeholder?: string;
   statuses?: { value: string; label: string }[];
+  showStatus?: boolean;
   balanceFilter?: string;
   onBalanceFilterChange?: (value: string) => void;
   advancedFilter?: string;
@@ -69,6 +73,8 @@ function AssignmentFilters({
   destinations?: { value: string; label: string }[];
   yardFilter?: string;
   onYardFilterChange?: (value: string) => void;
+  datePreset?: string;
+  onDatePresetChange?: (value: string) => void;
   className?: string;
   children?: ReactNode;
 }) {
@@ -83,6 +89,7 @@ function AssignmentFilters({
           className="h-8 bg-background pl-9"
         />
       </div>
+      {showStatus ? (
       <Select value={status} onValueChange={onStatusChange}>
         <SelectTrigger className="h-8 w-[130px] shrink-0 bg-background">
           <SelectValue placeholder="Status" />
@@ -95,6 +102,35 @@ function AssignmentFilters({
           ))}
         </SelectContent>
       </Select>
+      ) : null}
+      {onDatePresetChange ? (
+        <div className="inline-flex h-8 items-center rounded-md bg-muted p-1 text-muted-foreground">
+          {(
+            [
+              ["all", "All"],
+              ["today", "Today"],
+              ["yesterday", "Yesterday"],
+              ["tomorrow", "Tomorrow"],
+              ["range", "Date wise"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              className={cn(
+                "inline-flex h-6 items-center rounded-sm px-2.5 text-xs font-medium transition-all",
+                datePreset === value
+                  ? "bg-background text-foreground shadow-sm"
+                  : "hover:text-foreground"
+              )}
+              onClick={() => onDatePresetChange(value)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {!onDatePresetChange || datePreset === "range" ? (
       <div className="flex shrink-0 items-center gap-1.5">
         <Input
           type="date"
@@ -112,6 +148,7 @@ function AssignmentFilters({
           aria-label="To date"
         />
       </div>
+      ) : null}
       {onBalanceFilterChange ? (
         <Select value={balanceFilter} onValueChange={onBalanceFilterChange}>
           <SelectTrigger className="h-8 w-[140px] shrink-0 bg-background">

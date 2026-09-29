@@ -45,6 +45,7 @@ import AssignmentFilters from "./components/AssignmentFilters";
 import AssignmentTable from "./components/AssignmentTable";
 import ContainerListPrint from "./components/ContainerListPrint";
 import ContainerListTable from "./components/ContainerListTable";
+import FclExtendedTable, { type FclExtendedRow } from "./components/FclExtendedTable";
 import { useEntitySync } from "@/hooks/useEntitySync";
 import { upsertById } from "@/lib/socket";
 
@@ -91,6 +92,7 @@ export const AssignmentManagement = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const isFclExtended = location.pathname.endsWith("/fcl-extended");
   const isContainers = location.pathname.endsWith("/containers");
   const canSeeContainers = canViewContainers();
   const page = Math.max(1, Number.parseInt(searchParams.get("page") || "1", 10) || 1);
@@ -108,6 +110,11 @@ export const AssignmentManagement = () => {
   const [bulkPaying, setBulkPaying] = useState<"pay" | "print" | false>(false);
   const [printTitle, setPrintTitle] = useState<string | undefined>();
   const [printOnlyIds, setPrintOnlyIds] = useState<string[] | null>(null);
+  const [fclRows, setFclRows] = useState<FclExtendedRow[]>([]);
+  const [fclLoading, setFclLoading] = useState(false);
+  const [fclDatePreset, setFclDatePreset] = useState<
+    "all" | "today" | "yesterday" | "tomorrow" | "range"
+  >("today");
   const pageSize = 100;
   const { toast } = useToast();
   const canPay =
@@ -117,6 +124,29 @@ export const AssignmentManagement = () => {
   const handleAdd = () => {
     setEditingAssignment(null);
     setIsDialogOpen(true);
+  };
+
+  const loadFclExtended = () => {
+    setFclLoading(true);
+    return baseUrl
+      .get("/assignlorry/fcl-extended")
+      .then((response) => {
+        setFclRows(asList(response.data?.data));
+      })
+      .catch((error) => {
+        setFclRows([]);
+        toast({
+          title: "Unable to load FCL extended",
+          description: getApiErrorMessage(
+            error,
+            "Could not load FCL extended containers. Please try again."
+          ),
+          variant: "destructive",
+        });
+      })
+      .finally(() => {
+        setFclLoading(false);
+      });
   };
 
   const loadAssignments = () =>
@@ -141,10 +171,14 @@ export const AssignmentManagement = () => {
   }, [isDialogOpen]);
 
   useEffect(() => {
-    if (isContainers && !canSeeContainers) {
+    if (isFclExtended) loadFclExtended();
+  }, [isFclExtended]);
+
+  useEffect(() => {
+    if ((isContainers || isFclExtended) && !canSeeContainers) {
       navigate("/assignments", { replace: true });
     }
-  }, [isContainers, canSeeContainers, navigate]);
+  }, [isContainers, isFclExtended, canSeeContainers, navigate]);
 
   useEffect(() => {
     baseUrl
@@ -166,6 +200,7 @@ export const AssignmentManagement = () => {
     setAssignments((prev) =>
       scopeAssignments(upsertById(prev, payload))
     );
+    if (isFclExtended) loadFclExtended();
   });
 
   useEntitySync("lorry", (payload) => {
@@ -382,6 +417,8 @@ export const AssignmentManagement = () => {
     fromDate,
     toDate,
     isContainers,
+    isFclExtended,
+    fclDatePreset,
     balanceFilter,
     advancedFilter,
     owner,
@@ -395,7 +432,91 @@ export const AssignmentManagement = () => {
     }
   }, [isContainers, status]);
 
-  const listTotal = isContainers ? filteredContainers.length : filtered.length;
+  const filteredFcl = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const dayKey = (offset: number) => {
+      const date = new Date();
+      date.setDate(date.getDate() + offset);
+      return [
+        date.getFullYear(),
+        String(date.getMonth() + 1).padStart(2, "0"),
+        String(date.getDate()).padStart(2, "0"),
+      ].join("-");
+    };
+    const presetDay =
+      fclDatePreset === "today"
+        ? dayKey(0)
+        : fclDatePreset === "yesterday"
+          ? dayKey(-1)
+          : fclDatePreset === "tomorrow"
+            ? dayKey(1)
+            : "";
+    return fclRows.filter((row) => {
+      if (q) {
+        const match = [
+          row.blNo,
+          row.containerNo,
+          row.vocNo,
+          row.lorryNum,
+          row.ownerName,
+          row.destination,
+        ]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(q));
+        if (!match) return false;
+      }
+      if (owner !== "all" && row.ownerId !== owner) return false;
+      if (destination !== "all" && row.destinationId !== destination) return false;
+      if (yardFilter === "yes" && !row.yard) return false;
+      if (yardFilter === "no" && row.yard) return false;
+      const extendedKey = String(row.fclExtendedDate || "").slice(0, 10);
+      if (presetDay && extendedKey !== presetDay) return false;
+      if (fclDatePreset === "range") {
+        if (fromDate && extendedKey < fromDate) return false;
+        if (toDate && extendedKey > toDate) return false;
+      }
+      return true;
+    });
+  }, [
+    fclRows,
+    query,
+    fromDate,
+    toDate,
+    owner,
+    destination,
+    yardFilter,
+    fclDatePreset,
+  ]);
+
+  const fclOwnerOptions = useMemo(() => {
+    const names = new Map<string, string>();
+    fclRows.forEach((row) => {
+      if (row.ownerId && row.ownerName) {
+        names.set(row.ownerId, String(row.ownerName).toUpperCase());
+      }
+    });
+    return [...names.entries()]
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([value, label]) => ({ value, label }));
+  }, [fclRows]);
+
+  const fclDestinationOptions = useMemo(() => {
+    const items = new Map<string, string>();
+    fclRows.forEach((row) => {
+      if (row.destinationId && row.destination) {
+        items.set(row.destinationId, row.destination);
+      }
+    });
+    return [...items.entries()]
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([value, label]) => ({ value, label }));
+  }, [fclRows]);
+
+  const listTotal = isFclExtended
+    ? filteredFcl.length
+    : isContainers
+      ? filteredContainers.length
+      : filtered.length;
   const pages = Math.max(1, Math.ceil(listTotal / pageSize) || 1);
   const currentPage = Math.min(page, pages);
   const paged = filtered.slice(
@@ -406,12 +527,23 @@ export const AssignmentManagement = () => {
     (currentPage - 1) * pageSize,
     currentPage * pageSize
   );
+  const pagedFcl = filteredFcl.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   useEffect(() => {
     if (!assignments.length) return;
     if (page > pages) setPage(pages);
   }, [assignments.length, page, pages]);
 
+  const fclHasFilters = Boolean(
+    query.trim() ||
+      fclDatePreset !== "today" ||
+      owner !== "all" ||
+      destination !== "all" ||
+      yardFilter !== "all"
+  );
   const hasFilters = Boolean(
     query.trim() ||
       status !== "all" ||
@@ -683,14 +815,20 @@ export const AssignmentManagement = () => {
     <>
     <div className="space-y-3 print:hidden">
       <PageHeader
-        title={isContainers ? "Containers" : "Assignments"}
+        title={
+          isFclExtended ? "FCL Extended" : isContainers ? "Containers" : "Assignments"
+        }
         description={
-          isContainers
+          isFclExtended
+            ? "Containers that have an FCL extended date."
+            : isContainers
             ? "Search containers across assignments, print lists, and pay balances."
             : "Track bill of lading records, containers, and shipment status."
         }
         className="gap-2 sm:items-center"
       >
+        {isFclExtended ? null : (
+        <>
         <Button
           variant="outline"
           onClick={() => downloadExport("pdf")}
@@ -709,6 +847,8 @@ export const AssignmentManagement = () => {
           <FileSpreadsheet className="h-4 w-4" />
           {exporting === "excel" ? "Excel..." : "Excel"}
         </Button>
+        </>
+        )}
         {canAddAssignments() ? (
           <AddAssignmentDialog
             open={isDialogOpen}
@@ -741,6 +881,7 @@ export const AssignmentManagement = () => {
                 Assignments
               </NavLink>
               {canSeeContainers ? (
+              <>
               <NavLink
                 to="/assignments/containers"
                 className={({ isActive }) =>
@@ -754,9 +895,25 @@ export const AssignmentManagement = () => {
               >
                 Containers
               </NavLink>
+              <NavLink
+                to="/assignments/fcl-extended"
+                className={({ isActive }) =>
+                  cn(
+                    "inline-flex h-6 items-center rounded-sm px-2.5 text-xs font-medium transition-all",
+                    isActive
+                      ? "bg-background text-foreground shadow-sm"
+                      : "hover:text-foreground"
+                  )
+                }
+              >
+                FCL Extended
+              </NavLink>
+              </>
               ) : null}
             </nav>
             <div className="flex flex-wrap items-center justify-end gap-2">
+              {isFclExtended ? null : (
+              <>
               <Button
                 type="button"
                 size="sm"
@@ -804,6 +961,8 @@ export const AssignmentManagement = () => {
                     : ""}
                 </Button>
               ) : null}
+              </>
+              )}
               <Badge variant="secondary">{listTotal}</Badge>
             </div>
           </div>
@@ -812,32 +971,43 @@ export const AssignmentManagement = () => {
             onQueryChange={setQuery}
             status={status}
             onStatusChange={setStatus}
+            showStatus={!isFclExtended}
+            datePreset={fclDatePreset}
+            onDatePresetChange={
+              isFclExtended
+                ? (value) =>
+                    setFclDatePreset(
+                      value as "all" | "today" | "yesterday" | "tomorrow" | "range"
+                    )
+                : undefined
+            }
             fromDate={fromDate}
             onFromDateChange={setFromDate}
             toDate={toDate}
             onToDateChange={setToDate}
-            hasFilters={hasFilters}
+            hasFilters={isFclExtended ? fclHasFilters : hasFilters}
             placeholder={
-              isContainers
+              isContainers || isFclExtended
                 ? "Search BL, container, VOC, lorry..."
                 : "Search BL, item, exporter..."
             }
             statuses={isContainers ? CONTAINER_STATUSES : undefined}
             balanceFilter={balanceFilter}
-            onBalanceFilterChange={setBalanceFilter}
+            onBalanceFilterChange={isFclExtended ? undefined : setBalanceFilter}
             advancedFilter={advancedFilter}
-            onAdvancedFilterChange={setAdvancedFilter}
+            onAdvancedFilterChange={isFclExtended ? undefined : setAdvancedFilter}
             owner={owner}
             onOwnerChange={setOwner}
-            owners={ownerOptions}
+            owners={isFclExtended ? fclOwnerOptions : ownerOptions}
             destination={destination}
             onDestinationChange={setDestination}
-            destinations={destinationOptions}
+            destinations={isFclExtended ? fclDestinationOptions : destinationOptions}
             yardFilter={yardFilter}
             onYardFilterChange={setYardFilter}
             onClear={() => {
               setQuery("");
               setStatus("all");
+              setFclDatePreset("today");
               setFromDate("");
               setToDate("");
               setBalanceFilter("all");
@@ -850,7 +1020,18 @@ export const AssignmentManagement = () => {
           />
         </CardHeader>
         <CardContent className="p-0">
-          {isContainers ? (
+          {isFclExtended ? (
+            <FclExtendedTable
+              rows={pagedFcl}
+              total={filteredFcl.length}
+              hasFilters={fclHasFilters}
+              loading={fclLoading}
+              page={currentPage}
+              pages={pages}
+              pageSize={pageSize}
+              onPageChange={setPage}
+            />
+          ) : isContainers ? (
             <ContainerListTable
               rows={pagedContainers}
               total={filteredContainers.length}
