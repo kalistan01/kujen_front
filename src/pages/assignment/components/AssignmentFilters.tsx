@@ -1,5 +1,18 @@
 import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -8,8 +21,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { Search } from "lucide-react";
-import type { ReactNode } from "react";
+import { Check, ChevronDown, Search } from "lucide-react";
+import { useState, type ReactNode } from "react";
 
 const DEFAULT_STATUSES = [
   { value: "all", label: "All status" },
@@ -187,19 +200,11 @@ function AssignmentFilters({
         </Select>
       ) : null}
       {onDestinationChange ? (
-        <Select value={destination} onValueChange={onDestinationChange}>
-          <SelectTrigger className="h-8 w-[170px] shrink-0 bg-background">
-            <SelectValue placeholder="Destination" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All destinations</SelectItem>
-            {destinations.map((item) => (
-              <SelectItem key={item.value} value={item.value}>
-                {item.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <DestinationFilter
+          value={destination}
+          onChange={onDestinationChange}
+          destinations={destinations}
+        />
       ) : null}
       {onYardFilterChange ? (
         <Select value={yardFilter} onValueChange={onYardFilterChange}>
@@ -225,6 +230,86 @@ function AssignmentFilters({
       )}
       {children}
     </div>
+  );
+}
+
+function DestinationFilter({
+  value,
+  onChange,
+  destinations,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  destinations: { value: string; label: string }[];
+}) {
+  const [open, setOpen] = useState(false);
+  const selected =
+    value === "all"
+      ? "All destinations"
+      : destinations.find((item) => item.value === value)?.label ||
+        "All destinations";
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="h-8 w-[170px] shrink-0 justify-between bg-background px-2.5 text-xs font-normal"
+        >
+          <span className="truncate">{selected}</span>
+          <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[320px] p-0" align="start">
+        <Command>
+          <CommandInput
+            placeholder="Search destination"
+            className="h-8 text-xs"
+          />
+          <CommandList>
+            <CommandEmpty>No destination found.</CommandEmpty>
+            <CommandGroup>
+              <CommandItem
+                value="All destinations"
+                onSelect={() => {
+                  onChange("all");
+                  setOpen(false);
+                }}
+              >
+                <Check
+                  className={cn(
+                    "mr-2 h-4 w-4",
+                    value === "all" ? "opacity-100" : "opacity-0"
+                  )}
+                />
+                All destinations
+              </CommandItem>
+              {destinations.map((item) => (
+                <CommandItem
+                  key={item.value}
+                  value={`${item.label} ${item.value}`}
+                  onSelect={() => {
+                    onChange(item.value);
+                    setOpen(false);
+                  }}
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4 shrink-0",
+                      value === item.value ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  <span className="truncate">{item.label}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }
 
