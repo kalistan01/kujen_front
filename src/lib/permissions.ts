@@ -62,6 +62,9 @@ export const P = {
   AGENT_FEE_ADD: 61,
   TRANSPORT_COMMISSION_ADD: 62,
   RETURN_ADD: 63,
+  BUYERS_VIEW: 64,
+  BUYERS_ADD: 65,
+  BUYERS_EDIT: 66,
 } as const;
 
 export type PermissionId = (typeof P)[keyof typeof P];
@@ -115,6 +118,13 @@ export const PAGE_ACCESS: PageAccessItem[] = [
     editId: P.DESTINATIONS_EDIT,
   },
   {
+    name: "Buyers",
+    description: "Buyer names and addresses",
+    viewId: P.BUYERS_VIEW,
+    addId: P.BUYERS_ADD,
+    editId: P.BUYERS_EDIT,
+  },
+  {
     name: "Assignments",
     description: "BLs and shipment records",
     viewId: P.ASSIGNMENTS_VIEW,
@@ -144,6 +154,9 @@ export const PAGE_PERMISSIONS: PermissionItem[] = [
   { id: P.DESTINATIONS_VIEW, name: "View Destinations", description: "Open settings, destinations, and held up rates", group: "pages" },
   { id: P.DESTINATIONS_ADD, name: "Add Destinations", description: "Create routes and held up rates", group: "pages" },
   { id: P.DESTINATIONS_EDIT, name: "Edit Destinations", description: "Update and disable routes", group: "pages" },
+  { id: P.BUYERS_VIEW, name: "View Buyers", description: "Open the buyers page", group: "pages" },
+  { id: P.BUYERS_ADD, name: "Add Buyers", description: "Create buyers", group: "pages" },
+  { id: P.BUYERS_EDIT, name: "Edit Buyers", description: "Update buyer name and address", group: "pages" },
   { id: P.ASSIGNMENTS_VIEW, name: "View Assignments", description: "Open assignments and details", group: "pages" },
   { id: P.ASSIGNMENTS_ADD, name: "Add Assignments", description: "Create assignments", group: "pages" },
   { id: P.ASSIGNMENTS_EDIT, name: "Edit Assignments", description: "Update and delete assignments", group: "pages" },
@@ -163,6 +176,7 @@ const LEGACY_ADD_TO_EDIT: Array<[number, number]> = [
   [P.DESTINATIONS_ADD, P.DESTINATIONS_EDIT],
   [P.ROLES_ADD, P.ROLES_EDIT],
   [P.ASSIGNMENTS_ADD, P.ASSIGNMENTS_EDIT],
+  [P.BUYERS_ADD, P.BUYERS_EDIT],
 ];
 
 const LEGACY_FROM_PARENT: Array<[number, number[]]> = [
@@ -245,6 +259,8 @@ const MUST_GRANT = new Set<number>([
   P.ROLES_EDIT,
   P.ROLES_VIEW,
   P.LOGS_VIEW,
+  P.BUYERS_ADD,
+  P.BUYERS_EDIT,
 ]);
 
 export const FIELD_KEY_TO_ID: Record<string, number> = Object.fromEntries(

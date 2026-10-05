@@ -42,6 +42,7 @@ import { completeRequiresMessage } from "../lib/validate";
 import { parseFcl, type FclState } from "../lib/fcl";
 import {
   containerCapacity,
+  containerBuyer,
   containerDestination,
   containerLorry,
   containerOwner,
@@ -53,6 +54,8 @@ interface ContainerType {
   _id?: string;
   containerNo?: string;
   vocNo?: string;
+  billNumber?: string;
+  containerOut?: string;
   lorryNum?: string;
   capacity?: number;
   updatedAt?: string;
@@ -484,7 +487,10 @@ function Containers({
                 <Badge variant="outline">Loaded to Store</Badge>
               ) : null}
             </div>
-            <p className="text-xs text-muted-foreground">VOC {container?.vocNo}</p>
+            <p className="text-xs text-muted-foreground">
+              VOC {container?.vocNo}
+              {container?.billNumber ? ` · Bill ${container.billNumber}` : ""}
+            </p>
           </div>
         </div>
         {showFclGap ? (
@@ -627,6 +633,20 @@ function Containers({
               <EditContainer
                 setIsDialogOpen={setIsDialogOpen}
                 editingAssignment={editingAssignment}
+                onSaved={(buyer) => {
+                  if (container._id) {
+                    onLocalUpdate?.(container._id, {
+                      buyer: buyer
+                        ? {
+                            _id: buyer._id,
+                            name: buyer.name,
+                            address: buyer.address,
+                          }
+                        : null,
+                    });
+                  }
+                  onChanged?.();
+                }}
               />
             </DialogContent>
           </Dialog>
@@ -646,6 +666,14 @@ function Containers({
               ? ` (${String(containerOwner(container)).toUpperCase()})`
               : ""}
           </p>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground">Container Out</p>
+          <p className="font-medium">{container?.containerOut || "—"}</p>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground">Buyer</p>
+          <p className="font-medium">{containerBuyer(container)}</p>
         </div>
         <div>
           <p className="text-xs text-muted-foreground">Destination</p>

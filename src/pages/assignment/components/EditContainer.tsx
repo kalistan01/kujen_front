@@ -19,6 +19,7 @@ import { useParams } from "react-router-dom";
 import DestinationSelect, {
   type DestinationOption,
 } from "./DestinationSelect";
+import BuyerSelect, { buyerId, type BuyerOption } from "./BuyerSelect";
 import LorrySelect from "./LorrySelect";
 import { todayDateInput, toDateInput, toDateKey, containerChargesTotal, formatMoney, toAmount, CHARGE_FIELDS, roundMoney, applyAdvancedDate } from "../lib/financials";
 import { canEditField, canSeeField, fieldLockProps, omitHiddenContainerFields } from "@/lib/permissions";
@@ -38,8 +39,11 @@ interface Container {
   _id?: string;
   containerNo?: string;
   vocNo?: string;
+  billNumber?: string;
+  containerOut?: string;
   lorryNum?: string;
   lorryId?: string;
+  buyer?: string | { _id?: string };
   destination?: string;
   capacity?: number;
   updatedAt?: string;
@@ -72,13 +76,16 @@ interface Container {
 function EditContainer({
   setIsDialogOpen,
   editingAssignment,
+  onSaved,
 }: {
   setIsDialogOpen: (isOpen: boolean) => void;
   editingAssignment?: Container;
+  onSaved?: (buyer: BuyerOption | null) => void;
 }) {
   const { toast } = useToast();
   const { id } = useParams();
   const [destination, setDestination] = useState<DestinationOption[]>([]);
+  const [buyers, setBuyers] = useState<BuyerOption[]>([]);
   const [lorries, setLorries] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<ContainerFieldErrors>({});
@@ -86,9 +93,12 @@ function EditContainer({
   const [containers, setContainers] = useState<Container>({
     containerNo: "",
     vocNo: "",
+    billNumber: "",
+    containerOut: "",
     lorryId: "",
     loadingDate: "",
     demoundDate: "",
+    buyer: "",
     destination: "",
     weight: 0,
     dayHire: 0,
@@ -122,10 +132,13 @@ function EditContainer({
     setContainers({
       containerNo: "",
       vocNo: "",
+      billNumber: "",
+      containerOut: "",
       lorryId: "",
       loadingDate: "",
       demoundDate: "",
-      destination: "",
+      buyer: "",
+    destination: "",
       weight: 0,
       dayHire: 0,
       advanced: 0,
@@ -174,6 +187,21 @@ function EditContainer({
         });
       });
     baseUrl
+      .get("/buyer")
+      .then((response) => {
+        setBuyers(asList<BuyerOption>(response.data?.data));
+      })
+      .catch((error) => {
+        toast({
+          title: "Unable to load buyers",
+          description: getApiErrorMessage(
+            error,
+            "Could not load buyers. Please try again."
+          ),
+          variant: "destructive",
+        });
+      });
+    baseUrl
       .get("/lorry/lorry")
       .then(async (response) => {
         setLorries(asList(response.data?.data));
@@ -191,6 +219,9 @@ function EditContainer({
   }, []);
   useEntitySync("destination", (payload) => {
     setDestination((prev) => upsertById(prev, payload));
+  });
+  useEntitySync("buyer", (payload) => {
+    setBuyers((prev) => upsertById(prev, payload));
   });
   const handleSave = async () => {
     if (!id || !containers?._id) {
@@ -254,6 +285,7 @@ function EditContainer({
         omitHiddenContainerFields({
           ...applyAdvancedDate(containerFields),
           lorryId,
+          buyer: buyerId(containers.buyer),
           destination: containers.destination || undefined,
           demoundDate: containers.demoundDate || "",
         })
@@ -262,6 +294,10 @@ function EditContainer({
         title: "Success",
         description: "Container updated successfully.",
       });
+      const savedBuyerId = buyerId(containers.buyer);
+      onSaved?.(
+        buyers.find((buyer) => buyer._id === savedBuyerId) || null
+      );
       setIsDialogOpen(false);
       resetForm();
     } catch (error: unknown) {
@@ -303,7 +339,7 @@ function EditContainer({
       ) : null}
       <div className="space-y-4">
         <div className="border rounded-lg p-4 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="space-y-1.5">
               <Label>Container Number *</Label>
               <Input
@@ -326,9 +362,17 @@ function EditContainer({
                 className="bg-muted"
               />
             </div>
+            <div className="space-y-1.5">
+              <Label>Bill Number</Label>
+              <Input
+                value={containers.billNumber || ""}
+                onChange={(e) => updateContainer("billNumber", e.target.value)}
+                placeholder="Enter bill number"
+              />
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-1.5">
               <Label>Assign Lorry *</Label>
               <LorrySelect
@@ -342,6 +386,31 @@ function EditContainer({
                   {errors.lorryId}
                 </p>
               ) : null}
+            </div>
+            <div className="space-y-1.5">
+              <Label>Container Out</Label>
+              <Select
+                value={containers.containerOut || undefined}
+                onValueChange={(value) => updateContainer("containerOut", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select container out" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="RCT">RCT</SelectItem>
+                  <SelectItem value="OUT PASS">OUT PASS</SelectItem>
+                  <SelectItem value="SCAN">SCAN</SelectItem>
+                  <SelectItem value="YARD">YARD</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Buyer</Label>
+              <BuyerSelect
+                buyers={buyers}
+                value={containers.buyer}
+                onChange={(value) => updateContainer("buyer", value)}
+              />
             </div>
             <div>
               <Label>Destination</Label>

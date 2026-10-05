@@ -14,6 +14,7 @@ import {
   Settings,
   BarChart3,
   MapPinned,
+  Contact,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { OutHireTableModal } from "@/components/OutHireTableModal";
@@ -75,6 +76,13 @@ const allMenuItems = [
     icon: MapPinned,
     path: "/out-hires",
     permission: [P.DESTINATIONS_VIEW, P.DESTINATIONS_ADD, P.DESTINATIONS_EDIT],
+  },
+  {
+    id: "buyers",
+    label: "Buyers",
+    icon: Contact,
+    path: "/buyers",
+    permission: [P.BUYERS_VIEW, P.BUYERS_ADD, P.BUYERS_EDIT],
   },
   {
     id: "assignments",

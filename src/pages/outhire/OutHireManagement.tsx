@@ -42,7 +42,7 @@ const formatDistance = (value?: number) =>
     maximumFractionDigits: 2,
   })} km`;
 
-function formatCreatedAt(value?: string) {
+function formatDateTime(value?: string) {
   if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
@@ -124,7 +124,13 @@ export const OutHireManagement = () => {
       .then(() => {
         setOutHires((prev) =>
           prev.map((item) =>
-            item._id === id ? { ...item, status: !item.status } : item
+            item._id === id
+              ? {
+                  ...item,
+                  status: !item.status,
+                  updatedAt: new Date().toISOString(),
+                }
+              : item
           )
         );
         toast({
@@ -253,6 +259,7 @@ export const OutHireManagement = () => {
                   <TableHead>Amount</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Created</TableHead>
+                  <TableHead>Updated</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -288,7 +295,10 @@ export const OutHireManagement = () => {
                       )}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {formatCreatedAt(item.createdAt)}
+                      {formatDateTime(item.createdAt)}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatDateTime(item.updatedAt || item.createdAt)}
                     </TableCell>
                     <TableCell className="text-right">
                       {canEdit ? (

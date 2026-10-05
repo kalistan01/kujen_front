@@ -168,6 +168,7 @@ export const LogsPage = () => {
                 <SelectItem value="lorry">lorry</SelectItem>
                 <SelectItem value="destination">destination</SelectItem>
                 <SelectItem value="heldup">heldup</SelectItem>
+                <SelectItem value="buyer">buyer</SelectItem>
               </SelectContent>
             </Select>
             <Input

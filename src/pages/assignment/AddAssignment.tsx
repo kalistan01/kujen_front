@@ -89,6 +89,8 @@ interface Container {
   id: string;
   containerNo: string;
   vocNo: string;
+  billNumber: string;
+  containerOut: string;
   lorryId: string;
   loadingDate: string;
   demoundDate: string;
@@ -133,6 +135,8 @@ function emptyContainer(vocNo: string): Omit<Container, "id"> {
   return {
     containerNo: "",
     vocNo,
+    billNumber: "",
+    containerOut: "",
     lorryId: "",
     loadingDate: "",
     demoundDate: "",
@@ -620,6 +624,16 @@ function AddAssignment({
                     className="h-10 bg-muted"
                   />
                 </Field>
+                <Field label="Bill Number">
+                  <Input
+                    value={container.billNumber || ""}
+                    onChange={(e) =>
+                      updateContainer(index, "billNumber", e.target.value)
+                    }
+                    placeholder="Enter bill number"
+                    className="h-10"
+                  />
+                </Field>
                 <Field
                   label="Assign Lorry"
                   required
@@ -633,6 +647,24 @@ function AddAssignment({
                     }
                     error={Boolean(containerErrors[index]?.lorryId)}
                   />
+                </Field>
+                <Field label="Container Out">
+                  <Select
+                    value={container.containerOut || undefined}
+                    onValueChange={(value) =>
+                      updateContainer(index, "containerOut", value)
+                    }
+                  >
+                    <SelectTrigger className="h-10">
+                      <SelectValue placeholder="Select container out" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="RCT">RCT</SelectItem>
+                      <SelectItem value="OUT PASS">OUT PASS</SelectItem>
+                      <SelectItem value="SCAN">SCAN</SelectItem>
+                      <SelectItem value="YARD">YARD</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </Field>
                 <Field label="Destination">
                   <DestinationSelect

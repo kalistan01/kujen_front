@@ -17,6 +17,7 @@ import { canSeeField } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import {
   containerCapacity,
+  containerBuyer,
   containerDestination,
   containerIsToYard,
   containerLorry,
@@ -97,6 +98,7 @@ function ContainerDetailRow({
           </p>
         ) : null}
       </td>
+      <td className="px-3 py-2.5">{containerBuyer(container)}</td>
       <td className="px-3 py-2.5">{containerDestination(container)}</td>
       <td className="px-3 py-2.5">
         {containerIsToYard(container, siblings) ? (
@@ -297,6 +299,9 @@ function AssignmentRow({
                   </th>
                   <th className="h-10 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                     Lorry
+                  </th>
+                  <th className="h-10 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                    Buyer
                   </th>
                   <th className="h-10 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                     Destination

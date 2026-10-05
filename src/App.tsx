@@ -14,6 +14,7 @@ import { UserManagement } from "./pages/user/UserManagement";
 import PrivateRoute from "./PrivateRoute";
 import { SettingsPage } from "./pages/settings/Settings";
 import { OutHireManagement } from "./pages/outhire/OutHireManagement";
+import { BuyerManagement } from "./pages/buyer/BuyerManagement";
 import { LogsPage } from "./pages/logs/LogsPage";
 import { ReportsPage } from "./pages/reports/ReportsPage";
 import RequirePermission from "./components/RequirePermission";
@@ -57,6 +58,14 @@ const App = () => (
                   element={
                     <RequirePermission ids={[P.DESTINATIONS_VIEW, P.DESTINATIONS_ADD, P.DESTINATIONS_EDIT]}>
                       <OutHireManagement />
+                    </RequirePermission>
+                  }
+                />
+                <Route
+                  path="/buyers"
+                  element={
+                    <RequirePermission ids={[P.BUYERS_VIEW, P.BUYERS_ADD, P.BUYERS_EDIT]}>
+                      <BuyerManagement />
                     </RequirePermission>
                   }
                 />

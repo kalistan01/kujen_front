@@ -17,6 +17,7 @@ import { formatMoney } from "../lib/financials";
 import FclStatusBadge from "./FclStatusBadge";
 import {
   containerCapacity,
+  containerBuyer,
   containerDestination,
   containerIsToYard,
   containerLorry,
@@ -107,6 +108,7 @@ function ContainerRow({
           </p>
         ) : null}
       </TableCell>
+      <TableCell>{containerBuyer(container)}</TableCell>
       <TableCell>{containerDestination(container)}</TableCell>
       <TableCell>
         {containerIsToYard(container, assignment?.containers) ? (
@@ -253,6 +255,7 @@ function ContainerListTable({
               <TableHead>BL NO</TableHead>
               <TableHead>Container</TableHead>
               <TableHead>Lorry</TableHead>
+              <TableHead>Buyer</TableHead>
               <TableHead>Destination</TableHead>
               <TableHead>Yard</TableHead>
               <TableHead>Loading</TableHead>

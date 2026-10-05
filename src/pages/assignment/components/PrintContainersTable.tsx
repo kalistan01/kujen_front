@@ -4,6 +4,7 @@ import { formatMoneyCompact, roundMoney, toAmount } from "../lib/financials";
 import { formatFclRecord } from "../lib/fcl";
 import {
   containerCapacity,
+  containerBuyer,
   containerDestination,
   containerLorry,
   containerMoney,
@@ -63,6 +64,8 @@ function PrintContainersTable({
           <th>VOC</th>
           <th>Lorry</th>
           <th>Owner</th>
+          <th>Container Out</th>
+          <th>Buyer</th>
           <th>Destination</th>
           <th>Loading</th>
           <th>Demount</th>
@@ -97,6 +100,8 @@ function PrintContainersTable({
                 {capacity ? ` / ${capacity}ft` : ""}
               </td>
               <td>{owner ? String(owner).toUpperCase() : "—"}</td>
+              <td>{container?.containerOut || "—"}</td>
+              <td>{containerBuyer(container)}</td>
               <td>{containerDestination(container)}</td>
               <td className="nowrap">{formatDate(container?.loadingDate)}</td>
               <td className="nowrap">{formatDate(container?.demoundDate)}</td>
@@ -122,7 +127,7 @@ function PrintContainersTable({
         <tfoot>
           <tr>
             <td className="idx" />
-            <td colSpan={7}>
+            <td colSpan={9}>
               Total · {containers.length} containers · amounts in Rs
             </td>
             {chargeColumns.map((field) => (

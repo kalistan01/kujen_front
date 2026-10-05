@@ -37,6 +37,10 @@ export function mergePopulatedAssignment(previous: any, updated: any) {
         lorryNum: container.lorryNum || prev.lorryNum,
         capacity: container.capacity || prev.capacity,
         lorryOwner: container.lorryOwner || prev.lorryOwner,
+        buyer:
+          container.buyer && typeof container.buyer === "object" && container.buyer.name
+            ? container.buyer
+            : prev.buyer,
         destination: isPopulatedRef(container.destination)
           ? container.destination
           : prev.destination,
@@ -161,6 +165,12 @@ export function containersGroupedByYardTrip(containers: any[] = []) {
     }
   }
   return groups;
+}
+
+export function containerBuyer(container: any) {
+  const buyer = container?.buyer;
+  if (buyer && typeof buyer === "object" && buyer.name) return buyer.name;
+  return container?.buyerName || "—";
 }
 
 export function containerDestination(container: any) {

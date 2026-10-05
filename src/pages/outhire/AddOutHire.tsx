@@ -39,6 +39,7 @@ export interface OutHire {
   amount: number;
   status?: boolean;
   createdAt?: string;
+  updatedAt?: string;
 }
 
 type FormErrors = {
@@ -47,6 +48,19 @@ type FormErrors = {
   amount?: string;
   form?: string;
 };
+
+export function formatDateTime(value?: string) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 const emptyForm = {
   _id: "",
@@ -283,6 +297,15 @@ function AddOutHire({
               className={`h-10 ${errors.amount ? "border-destructive" : ""}`}
             />
           </Field>
+          {editingOutHire ? (
+            <Field label="Updated">
+              <p className="flex h-10 items-center text-sm text-foreground">
+                {formatDateTime(
+                  editingOutHire.updatedAt || editingOutHire.createdAt
+                )}
+              </p>
+            </Field>
+          ) : null}
         </div>
       </section>
 

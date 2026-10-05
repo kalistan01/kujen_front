@@ -26,7 +26,7 @@ import { useEntitySync } from "@/hooks/useEntitySync";
 import { upsertById } from "@/lib/socket";
 import { asList } from "@/lib/utils";
 import { StatusBadge } from "@/components/StatusBadge";
-import type { OutHire } from "@/pages/outhire/AddOutHire";
+import { formatDateTime, type OutHire } from "@/pages/outhire/AddOutHire";
 
 const formatAmount = (value?: number) =>
   `Rs ${Number(value || 0).toLocaleString("en-IN", {
@@ -112,7 +112,7 @@ export function OutHireTableModal() {
           <span className="hidden sm:inline">Out Hires</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="flex max-h-[85vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
+      <DialogContent className="flex max-h-[85vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl">
         <DialogHeader className="space-y-3 border-b border-border px-5 py-4 text-left">
           <div className="flex items-center justify-between gap-3 pr-6">
             <DialogTitle className="text-base font-semibold">
@@ -154,6 +154,7 @@ export function OutHireTableModal() {
                   <TableHead>Location</TableHead>
                   <TableHead>Distance</TableHead>
                   <TableHead>Amount</TableHead>
+                  <TableHead>Updated</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -171,6 +172,9 @@ export function OutHireTableModal() {
                     <TableCell>{formatDistance(item.distanceKm)}</TableCell>
                     <TableCell className="font-medium">
                       {formatAmount(item.amount)}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-muted-foreground">
+                      {formatDateTime(item.updatedAt || item.createdAt)}
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={Boolean(item.status)} />
