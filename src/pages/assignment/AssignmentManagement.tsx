@@ -85,7 +85,7 @@ export const AssignmentManagement = () => {
   const [balanceFilter, setBalanceFilter] = useState("all");
   const [advancedFilter, setAdvancedFilter] = useState("all");
   const [owner, setOwner] = useState("all");
-  const [destination, setDestination] = useState("all");
+  const [destination, setDestination] = useState<string[]>([]);
   const [yardFilter, setYardFilter] = useState("all");
   const [lorryOwners, setLorryOwners] = useState<any[]>([]);
   const [exporting, setExporting] = useState<"pdf" | "excel" | null>(null);
@@ -269,7 +269,10 @@ export const AssignmentManagement = () => {
     if (owner !== "all" && !containerMatchesOwner(container, owner)) {
       return false;
     }
-    if (destination !== "all" && !containerDestinationMatches(container, destination)) {
+    if (
+      destination.length > 0 &&
+      !destination.some((value) => containerDestinationMatches(container, value))
+    ) {
       return false;
     }
     if (yardFilter === "yes" && !containerIsToYard(container, siblings)) {
@@ -314,7 +317,7 @@ export const AssignmentManagement = () => {
           (balanceFilter === "unpaid" ||
             advancedFilter === "yes" ||
             owner !== "all" ||
-            destination !== "all" ||
+            destination.length > 0 ||
             yardFilter !== "all") &&
           !containers.some((container: any) =>
             matchesExtraFilters(container, containers)
@@ -466,7 +469,12 @@ export const AssignmentManagement = () => {
         if (!match) return false;
       }
       if (owner !== "all" && row.ownerId !== owner) return false;
-      if (destination !== "all" && row.destinationId !== destination) return false;
+      if (
+        destination.length > 0 &&
+        !destination.includes(row.destinationId || "")
+      ) {
+        return false;
+      }
       if (yardFilter === "yes" && !row.yard) return false;
       if (yardFilter === "no" && row.yard) return false;
       const extendedKey = String(row.fclExtendedDate || "").slice(0, 10);
@@ -541,7 +549,7 @@ export const AssignmentManagement = () => {
     query.trim() ||
       fclDatePreset !== "today" ||
       owner !== "all" ||
-      destination !== "all" ||
+      destination.length > 0 ||
       yardFilter !== "all"
   );
   const hasFilters = Boolean(
@@ -552,7 +560,7 @@ export const AssignmentManagement = () => {
       balanceFilter !== "all" ||
       advancedFilter !== "all" ||
       owner !== "all" ||
-      destination !== "all" ||
+      destination.length > 0 ||
       yardFilter !== "all"
   );
 
@@ -1013,7 +1021,7 @@ export const AssignmentManagement = () => {
               setBalanceFilter("all");
               setAdvancedFilter("all");
               setOwner("all");
-              setDestination("all");
+              setDestination([]);
               setYardFilter("all");
               setPage(1);
             }}

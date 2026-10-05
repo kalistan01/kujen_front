@@ -51,7 +51,7 @@ function AssignmentFilters({
   owner = "all",
   onOwnerChange,
   owners = [],
-  destination = "all",
+  destination = [],
   onDestinationChange,
   destinations = [],
   yardFilter = "all",
@@ -81,8 +81,8 @@ function AssignmentFilters({
   owner?: string;
   onOwnerChange?: (value: string) => void;
   owners?: { value: string; label: string }[];
-  destination?: string;
-  onDestinationChange?: (value: string) => void;
+  destination?: string[];
+  onDestinationChange?: (value: string[]) => void;
   destinations?: { value: string; label: string }[];
   yardFilter?: string;
   onYardFilterChange?: (value: string) => void;
@@ -233,21 +233,37 @@ function AssignmentFilters({
   );
 }
 
+function destinationFilterLabel(
+  value: string[],
+  destinations: { value: string; label: string }[]
+) {
+  if (value.length === 0) return "All destinations";
+  if (value.length === 1) {
+    return (
+      destinations.find((item) => item.value === value[0])?.label ||
+      "1 destination"
+    );
+  }
+  return `${value.length} destinations`;
+}
+
 function DestinationFilter({
   value,
   onChange,
   destinations,
 }: {
-  value: string;
-  onChange: (value: string) => void;
+  value: string[];
+  onChange: (value: string[]) => void;
   destinations: { value: string; label: string }[];
 }) {
   const [open, setOpen] = useState(false);
-  const selected =
-    value === "all"
-      ? "All destinations"
-      : destinations.find((item) => item.value === value)?.label ||
-        "All destinations";
+  const selected = destinationFilterLabel(value, destinations);
+
+  const toggle = (id: string) => {
+    onChange(
+      value.includes(id) ? value.filter((item) => item !== id) : [...value, id]
+    );
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -257,7 +273,7 @@ function DestinationFilter({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="h-8 w-[170px] shrink-0 justify-between bg-background px-2.5 text-xs font-normal"
+          className="h-8 w-[190px] shrink-0 justify-between bg-background px-2.5 text-xs font-normal"
         >
           <span className="truncate">{selected}</span>
           <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-50" />
@@ -274,37 +290,34 @@ function DestinationFilter({
             <CommandGroup>
               <CommandItem
                 value="All destinations"
-                onSelect={() => {
-                  onChange("all");
-                  setOpen(false);
-                }}
+                onSelect={() => onChange([])}
               >
                 <Check
                   className={cn(
                     "mr-2 h-4 w-4",
-                    value === "all" ? "opacity-100" : "opacity-0"
+                    value.length === 0 ? "opacity-100" : "opacity-0"
                   )}
                 />
                 All destinations
               </CommandItem>
-              {destinations.map((item) => (
-                <CommandItem
-                  key={item.value}
-                  value={`${item.label} ${item.value}`}
-                  onSelect={() => {
-                    onChange(item.value);
-                    setOpen(false);
-                  }}
-                >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4 shrink-0",
-                      value === item.value ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  <span className="truncate">{item.label}</span>
-                </CommandItem>
-              ))}
+              {destinations.map((item) => {
+                const checked = value.includes(item.value);
+                return (
+                  <CommandItem
+                    key={item.value}
+                    value={`${item.label} ${item.value}`}
+                    onSelect={() => toggle(item.value)}
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4 shrink-0",
+                        checked ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    <span className="truncate">{item.label}</span>
+                  </CommandItem>
+                );
+              })}
             </CommandGroup>
           </CommandList>
         </Command>
