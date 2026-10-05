@@ -310,94 +310,138 @@ export type OwnerStat = {
   money: GroupMoney;
 };
 
-function lorryMatchKey(container: any) {
-  return idOf(container?.lorryId) || containerLorry(container);
+function lorryNumberKey(value: unknown) {
+  const num = String(value || "").trim().toLowerCase();
+  if (!num || num === "unassigned" || num === "—") return "";
+  return num;
+}
+
+function statFromRows(
+  key: string,
+  lorryNum: string,
+  capacity: string,
+  ownerName: string,
+  companyName: string,
+  ownerId: string,
+  list: ContainerRow[]
+): LorryStat {
+  const dests = new Set(
+    list
+      .map((row) => containerDestination(row.container))
+      .filter(Boolean)
+  );
+  const last = list
+    .map((row) => String(rowDate(row) || ""))
+    .sort()
+    .at(-1);
+  const money = emptyMoney();
+  list.forEach((row) => addMoney(money, row.container));
+  return {
+    key,
+    lorryNum: lorryNum || "—",
+    capacity,
+    ownerName,
+    companyName,
+    ownerId,
+    trips: list.length,
+    lastDate: last || "",
+    money,
+    destinations: dests.size,
+  };
 }
 
 export function byLorry(owners: any[], rows: ContainerRow[]): LorryStat[] {
-  const trips = new Map<string, ContainerRow[]>();
+  const tripsById = new Map<string, ContainerRow[]>();
+  const tripsByNumber = new Map<string, ContainerRow[]>();
 
   rows.forEach((row) => {
     const id = idOf(row.container?.lorryId);
-    const num = containerLorry(row.container);
-    const keys = [id, num !== "Unassigned" ? num : ""].filter(Boolean);
-    if (!keys.length) return;
-    const existing = keys.map((key) => trips.get(key)).find(Boolean);
-    const list = existing ? existing : [];
-    keys.forEach((key) => {
-      const other = trips.get(key);
-      if (other && other !== list) {
-        other.forEach((item) => {
-          if (!list.includes(item)) list.push(item);
-        });
-      }
-      trips.set(key, list);
-    });
-    if (!list.includes(row)) list.push(row);
+    if (id) {
+      const list = tripsById.get(id) || [];
+      list.push(row);
+      tripsById.set(id, list);
+      return;
+    }
+    const numberKey = lorryNumberKey(containerLorry(row.container));
+    if (!numberKey) return;
+    const list = tripsByNumber.get(numberKey) || [];
+    list.push(row);
+    tripsByNumber.set(numberKey, list);
   });
 
-  const seen = new Set<string>();
+  const registeredByNumber = new Map<string, number>();
+  owners.forEach((owner) => {
+    (owner.lorries || []).forEach((lorry: any) => {
+      const numberKey = lorryNumberKey(lorry.lorryNum);
+      if (!numberKey) return;
+      registeredByNumber.set(
+        numberKey,
+        (registeredByNumber.get(numberKey) || 0) + 1
+      );
+    });
+  });
+
+  const seenIds = new Set<string>();
+  const seenNumbers = new Set<string>();
   const stats: LorryStat[] = [];
 
   owners.forEach((owner) => {
     (owner.lorries || []).forEach((lorry: any) => {
       const id = idOf(lorry);
       const num = String(lorry.lorryNum || "");
-      const list = trips.get(id) || trips.get(num) || [];
-      seen.add(id);
-      seen.add(num);
-      const dests = new Set(
-        list.map((row) => containerDestination(row.container)).filter(Boolean)
+      const numberKey = lorryNumberKey(num);
+      const list = id ? [...(tripsById.get(id) || [])] : [];
+      if (numberKey && registeredByNumber.get(numberKey) === 1) {
+        (tripsByNumber.get(numberKey) || []).forEach((row) => {
+          if (!list.includes(row)) list.push(row);
+        });
+        seenNumbers.add(numberKey);
+      }
+      if (id) seenIds.add(id);
+      stats.push(
+        statFromRows(
+          id || numberKey || num,
+          num,
+          String(lorry.capacity || containerCapacity(list[0]?.container) || ""),
+          owner.ownerName || "",
+          owner.companyName || "",
+          idOf(owner),
+          list
+        )
       );
-      const last = list
-        .map((row) => String(rowDate(row) || ""))
-        .sort()
-        .at(-1);
-      const money = emptyMoney();
-      list.forEach((row) => addMoney(money, row.container));
-      stats.push({
-        key: id || num,
-        lorryNum: num || "—",
-        capacity: String(lorry.capacity || containerCapacity(list[0]?.container) || ""),
-        ownerName: owner.ownerName || "",
-        companyName: owner.companyName || "",
-        ownerId: idOf(owner),
-        trips: list.length,
-        lastDate: last || "",
-        money,
-        destinations: dests.size,
-      });
     });
   });
 
-  rows.forEach((row) => {
-    const key = lorryMatchKey(row.container);
-    if (!key || key === "Unassigned" || seen.has(key) || seen.has(containerLorry(row.container))) {
-      return;
-    }
-    const list = trips.get(key) || [row];
-    seen.add(key);
-    const money = emptyMoney();
-    list.forEach((item) => addMoney(money, item.container));
-    const dests = new Set(
-      list.map((item) => containerDestination(item.container)).filter(Boolean)
+  tripsById.forEach((list, id) => {
+    if (seenIds.has(id)) return;
+    const row = list[0];
+    stats.push(
+      statFromRows(
+        id,
+        containerLorry(row.container),
+        String(containerCapacity(row.container) || ""),
+        containerOwner(row.container) || "",
+        "",
+        containerOwnerId(row.container),
+        list
+      )
     );
-    const last = list
-      .map((item) => String(rowDate(item) || ""))
-      .sort()
-      .at(-1);
-    stats.push({
-      key,
-      lorryNum: containerLorry(row.container),
-      capacity: String(containerCapacity(row.container) || ""),
-      ownerName: containerOwner(row.container) || "",
-      companyName: "",
-      ownerId: containerOwnerId(row.container),
-      trips: list.length,
-      lastDate: last || "",
-      money,
-      destinations: dests.size,
-    });
+  });
+
+  tripsByNumber.forEach((list, numberKey) => {
+    if (seenNumbers.has(numberKey)) return;
+    const row = list[0];
+    stats.push(
+      statFromRows(
+        numberKey,
+        containerLorry(row.container),
+        String(containerCapacity(row.container) || ""),
+        containerOwner(row.container) || "",
+        "",
+        containerOwnerId(row.container),
+        list
+      )
+    );
   });
 
   return stats.sort((a, b) => b.trips - a.trips || a.lorryNum.localeCompare(b.lorryNum));
