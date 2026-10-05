@@ -23,6 +23,9 @@ import { isAdminUser } from "@/lib/auth";
 import { isLorryOwnerAllowed, scopeAssignments, scopeLorryOwners } from "@/lib/lorryScope";
 import {
   containerCapacity,
+  containerBillMatches,
+  containerBuyerMatches,
+  containerBuyerOption,
   containerDestination,
   containerDestinationMatches,
   containerDestinationOption,
@@ -86,6 +89,9 @@ export const AssignmentManagement = () => {
   const [advancedFilter, setAdvancedFilter] = useState("all");
   const [owner, setOwner] = useState("all");
   const [destination, setDestination] = useState<string[]>([]);
+  const [buyer, setBuyer] = useState<string[]>([]);
+  const [containerOut, setContainerOut] = useState<string[]>([]);
+  const [billNumber, setBillNumber] = useState("");
   const [yardFilter, setYardFilter] = useState("all");
   const [lorryOwners, setLorryOwners] = useState<any[]>([]);
   const [exporting, setExporting] = useState<"pdf" | "excel" | null>(null);
@@ -259,6 +265,19 @@ export const AssignmentManagement = () => {
       .map(([value, label]) => ({ value, label }));
   }, [assignments]);
 
+  const buyerOptions = useMemo(() => {
+    const items = new Map<string, string>();
+    assignments.forEach((assignment) => {
+      (assignment.containers || []).forEach((container: any) => {
+        const option = containerBuyerOption(container);
+        if (option?.value) items.set(option.value, option.label);
+      });
+    });
+    return [...items.entries()]
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([value, label]) => ({ value, label }));
+  }, [assignments]);
+
   const matchesExtraFilters = (container: any, siblings: any[] = []) => {
     if (balanceFilter === "unpaid" && containerBalance(container) <= 0) {
       return false;
@@ -275,6 +294,19 @@ export const AssignmentManagement = () => {
     ) {
       return false;
     }
+    if (
+      buyer.length > 0 &&
+      !buyer.some((value) => containerBuyerMatches(container, value))
+    ) {
+      return false;
+    }
+    if (
+      containerOut.length > 0 &&
+      !containerOut.includes(String(container?.containerOut || ""))
+    ) {
+      return false;
+    }
+    if (!containerBillMatches(container, billNumber)) return false;
     if (yardFilter === "yes" && !containerIsToYard(container, siblings)) {
       return false;
     }
@@ -318,6 +350,9 @@ export const AssignmentManagement = () => {
             advancedFilter === "yes" ||
             owner !== "all" ||
             destination.length > 0 ||
+            buyer.length > 0 ||
+            containerOut.length > 0 ||
+            billNumber.trim() ||
             yardFilter !== "all") &&
           !containers.some((container: any) =>
             matchesExtraFilters(container, containers)
@@ -338,6 +373,9 @@ export const AssignmentManagement = () => {
     advancedFilter,
     owner,
     destination,
+    buyer,
+    containerOut,
+    billNumber,
     yardFilter,
   ]);
 
@@ -405,6 +443,9 @@ export const AssignmentManagement = () => {
     advancedFilter,
     owner,
     destination,
+    buyer,
+    containerOut,
+    billNumber,
     yardFilter,
   ]);
 
@@ -426,6 +467,9 @@ export const AssignmentManagement = () => {
     advancedFilter,
     owner,
     destination,
+    buyer,
+    containerOut,
+    billNumber,
     yardFilter,
   ]);
 
@@ -475,6 +519,21 @@ export const AssignmentManagement = () => {
       ) {
         return false;
       }
+      if (buyer.length > 0 && !buyer.includes(row.buyerId || "")) return false;
+      if (
+        containerOut.length > 0 &&
+        !containerOut.includes(row.containerOut || "")
+      ) {
+        return false;
+      }
+      if (
+        billNumber.trim() &&
+        !String(row.billNumber || "")
+          .toLowerCase()
+          .includes(billNumber.trim().toLowerCase())
+      ) {
+        return false;
+      }
       if (yardFilter === "yes" && !row.yard) return false;
       if (yardFilter === "no" && row.yard) return false;
       const extendedKey = String(row.fclExtendedDate || "").slice(0, 10);
@@ -492,6 +551,9 @@ export const AssignmentManagement = () => {
     toDate,
     owner,
     destination,
+    buyer,
+    containerOut,
+    billNumber,
     yardFilter,
     fclDatePreset,
   ]);
@@ -514,6 +576,16 @@ export const AssignmentManagement = () => {
       if (row.destinationId && row.destination) {
         items.set(row.destinationId, row.destination);
       }
+    });
+    return [...items.entries()]
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([value, label]) => ({ value, label }));
+  }, [fclRows]);
+
+  const fclBuyerOptions = useMemo(() => {
+    const items = new Map<string, string>();
+    fclRows.forEach((row) => {
+      if (row.buyerId && row.buyerName) items.set(row.buyerId, row.buyerName);
     });
     return [...items.entries()]
       .sort((a, b) => a[1].localeCompare(b[1]))
@@ -550,6 +622,9 @@ export const AssignmentManagement = () => {
       fclDatePreset !== "today" ||
       owner !== "all" ||
       destination.length > 0 ||
+      buyer.length > 0 ||
+      containerOut.length > 0 ||
+      billNumber.trim() ||
       yardFilter !== "all"
   );
   const hasFilters = Boolean(
@@ -561,6 +636,9 @@ export const AssignmentManagement = () => {
       advancedFilter !== "all" ||
       owner !== "all" ||
       destination.length > 0 ||
+      buyer.length > 0 ||
+      containerOut.length > 0 ||
+      billNumber.trim() ||
       yardFilter !== "all"
   );
 
@@ -1010,6 +1088,13 @@ export const AssignmentManagement = () => {
             destination={destination}
             onDestinationChange={setDestination}
             destinations={isFclExtended ? fclDestinationOptions : destinationOptions}
+            buyer={buyer}
+            onBuyerChange={setBuyer}
+            buyers={isFclExtended ? fclBuyerOptions : buyerOptions}
+            containerOut={containerOut}
+            onContainerOutChange={setContainerOut}
+            billNumber={billNumber}
+            onBillNumberChange={setBillNumber}
             yardFilter={yardFilter}
             onYardFilterChange={setYardFilter}
             onClear={() => {
@@ -1022,6 +1107,9 @@ export const AssignmentManagement = () => {
               setAdvancedFilter("all");
               setOwner("all");
               setDestination([]);
+              setBuyer([]);
+              setContainerOut([]);
+              setBillNumber("");
               setYardFilter("all");
               setPage(1);
             }}

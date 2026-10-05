@@ -108,7 +108,13 @@ function ContainerRow({
           </p>
         ) : null}
       </TableCell>
-      <TableCell>{containerBuyer(container)}</TableCell>
+      <TableCell>{container?.containerOut || "—"}</TableCell>
+      <TableCell>
+        <p className="font-medium">{containerBuyer(container)}</p>
+        <p className="text-xs text-muted-foreground">
+          {container?.billNumber || "—"}
+        </p>
+      </TableCell>
       <TableCell>{containerDestination(container)}</TableCell>
       <TableCell>
         {containerIsToYard(container, assignment?.containers) ? (
@@ -255,7 +261,13 @@ function ContainerListTable({
               <TableHead>BL NO</TableHead>
               <TableHead>Container</TableHead>
               <TableHead>Lorry</TableHead>
-              <TableHead>Buyer</TableHead>
+              <TableHead>Container Out</TableHead>
+              <TableHead>
+                Buyer
+                <span className="mt-0.5 block normal-case tracking-normal">
+                  Bill Number
+                </span>
+              </TableHead>
               <TableHead>Destination</TableHead>
               <TableHead>Yard</TableHead>
               <TableHead>Loading</TableHead>

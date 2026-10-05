@@ -65,7 +65,7 @@ function PrintContainersTable({
           <th>Lorry</th>
           <th>Owner</th>
           <th>Container Out</th>
-          <th>Buyer</th>
+          <th>Buyer / Bill</th>
           <th>Destination</th>
           <th>Loading</th>
           <th>Demount</th>
@@ -101,7 +101,10 @@ function PrintContainersTable({
               </td>
               <td>{owner ? String(owner).toUpperCase() : "—"}</td>
               <td>{container?.containerOut || "—"}</td>
-              <td>{containerBuyer(container)}</td>
+              <td>
+                {containerBuyer(container)}
+                {container?.billNumber ? ` · ${container.billNumber}` : ""}
+              </td>
               <td>{containerDestination(container)}</td>
               <td className="nowrap">{formatDate(container?.loadingDate)}</td>
               <td className="nowrap">{formatDate(container?.demoundDate)}</td>

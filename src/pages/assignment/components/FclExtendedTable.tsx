@@ -25,6 +25,10 @@ export type FclExtendedRow = {
   ownerName?: string;
   destinationId?: string;
   destination?: string;
+  buyerId?: string;
+  buyerName?: string;
+  billNumber?: string;
+  containerOut?: string;
   yard?: boolean;
 };
 
@@ -72,6 +76,13 @@ function FclExtendedTable({
             <TableRow className="bg-muted/20 hover:bg-muted/20">
               <TableHead>BL NO</TableHead>
               <TableHead>Container</TableHead>
+              <TableHead>
+                Buyer
+                <span className="mt-0.5 block normal-case tracking-normal">
+                  Bill Number
+                </span>
+              </TableHead>
+              <TableHead>Container Out</TableHead>
               <TableHead>Extended date</TableHead>
               <TableHead>FCL Due Date</TableHead>
               <TableHead>Days</TableHead>
@@ -106,6 +117,13 @@ function FclExtendedTable({
                       VOC {row.vocNo || "—"}
                     </p>
                   </TableCell>
+                  <TableCell>
+                    <p className="font-medium">{row.buyerName || "—"}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {row.billNumber || "—"}
+                    </p>
+                  </TableCell>
+                  <TableCell>{row.containerOut || "—"}</TableCell>
                   <TableCell className="whitespace-nowrap">
                     {formatDate(row.fclExtendedDate)}
                   </TableCell>

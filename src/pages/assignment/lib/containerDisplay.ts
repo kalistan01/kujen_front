@@ -173,6 +173,37 @@ export function containerBuyer(container: any) {
   return container?.buyerName || "—";
 }
 
+export function containerBuyerOption(container: any) {
+  const buyer = container?.buyer;
+  if (buyer && typeof buyer === "object" && (buyer._id || buyer.name)) {
+    return {
+      value: String(buyer._id || buyer.name),
+      label: String(buyer.name || container?.buyerName || buyer._id),
+    };
+  }
+  if (typeof buyer === "string" && buyer) {
+    return { value: buyer, label: String(container?.buyerName || buyer) };
+  }
+  if (container?.buyerName) {
+    return {
+      value: String(container.buyerName),
+      label: String(container.buyerName),
+    };
+  }
+  return null;
+}
+
+export function containerBuyerMatches(container: any, value: string) {
+  if (!value) return true;
+  return containerBuyerOption(container)?.value === value;
+}
+
+export function containerBillMatches(container: any, query: string) {
+  const text = String(query || "").trim().toLowerCase();
+  if (!text) return true;
+  return String(container?.billNumber || "").toLowerCase().includes(text);
+}
+
 export function containerDestination(container: any) {
   return (
     container?.destinationlocation || container?.destination?.location || "—"

@@ -54,6 +54,13 @@ function AssignmentFilters({
   destination = [],
   onDestinationChange,
   destinations = [],
+  buyer = [],
+  onBuyerChange,
+  buyers = [],
+  containerOut = [],
+  onContainerOutChange,
+  billNumber = "",
+  onBillNumberChange,
   yardFilter = "all",
   onYardFilterChange,
   datePreset,
@@ -84,6 +91,13 @@ function AssignmentFilters({
   destination?: string[];
   onDestinationChange?: (value: string[]) => void;
   destinations?: { value: string; label: string }[];
+  buyer?: string[];
+  onBuyerChange?: (value: string[]) => void;
+  buyers?: { value: string; label: string }[];
+  containerOut?: string[];
+  onContainerOutChange?: (value: string[]) => void;
+  billNumber?: string;
+  onBillNumberChange?: (value: string) => void;
   yardFilter?: string;
   onYardFilterChange?: (value: string) => void;
   datePreset?: string;
@@ -206,6 +220,45 @@ function AssignmentFilters({
           destinations={destinations}
         />
       ) : null}
+      {onBuyerChange ? (
+        <MultiFilter
+          value={buyer}
+          onChange={onBuyerChange}
+          options={buyers}
+          allLabel="All buyers"
+          noun="buyer"
+          searchPlaceholder="Search buyer"
+          emptyText="No buyer found."
+          widthClass="w-[170px]"
+        />
+      ) : null}
+      {onContainerOutChange ? (
+        <MultiFilter
+          value={containerOut}
+          onChange={onContainerOutChange}
+          options={[
+            { value: "RCT", label: "RCT" },
+            { value: "OUT PASS", label: "OUT PASS" },
+            { value: "SCAN", label: "SCAN" },
+            { value: "YARD", label: "YARD" },
+          ]}
+          allLabel="All container out"
+          noun="container out"
+          plural="container out"
+          searchPlaceholder="Search container out"
+          emptyText="No container out found."
+          widthClass="w-[180px]"
+        />
+      ) : null}
+      {onBillNumberChange ? (
+        <Input
+          value={billNumber}
+          onChange={(e) => onBillNumberChange(e.target.value)}
+          placeholder="Bill number"
+          aria-label="Bill number"
+          className="h-8 w-[150px] shrink-0 bg-background"
+        />
+      ) : null}
       {onYardFilterChange ? (
         <Select value={yardFilter} onValueChange={onYardFilterChange}>
           <SelectTrigger className="h-8 w-[140px] shrink-0 bg-background">
@@ -233,31 +286,45 @@ function AssignmentFilters({
   );
 }
 
-function destinationFilterLabel(
+function multiFilterLabel(
   value: string[],
-  destinations: { value: string; label: string }[]
+  options: { value: string; label: string }[],
+  allLabel: string,
+  noun: string,
+  plural = `${noun}s`
 ) {
-  if (value.length === 0) return "All destinations";
+  if (value.length === 0) return allLabel;
   if (value.length === 1) {
     return (
-      destinations.find((item) => item.value === value[0])?.label ||
-      "1 destination"
+      options.find((item) => item.value === value[0])?.label || `1 ${noun}`
     );
   }
-  return `${value.length} destinations`;
+  return `${value.length} ${plural}`;
 }
 
-function DestinationFilter({
+function MultiFilter({
   value,
   onChange,
-  destinations,
+  options,
+  allLabel,
+  noun,
+  plural,
+  searchPlaceholder,
+  emptyText,
+  widthClass,
 }: {
   value: string[];
   onChange: (value: string[]) => void;
-  destinations: { value: string; label: string }[];
+  options: { value: string; label: string }[];
+  allLabel: string;
+  noun: string;
+  plural?: string;
+  searchPlaceholder: string;
+  emptyText: string;
+  widthClass: string;
 }) {
   const [open, setOpen] = useState(false);
-  const selected = destinationFilterLabel(value, destinations);
+  const selected = multiFilterLabel(value, options, allLabel, noun, plural);
 
   const toggle = (id: string) => {
     onChange(
@@ -273,7 +340,10 @@ function DestinationFilter({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="h-8 w-[190px] shrink-0 justify-between bg-background px-2.5 text-xs font-normal"
+          className={cn(
+            "h-8 shrink-0 justify-between bg-background px-2.5 text-xs font-normal",
+            widthClass
+          )}
         >
           <span className="truncate">{selected}</span>
           <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-50" />
@@ -282,25 +352,22 @@ function DestinationFilter({
       <PopoverContent className="w-[320px] p-0" align="start">
         <Command>
           <CommandInput
-            placeholder="Search destination"
+            placeholder={searchPlaceholder}
             className="h-8 text-xs"
           />
           <CommandList>
-            <CommandEmpty>No destination found.</CommandEmpty>
+            <CommandEmpty>{emptyText}</CommandEmpty>
             <CommandGroup>
-              <CommandItem
-                value="All destinations"
-                onSelect={() => onChange([])}
-              >
+              <CommandItem value={allLabel} onSelect={() => onChange([])}>
                 <Check
                   className={cn(
                     "mr-2 h-4 w-4",
                     value.length === 0 ? "opacity-100" : "opacity-0"
                   )}
                 />
-                All destinations
+                {allLabel}
               </CommandItem>
-              {destinations.map((item) => {
+              {options.map((item) => {
                 const checked = value.includes(item.value);
                 return (
                   <CommandItem
@@ -323,6 +390,29 @@ function DestinationFilter({
         </Command>
       </PopoverContent>
     </Popover>
+  );
+}
+
+function DestinationFilter({
+  value,
+  onChange,
+  destinations,
+}: {
+  value: string[];
+  onChange: (value: string[]) => void;
+  destinations: { value: string; label: string }[];
+}) {
+  return (
+    <MultiFilter
+      value={value}
+      onChange={onChange}
+      options={destinations}
+      allLabel="All destinations"
+      noun="destination"
+      searchPlaceholder="Search destination"
+      emptyText="No destination found."
+      widthClass="w-[190px]"
+    />
   );
 }
 

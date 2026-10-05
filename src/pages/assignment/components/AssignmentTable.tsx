@@ -68,7 +68,7 @@ function ContainerDetailRow({
       className="border-t border-border/60"
       data-state={selected ? "selected" : undefined}
     >
-      <td className="w-10 px-3 py-2.5 first:pl-4">
+      <td className="w-10 px-[11px] py-[9px] first:pl-[15px]">
         {container?._id ? (
           <Checkbox
             checked={selected}
@@ -79,7 +79,7 @@ function ContainerDetailRow({
           />
         ) : null}
       </td>
-      <td className="px-3 py-2.5">
+      <td className="px-[11px] py-[9px]">
         <p className="font-mono text-xs font-semibold">
           {container?.containerNo || "—"}
         </p>
@@ -87,7 +87,7 @@ function ContainerDetailRow({
           VOC {container?.vocNo || "—"}
         </p>
       </td>
-      <td className="px-3 py-2.5">
+      <td className="px-[11px] py-[9px]">
         <p className="font-medium">
           {lorry}
           {capacity ? ` · ${capacity} ft` : ""}
@@ -98,9 +98,15 @@ function ContainerDetailRow({
           </p>
         ) : null}
       </td>
-      <td className="px-3 py-2.5">{containerBuyer(container)}</td>
-      <td className="px-3 py-2.5">{containerDestination(container)}</td>
-      <td className="px-3 py-2.5">
+      <td className="px-[11px] py-[9px]">{container?.containerOut || "—"}</td>
+      <td className="px-[11px] py-[9px]">
+        <p className="font-medium">{containerBuyer(container)}</p>
+        <p className="text-xs text-muted-foreground">
+          {container?.billNumber || "—"}
+        </p>
+      </td>
+      <td className="px-[11px] py-[9px]">{containerDestination(container)}</td>
+      <td className="px-[11px] py-[9px]">
         {containerIsToYard(container, siblings) ? (
           <span className="inline-flex rounded-full bg-[hsl(var(--brand-navy))] px-2.5 py-0.5 text-xs font-semibold text-white">
             Yes
@@ -109,14 +115,14 @@ function ContainerDetailRow({
           <span className="text-xs text-muted-foreground">No</span>
         )}
       </td>
-      <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">
+      <td className="whitespace-nowrap px-[11px] py-[9px] text-muted-foreground">
         {formatDate(container?.loadingDate)}
       </td>
-      <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">
+      <td className="whitespace-nowrap px-[11px] py-[9px] text-muted-foreground">
         {formatDate(container?.demoundDate)}
       </td>
       {chargeColumns.map((field) => (
-        <td key={field.key} className="whitespace-nowrap px-3 py-2.5">
+        <td key={field.key} className="whitespace-nowrap px-[11px] py-[9px]">
           <p
             className={
               field.key === "advanced" || field.key === "balancePaid"
@@ -152,21 +158,21 @@ function ContainerDetailRow({
       ))}
       {canSeeField("totals") ? (
         <>
-          <td className="whitespace-nowrap px-3 py-2.5 font-semibold">
+          <td className="whitespace-nowrap px-[11px] py-[9px] font-semibold">
             {formatMoney(total)}
           </td>
-          <td className="whitespace-nowrap px-3 py-2.5 font-semibold text-emerald-600">
+          <td className="whitespace-nowrap px-[11px] py-[9px] font-semibold text-emerald-600">
             {formatMoney(paid)}
           </td>
-          <td className="whitespace-nowrap px-3 py-2.5 font-bold">
+          <td className="whitespace-nowrap px-[11px] py-[9px] font-bold">
             {formatMoney(balance)}
           </td>
         </>
       ) : null}
-      <td className="px-3 py-2.5">
+      <td className="px-[11px] py-[9px]">
         <StatusBadge status={container?.status} />
       </td>
-      <td className="px-3 py-2.5 last:pr-4">
+      <td className="px-[11px] py-[9px] last:pr-[15px]">
         <FclStatusBadge fcl={container?.fcl} />
       </td>
     </tr>
@@ -275,7 +281,7 @@ function AssignmentRow({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border/70 bg-muted/30 text-left">
-                  <th className="h-10 w-10 px-3 first:pl-4">
+                  <th className="h-[39px] w-10 px-[11px] first:pl-[15px]">
                     {selectableIds.length ? (
                       <Checkbox
                         checked={
@@ -294,52 +300,58 @@ function AssignmentRow({
                       <span className="sr-only">Select</span>
                     )}
                   </th>
-                  <th className="h-10 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                  <th className="h-[39px] px-[11px] text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                     Container
                   </th>
-                  <th className="h-10 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                  <th className="h-[39px] px-[11px] text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                     Lorry
                   </th>
-                  <th className="h-10 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                    Buyer
+                  <th className="h-[39px] px-[11px] text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                    Container Out
                   </th>
-                  <th className="h-10 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                  <th className="h-[39px] px-[11px] text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                    Buyer
+                    <span className="mt-0.5 block normal-case tracking-normal">
+                      Bill Number
+                    </span>
+                  </th>
+                  <th className="h-[39px] px-[11px] text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                     Destination
                   </th>
-                  <th className="h-10 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                  <th className="h-[39px] px-[11px] text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                     Yard
                   </th>
-                  <th className="h-10 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                  <th className="h-[39px] px-[11px] text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                     Loading
                   </th>
-                  <th className="h-10 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                  <th className="h-[39px] px-[11px] text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                     Demount
                   </th>
                   {visibleChargeColumns().map((field) => (
                     <th
                       key={field.key}
-                      className="h-10 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground"
+                      className="h-[39px] px-[11px] text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground"
                     >
                       {field.label}
                     </th>
                   ))}
                   {canSeeField("totals") ? (
                     <>
-                      <th className="h-10 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                      <th className="h-[39px] px-[11px] text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                         Total
                       </th>
-                      <th className="h-10 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                      <th className="h-[39px] px-[11px] text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                         Paid
                       </th>
-                      <th className="h-10 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                      <th className="h-[39px] px-[11px] text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                         Balance
                       </th>
                     </>
                   ) : null}
-                  <th className="h-10 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                  <th className="h-[39px] px-[11px] text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                     Status
                   </th>
-                  <th className="h-10 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground last:pr-4">
+                  <th className="h-[39px] px-[11px] text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground last:pr-[15px]">
                     FCL Status
                   </th>
                 </tr>
@@ -394,7 +406,7 @@ function AssignmentTable({
       {total === 0 ? (
         <AssignmentEmptyState hasFilters={hasFilters} />
       ) : (
-        <Table className="[&_th]:h-8 [&_td]:py-1.5">
+        <Table className="[&_th]:h-[31px] [&_th]:px-[9px] [&_td]:px-[9px] [&_td]:py-[5px] [&_th:first-child]:pl-[11px] [&_td:first-child]:pl-[11px] [&_th:first-child]:pr-0 [&_td:first-child]:pr-0 [&_th:last-child]:pr-[11px] [&_td:last-child]:pr-[11px]">
           <TableHeader>
             <TableRow className="bg-muted/20 hover:bg-muted/20">
               <TableHead className="w-10 pr-0">
