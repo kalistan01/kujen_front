@@ -28,6 +28,12 @@ import { fieldLockProps, omitHiddenContainerFields } from "@/lib/permissions";
 import { FieldGate } from "@/components/RequirePermission";
 
 const addLock = (key: string, extra = "") => fieldLockProps(key, extra, "add");
+
+function kgInput(value: string) {
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount < 0) return 0;
+  return amount;
+}
 import {
   completeRequiresMessage,
   firstErrorMessage,
@@ -57,6 +63,8 @@ interface Container {
   loadingDate?: string | Date;
   demoundDate?: string | Date;
   weight?: number;
+  receivedWeight?: number;
+  declaredWeight?: number;
   dayHire?: number;
   advanced?: number;
   advancedDate?: string;
@@ -105,6 +113,8 @@ function AddContainer({
     buyer: "",
     destination: "",
     weight: 0,
+    receivedWeight: 0,
+    declaredWeight: 0,
     dayHire: 0,
     advanced: 0,
     advancedDate: "",
@@ -407,6 +417,33 @@ function AddContainer({
                     : ""
                 }
                 onChange={(e) => updateContainer("demoundDate", e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>Received Weight (Kg)</Label>
+              <Input
+                type="number"
+                min={0}
+                value={containers.receivedWeight || ""}
+                onChange={(e) =>
+                  updateContainer("receivedWeight", kgInput(e.target.value))
+                }
+                placeholder="Received weight"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Declared Weight (Kg)</Label>
+              <Input
+                type="number"
+                min={0}
+                value={containers.declaredWeight || ""}
+                onChange={(e) =>
+                  updateContainer("declaredWeight", kgInput(e.target.value))
+                }
+                placeholder="Declared weight"
               />
             </div>
           </div>

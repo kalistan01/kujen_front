@@ -12,6 +12,7 @@ import {
   LogOut,
   ScrollText,
   Settings,
+  StickyNote,
   BarChart3,
   MapPinned,
   Contact,
@@ -112,6 +113,13 @@ const allMenuItems = [
     path: "/logs",
     permission: [P.LOGS_VIEW],
   },
+  {
+    id: "note",
+    label: "Note",
+    icon: StickyNote,
+    path: "/note",
+    permission: null,
+  },
 ];
 
 export const Layout = () => {
@@ -163,6 +171,9 @@ export const Layout = () => {
     }
     if (location.pathname === "/assignments/fcl-extended") {
       return { label: "FCL Extended" };
+    }
+    if (location.pathname === "/assignments/documents") {
+      return { label: "Documents" };
     }
     if (location.pathname.startsWith("/reports")) {
       return { label: "Reports" };

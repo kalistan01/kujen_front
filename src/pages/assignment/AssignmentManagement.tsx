@@ -49,6 +49,7 @@ import AssignmentTable from "./components/AssignmentTable";
 import ContainerListPrint from "./components/ContainerListPrint";
 import ContainerListTable from "./components/ContainerListTable";
 import FclExtendedTable, { type FclExtendedRow } from "./components/FclExtendedTable";
+import DocumentListTable, { type DocumentListRow } from "./components/DocumentListTable";
 import { useEntitySync } from "@/hooks/useEntitySync";
 import { upsertById } from "@/lib/socket";
 
@@ -100,6 +101,7 @@ export const AssignmentManagement = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const isFclExtended = location.pathname.endsWith("/fcl-extended");
   const isContainers = location.pathname.endsWith("/containers");
+  const isDocuments = location.pathname.endsWith("/documents");
   const canSeeContainers = canViewContainers();
   const page = Math.max(1, Number.parseInt(searchParams.get("page") || "1", 10) || 1);
   const skipPageReset = useRef(true);
@@ -181,10 +183,10 @@ export const AssignmentManagement = () => {
   }, [isFclExtended]);
 
   useEffect(() => {
-    if ((isContainers || isFclExtended) && !canSeeContainers) {
+    if ((isContainers || isFclExtended || isDocuments) && !canSeeContainers) {
       navigate("/assignments", { replace: true });
     }
-  }, [isContainers, isFclExtended, canSeeContainers, navigate]);
+  }, [isContainers, isFclExtended, isDocuments, canSeeContainers, navigate]);
 
   useEffect(() => {
     baseUrl
@@ -462,6 +464,7 @@ export const AssignmentManagement = () => {
     toDate,
     isContainers,
     isFclExtended,
+    isDocuments,
     fclDatePreset,
     balanceFilter,
     advancedFilter,
@@ -592,7 +595,48 @@ export const AssignmentManagement = () => {
       .map(([value, label]) => ({ value, label }));
   }, [fclRows]);
 
-  const listTotal = isFclExtended
+  const documentRows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const qDigits = q.replace(/\D/g, "");
+    const rows: DocumentListRow[] = [];
+    assignments.forEach((assignment) => {
+      (assignment.containers || []).forEach((container: any) => {
+        (container.documents || []).forEach((doc: any) => {
+          if (!doc?._id || !container?._id || !assignment?._id) return;
+          const blNo = String(assignment.blNo || "");
+          const containerNo = String(container.containerNo || "");
+          if (q) {
+            const blDigits = blNo.replace(/\D/g, "");
+            const containerDigits = containerNo.replace(/\D/g, "");
+            const textMatch =
+              blNo.toLowerCase().includes(q) || containerNo.toLowerCase().includes(q);
+            const numberMatch = Boolean(
+              qDigits &&
+                (blDigits.includes(qDigits) || containerDigits.includes(qDigits))
+            );
+            if (!textMatch && !numberMatch) return;
+          }
+          rows.push({
+            assignmentId: String(assignment._id),
+            containerId: String(container._id),
+            docId: String(doc._id),
+            blNo,
+            containerNo,
+            originalName: doc.originalName || "",
+            mimeType: doc.mimeType || "",
+            uploadedAt: doc.uploadedAt,
+          });
+        });
+      });
+    });
+    return rows.sort(
+      (a, b) => createdStamp(b.uploadedAt) - createdStamp(a.uploadedAt)
+    );
+  }, [assignments, query]);
+
+  const listTotal = isDocuments
+    ? documentRows.length
+    : isFclExtended
     ? filteredFcl.length
     : isContainers
       ? filteredContainers.length
@@ -608,6 +652,10 @@ export const AssignmentManagement = () => {
     currentPage * pageSize
   );
   const pagedFcl = filteredFcl.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+  const pagedDocuments = documentRows.slice(
     (currentPage - 1) * pageSize,
     currentPage * pageSize
   );
@@ -902,10 +950,18 @@ export const AssignmentManagement = () => {
     <div className="space-y-3 print:hidden">
       <PageHeader
         title={
-          isFclExtended ? "FCL Extended" : isContainers ? "Containers" : "Assignments"
+          isDocuments
+            ? "Documents"
+            : isFclExtended
+            ? "FCL Extended"
+            : isContainers
+            ? "Containers"
+            : "Assignments"
         }
         description={
-          isFclExtended
+          isDocuments
+            ? "Every uploaded container file, with its BL and container number."
+            : isFclExtended
             ? "Containers that have an FCL extended date."
             : isContainers
             ? "Search containers across assignments, print lists, and pay balances."
@@ -913,7 +969,7 @@ export const AssignmentManagement = () => {
         }
         className="gap-2 sm:items-center"
       >
-        {isFclExtended ? null : (
+        {isFclExtended || isDocuments ? null : (
         <>
         <Button
           variant="outline"
@@ -994,11 +1050,24 @@ export const AssignmentManagement = () => {
               >
                 FCL Extended
               </NavLink>
+              <NavLink
+                to="/assignments/documents"
+                className={({ isActive }) =>
+                  cn(
+                    "inline-flex h-6 items-center rounded-sm px-2.5 text-xs font-medium transition-all",
+                    isActive
+                      ? "bg-background text-foreground shadow-sm"
+                      : "hover:text-foreground"
+                  )
+                }
+              >
+                Documents
+              </NavLink>
               </>
               ) : null}
             </nav>
             <div className="flex flex-wrap items-center justify-end gap-2">
-              {isFclExtended ? null : (
+              {isFclExtended || isDocuments ? null : (
               <>
               <Button
                 type="button"
@@ -1052,6 +1121,14 @@ export const AssignmentManagement = () => {
               <Badge variant="secondary">{listTotal}</Badge>
             </div>
           </div>
+          {isDocuments ? (
+            <Input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search BL or container number"
+              className="h-8 max-w-sm"
+            />
+          ) : (
           <AssignmentFilters
             query={query}
             onQueryChange={setQuery}
@@ -1114,9 +1191,20 @@ export const AssignmentManagement = () => {
               setPage(1);
             }}
           />
+          )}
         </CardHeader>
         <CardContent className="p-0">
-          {isFclExtended ? (
+          {isDocuments ? (
+            <DocumentListTable
+              rows={pagedDocuments}
+              total={documentRows.length}
+              hasFilters={Boolean(query.trim())}
+              page={currentPage}
+              pages={pages}
+              pageSize={pageSize}
+              onPageChange={setPage}
+            />
+          ) : isFclExtended ? (
             <FclExtendedTable
               rows={pagedFcl}
               total={filteredFcl.length}

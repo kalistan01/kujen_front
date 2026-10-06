@@ -23,6 +23,12 @@ import BuyerSelect, { buyerId, type BuyerOption } from "./BuyerSelect";
 import LorrySelect from "./LorrySelect";
 import { todayDateInput, toDateInput, toDateKey, containerChargesTotal, formatMoney, toAmount, CHARGE_FIELDS, roundMoney, applyAdvancedDate } from "../lib/financials";
 import { canEditField, canSeeField, fieldLockProps, omitHiddenContainerFields } from "@/lib/permissions";
+
+function kgInput(value: string) {
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount < 0) return 0;
+  return amount;
+}
 import { isAdminUser } from "@/lib/auth";
 import { FieldGate } from "@/components/RequirePermission";
 import {
@@ -55,6 +61,8 @@ interface Container {
   loadingDate?: string | Date;
   demoundDate?: string | Date;
   weight?: number;
+  receivedWeight?: number;
+  declaredWeight?: number;
   dayHire?: number;
   advanced?: number;
   advancedDate?: string;
@@ -80,7 +88,10 @@ function EditContainer({
 }: {
   setIsDialogOpen: (isOpen: boolean) => void;
   editingAssignment?: Container;
-  onSaved?: (buyer: BuyerOption | null) => void;
+  onSaved?: (
+    buyer: BuyerOption | null,
+    weights?: { receivedWeight?: number; declaredWeight?: number }
+  ) => void;
 }) {
   const { toast } = useToast();
   const { id } = useParams();
@@ -101,6 +112,8 @@ function EditContainer({
     buyer: "",
     destination: "",
     weight: 0,
+    receivedWeight: 0,
+    declaredWeight: 0,
     dayHire: 0,
     advanced: 0,
     advancedDate: "",
@@ -140,6 +153,8 @@ function EditContainer({
       buyer: "",
     destination: "",
       weight: 0,
+      receivedWeight: 0,
+      declaredWeight: 0,
       dayHire: 0,
       advanced: 0,
       advancedDate: "",
@@ -296,7 +311,11 @@ function EditContainer({
       });
       const savedBuyerId = buyerId(containers.buyer);
       onSaved?.(
-        buyers.find((buyer) => buyer._id === savedBuyerId) || null
+        buyers.find((buyer) => buyer._id === savedBuyerId) || null,
+        {
+          receivedWeight: Number(containers.receivedWeight) || 0,
+          declaredWeight: Number(containers.declaredWeight) || 0,
+        }
       );
       setIsDialogOpen(false);
       resetForm();
@@ -450,6 +469,33 @@ function EditContainer({
                 type="date"
                 value={toDateKey(containers.demoundDate)}
                 onChange={(e) => updateContainer("demoundDate", e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>Received Weight (Kg)</Label>
+              <Input
+                type="number"
+                min={0}
+                value={containers.receivedWeight || ""}
+                onChange={(e) =>
+                  updateContainer("receivedWeight", kgInput(e.target.value))
+                }
+                placeholder="Received weight"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Declared Weight (Kg)</Label>
+              <Input
+                type="number"
+                min={0}
+                value={containers.declaredWeight || ""}
+                onChange={(e) =>
+                  updateContainer("declaredWeight", kgInput(e.target.value))
+                }
+                placeholder="Declared weight"
               />
             </div>
           </div>

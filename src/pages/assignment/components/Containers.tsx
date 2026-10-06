@@ -49,6 +49,7 @@ import {
   containerTripKind,
 } from "../lib/containerDisplay";
 import FclRecord from "./FclRecord";
+import ContainerDocuments from "./ContainerDocuments";
 import { calendarDaysBetween, formatDate as formatDay } from "../lib/dates";
 interface ContainerType {
   _id?: string;
@@ -70,6 +71,8 @@ interface ContainerType {
   loadingDate?: string | Date;
   demoundDate?: string | Date;
   weight?: number;
+  receivedWeight?: number;
+  declaredWeight?: number;
   dayHire?: number;
   advanced?: number;
   advancedDate?: string | Date;
@@ -87,6 +90,18 @@ interface ContainerType {
   fcl?: unknown;
   fclExtendedDate?: string;
   note?: string;
+  documents?: Array<{
+    _id?: string;
+    originalName?: string;
+    mimeType?: string;
+    size?: number;
+  }>;
+}
+
+function formatKg(value?: number) {
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount <= 0) return "—";
+  return `${amount.toLocaleString("en-IN", { maximumFractionDigits: 3 })} kg`;
 }
 
 export const formatDate = (date?: string | Date) => {
@@ -514,6 +529,16 @@ function Containers({
           </div>
         ) : null}
         <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:justify-self-end">
+          {container?._id && id ? (
+            <ContainerDocuments
+              assignmentId={id}
+              containerId={container._id}
+              containerNo={container.containerNo}
+              documents={container.documents}
+              canManage={canManageCompleted}
+              onChanged={onChanged}
+            />
+          ) : null}
           {canManageCompleted ? (
           <Select
             value={status}
@@ -633,7 +658,7 @@ function Containers({
               <EditContainer
                 setIsDialogOpen={setIsDialogOpen}
                 editingAssignment={editingAssignment}
-                onSaved={(buyer) => {
+                onSaved={(buyer, weights) => {
                   if (container._id) {
                     onLocalUpdate?.(container._id, {
                       buyer: buyer
@@ -643,6 +668,8 @@ function Containers({
                             address: buyer.address,
                           }
                         : null,
+                      receivedWeight: Number(weights?.receivedWeight) || 0,
+                      declaredWeight: Number(weights?.declaredWeight) || 0,
                     });
                   }
                   onChanged?.();
@@ -678,6 +705,14 @@ function Containers({
         <div>
           <p className="text-xs text-muted-foreground">Destination</p>
           <p className="font-medium">{containerDestination(container)}</p>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground">Received Weight (Kg)</p>
+          <p className="font-medium">{formatKg(container.receivedWeight)}</p>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground">Declared Weight (Kg)</p>
+          <p className="font-medium">{formatKg(container.declaredWeight)}</p>
         </div>
         <div>
           <p className="text-xs text-muted-foreground">Loading / Demount</p>

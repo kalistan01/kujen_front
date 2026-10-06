@@ -17,6 +17,7 @@ import { OutHireManagement } from "./pages/outhire/OutHireManagement";
 import { BuyerManagement } from "./pages/buyer/BuyerManagement";
 import { LogsPage } from "./pages/logs/LogsPage";
 import { ReportsPage } from "./pages/reports/ReportsPage";
+import { NotePage } from "./pages/note/NotePage";
 import RequirePermission from "./components/RequirePermission";
 import { P } from "./lib/permissions";
 
@@ -44,6 +45,7 @@ const App = () => (
                   <Route index element={null} />
                   <Route path="containers" element={null} />
                   <Route path="fcl-extended" element={null} />
+                  <Route path="documents" element={null} />
                 </Route>
                 <Route
                   path="/settings"
@@ -129,6 +131,7 @@ const App = () => (
                   <Route index element={null} />
                   <Route path="lorries" element={null} />
                 </Route>
+                <Route path="/note" element={<NotePage />} />
                 <Route
                   path="/assignment/:id"
                   element={
