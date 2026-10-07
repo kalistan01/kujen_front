@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState, type PointerEvent } from "react";
-import { Eye, FileText, Loader2, Trash2, Upload, ZoomIn, ZoomOut } from "lucide-react";
+import { FileText, Loader2, Trash2, Upload, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Dialog,
   DialogContent,
@@ -12,8 +17,20 @@ import { useToast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/apiError";
 import { compressUpload } from "../lib/compressFile";
 
+export const DOCUMENT_SLOTS = [
+  { id: "weight-sheet", label: "Weight sheet" },
+  { id: "gate-pass", label: "Gate pass" },
+] as const;
+
+export type DocumentSlot = (typeof DOCUMENT_SLOTS)[number]["id"];
+
+export function documentSlotLabel(slot?: string) {
+  return DOCUMENT_SLOTS.find((item) => item.id === slot)?.label || "";
+}
+
 export type ContainerDocument = {
   _id?: string;
+  slot?: string;
   originalName?: string;
   mimeType?: string;
   size?: number;
@@ -38,6 +55,23 @@ function nextZoom(current: number, direction: 1 | -1) {
   return previous ?? ZOOM_STEPS[0];
 }
 
+const SLOT_ICONS: Record<DocumentSlot, string> = {
+  "weight-sheet": "/weightsheet.png",
+  "gate-pass": "/gatepass.png",
+};
+
+function SlotIcon({ slot, className }: { slot: DocumentSlot; className?: string }) {
+  return <img src={SLOT_ICONS[slot]} alt="" className={className} />;
+}
+
+function slotHoverLabel(slot: DocumentSlot) {
+  return slot === "weight-sheet" ? "Weight" : "Gate";
+}
+
+function slotButtonClass() {
+  return "border-neutral-300 bg-white text-neutral-900 hover:bg-neutral-100 hover:text-neutral-900";
+}
+
 function formatSize(size?: number) {
   if (!size || size < 0) return "";
   if (size < 1024) return `${size} B`;
@@ -54,6 +88,7 @@ export default function ContainerDocuments({
 }: ContainerDocumentsProps) {
   const { toast } = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
+  const slotRef = useRef<DocumentSlot | "">("");
   const viewRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
   const [open, setOpen] = useState(false);
@@ -116,14 +151,16 @@ export default function ContainerDocuments({
 
   const onPick = async (list: FileList | null) => {
     const file = list?.[0];
+    const slot = slotRef.current;
     if (inputRef.current) inputRef.current.value = "";
-    if (!file || uploading) return;
+    if (!file || !slot || uploading) return;
     setUploading(true);
     try {
       const prepared = await compressUpload(file);
       await baseUrl.post(
         `assignlorry/${assignmentId}/containers/${containerId}/documents`,
         {
+          slot,
           name: prepared.name,
           mimeType: prepared.mimeType,
           data: prepared.data,
@@ -222,37 +259,64 @@ export default function ContainerDocuments({
     }
   };
 
-  const file = documents[0];
+  const files = documents.filter((file) => file._id);
+  const fileFor = (slot: DocumentSlot) => {
+    const named = files.find((file) => file.slot === slot);
+    if (named) return named;
+    if (slot === "weight-sheet") return files.find((file) => !file.slot);
+    return undefined;
+  };
+  const placed = new Set(
+    DOCUMENT_SLOTS.map((slot) => fileFor(slot.id)?._id).filter(Boolean)
+  );
+  const otherFiles = files.filter((file) => file._id && !placed.has(file._id));
+  const chooseFile = (slot: DocumentSlot) => {
+    slotRef.current = slot;
+    inputRef.current?.click();
+  };
 
   return (
     <>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="h-8 w-8 px-0"
-        aria-label={file ? "Replace document" : "Upload document"}
-        onClick={() => setOpen(true)}
-      >
-        <Upload className="h-3.5 w-3.5" />
-      </Button>
-      {file ? (
+      {canManage ? (
         <Button
           type="button"
           variant="outline"
           size="sm"
           className="h-8 w-8 px-0"
-          aria-label="View document"
-          disabled={openingId === file._id}
-          onClick={() => openDocument(file)}
+          aria-label={files.length ? "Add document" : "Upload document"}
+          onClick={() => setOpen(true)}
         >
-          {openingId === file._id ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Eye className="h-3.5 w-3.5" />
-          )}
+          <Upload className="h-3.5 w-3.5" />
         </Button>
       ) : null}
+      {DOCUMENT_SLOTS.map((slot) => {
+        const file = fileFor(slot.id);
+        if (!file) return null;
+        return (
+          <Tooltip key={slot.id} delayDuration={200}>
+            <TooltipTrigger asChild>
+              <span className="inline-flex">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className={`h-8 w-8 px-0 ${slotButtonClass()}`}
+                  aria-label={`View ${slotHoverLabel(slot.id)}`}
+                  disabled={openingId === file._id}
+                  onClick={() => openDocument(file)}
+                >
+                  {openingId === file._id ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <SlotIcon slot={slot.id} className="h-5 w-5 object-contain" />
+                  )}
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>{slotHoverLabel(slot.id)}</TooltipContent>
+          </Tooltip>
+        );
+      })}
       <Dialog
         open={open}
         onOpenChange={(next) => {
@@ -263,81 +327,131 @@ export default function ContainerDocuments({
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>
-              Document{containerNo ? ` · ${containerNo}` : ""}
+              Documents{containerNo ? ` · ${containerNo}` : ""}
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            One image or PDF, compressed to under 100KB. Uploading again replaces the current file.
+            Each file is an image or PDF, compressed to under 100KB.
           </p>
-          {canManage ? (
-            <div>
-              <input
-                ref={inputRef}
-                type="file"
-                accept="image/*,application/pdf"
-                className="hidden"
-                onChange={(event) => onPick(event.target.files)}
-              />
-              <Button
-                type="button"
-                size="sm"
-                className="h-8"
-                disabled={uploading}
-                onClick={() => inputRef.current?.click()}
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*,application/pdf"
+            className="hidden"
+            onChange={(event) => onPick(event.target.files)}
+          />
+          <div className="space-y-2">
+            {DOCUMENT_SLOTS.map((slot) => {
+              const file = fileFor(slot.id);
+              return (
+                <div
+                  key={slot.id}
+                  className="flex items-center gap-2 rounded-md border border-border/80 px-2 py-1.5"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">{slot.label}</p>
+                    {file ? (
+                      <button
+                        type="button"
+                        className="block max-w-full truncate text-left text-xs text-muted-foreground"
+                        onClick={() => openDocument(file)}
+                        disabled={openingId === file._id}
+                      >
+                        {file.originalName || (file.mimeType === "application/pdf" ? "PDF" : "Image")}
+                        {file.size ? ` · ${formatSize(file.size)}` : ""}
+                      </button>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">No file yet</p>
+                    )}
+                  </div>
+                  {file ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className={`h-8 w-8 shrink-0 px-0 ${slotButtonClass()}`}
+                      aria-label={`View ${slot.label}`}
+                      disabled={openingId === file._id}
+                      onClick={() => openDocument(file)}
+                    >
+                      {openingId === file._id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <SlotIcon slot={slot.id} className="h-5 w-5 object-contain" />
+                      )}
+                    </Button>
+                  ) : null}
+                  {canManage ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="h-8 shrink-0"
+                      disabled={uploading}
+                      onClick={() => chooseFile(slot.id)}
+                    >
+                      {uploading && slotRef.current === slot.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Upload className="h-3.5 w-3.5" />
+                      )}
+                      {file ? "Replace" : "Upload"}
+                    </Button>
+                  ) : null}
+                  {canManage && file ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 shrink-0 px-0"
+                      disabled={removingId === file._id}
+                      onClick={() => removeDocument(file)}
+                      aria-label={`Remove ${slot.label}`}
+                    >
+                      {removingId === file._id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                  ) : null}
+                </div>
+              );
+            })}
+            {otherFiles.map((file) => (
+              <div
+                key={file._id}
+                className="flex items-center gap-2 rounded-md border border-border/80 px-2 py-1.5"
               >
-                {uploading ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Upload className="h-3.5 w-3.5" />
-                )}
-                {uploading ? "Compressing..." : file ? "Replace file" : "Upload image or PDF"}
-              </Button>
-            </div>
-          ) : null}
-          {file ? (
-            <div className="flex items-center gap-2 rounded-md border border-border/80 px-2 py-1.5">
-              <button
-                type="button"
-                className="flex min-w-0 flex-1 items-center gap-2 text-left"
-                onClick={() => openDocument(file)}
-                disabled={openingId === file._id}
-              >
-                {openingId === file._id ? (
-                  <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
-                ) : (
+                <button
+                  type="button"
+                  className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                  onClick={() => openDocument(file)}
+                >
                   <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
-                )}
-                <span className="min-w-0">
-                  <span className="block truncate text-sm">
+                  <span className="min-w-0 truncate text-sm">
                     {file.originalName || "Document"}
                   </span>
-                  <span className="block text-xs text-muted-foreground">
-                    {file.mimeType === "application/pdf" ? "PDF" : "Image"}
-                    {file.size ? ` · ${formatSize(file.size)}` : ""}
-                  </span>
-                </span>
-              </button>
-              {canManage ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 shrink-0 px-0"
-                  disabled={removingId === file._id}
-                  onClick={() => removeDocument(file)}
-                  aria-label={`Remove ${file.originalName || "document"}`}
-                >
-                  {removingId === file._id ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Trash2 className="h-3.5 w-3.5" />
-                  )}
-                </Button>
-              ) : null}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">No file yet.</p>
-          )}
+                </button>
+                {canManage ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 shrink-0 px-0"
+                    disabled={removingId === file._id}
+                    onClick={() => removeDocument(file)}
+                    aria-label={`Remove ${file.originalName || "document"}`}
+                  >
+                    {removingId === file._id ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-3.5 w-3.5" />
+                    )}
+                  </Button>
+                ) : null}
+              </div>
+            ))}
+          </div>
         </DialogContent>
       </Dialog>
       <Dialog

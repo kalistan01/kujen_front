@@ -21,6 +21,7 @@ import baseUrl from "@/api/baseUrl";
 import { useToast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/apiError";
 import { formatDate } from "../lib/dates";
+import { documentSlotLabel } from "./ContainerDocuments";
 
 export type DocumentListRow = {
   assignmentId: string;
@@ -28,6 +29,7 @@ export type DocumentListRow = {
   docId: string;
   blNo?: string;
   containerNo?: string;
+  slot?: string;
   originalName?: string;
   mimeType?: string;
   uploadedAt?: string;
@@ -207,7 +209,7 @@ function DocumentListTable({
                   {row.containerNo || "—"}
                 </TableCell>
                 <TableCell className="max-w-[240px] truncate">
-                  {row.originalName || "Document"}
+                  {documentSlotLabel(row.slot) || row.originalName || "Document"}
                 </TableCell>
                 <TableCell className="whitespace-nowrap">
                   {formatDate(row.uploadedAt)}

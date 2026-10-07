@@ -622,6 +622,7 @@ export const AssignmentManagement = () => {
             docId: String(doc._id),
             blNo,
             containerNo,
+            slot: doc.slot || "",
             originalName: doc.originalName || "",
             mimeType: doc.mimeType || "",
             uploadedAt: doc.uploadedAt,

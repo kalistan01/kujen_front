@@ -58,25 +58,30 @@ async function fitJpeg(
   sourceWidth: number,
   sourceHeight: number
 ) {
-  let edge = Math.min(1600, Math.max(sourceWidth, sourceHeight));
-  let quality = 0.82;
-  for (let attempt = 0; attempt < 16; attempt += 1) {
-    const scale = edge / Math.max(sourceWidth, sourceHeight, 1);
-    const width = Math.max(1, Math.round(sourceWidth * Math.min(scale, 1)));
-    const height = Math.max(1, Math.round(sourceHeight * Math.min(scale, 1)));
-    const blob = await canvasToJpeg(
-      source,
-      sourceWidth,
-      sourceHeight,
-      width,
-      height,
-      quality
-    );
-    if (blob && blob.size > 0 && blob.size <= MAX_DOCUMENT_BYTES) return blob;
-    if (quality > 0.45) quality = Math.round((quality - 0.12) * 100) / 100;
-    else edge = Math.round(edge * 0.72);
-    if (edge < 160) break;
+  const longest = Math.max(sourceWidth, sourceHeight, 1);
+  let edge = Math.min(1600, longest);
+  const qualities = [0.82, 0.68, 0.54, 0.4, 0.28];
+  let smallest: Blob | null = null;
+  while (edge >= 48) {
+    const scale = Math.min(1, edge / longest);
+    const width = Math.max(1, Math.round(sourceWidth * scale));
+    const height = Math.max(1, Math.round(sourceHeight * scale));
+    for (const quality of qualities) {
+      const blob = await canvasToJpeg(
+        source,
+        sourceWidth,
+        sourceHeight,
+        width,
+        height,
+        quality
+      );
+      if (!blob || blob.size <= 0) continue;
+      if (!smallest || blob.size < smallest.size) smallest = blob;
+      if (blob.size <= MAX_DOCUMENT_BYTES) return blob;
+    }
+    edge = Math.round(edge * 0.7);
   }
+  if (smallest && smallest.size <= MAX_DOCUMENT_BYTES) return smallest;
   throw new Error("Could not compress this image under 100KB.");
 }
 

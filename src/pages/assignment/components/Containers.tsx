@@ -92,6 +92,7 @@ interface ContainerType {
   note?: string;
   documents?: Array<{
     _id?: string;
+    slot?: string;
     originalName?: string;
     mimeType?: string;
     size?: number;
