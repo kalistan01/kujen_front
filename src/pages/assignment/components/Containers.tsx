@@ -536,6 +536,8 @@ function Containers({
               containerId={container._id}
               containerNo={container.containerNo}
               documents={container.documents}
+              receivedWeight={container.receivedWeight}
+              declaredWeight={container.declaredWeight}
               canManage={canManageCompleted}
               onChanged={onChanged}
             />
@@ -707,9 +709,25 @@ function Containers({
           <p className="text-xs text-muted-foreground">Destination</p>
           <p className="font-medium">{containerDestination(container)}</p>
         </div>
-        <div>
+        <div
+          className={
+            (Number(container.declaredWeight) || 0) >
+            (Number(container.receivedWeight) || 0)
+              ? "w-fit rounded border border-red-600 bg-red-50 px-2 py-1"
+              : undefined
+          }
+        >
           <p className="text-xs text-muted-foreground">Received Weight (Kg)</p>
-          <p className="font-medium">{formatKg(container.receivedWeight)}</p>
+          <p
+            className={
+              (Number(container.declaredWeight) || 0) >
+              (Number(container.receivedWeight) || 0)
+                ? "font-medium text-red-600"
+                : "font-medium"
+            }
+          >
+            {formatKg(container.receivedWeight)}
+          </p>
         </div>
         <div>
           <p className="text-xs text-muted-foreground">Declared Weight (Kg)</p>

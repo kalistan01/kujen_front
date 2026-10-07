@@ -41,6 +41,8 @@ type ContainerDocumentsProps = {
   containerId: string;
   containerNo?: string;
   documents?: ContainerDocument[];
+  receivedWeight?: number;
+  declaredWeight?: number;
   canManage: boolean;
   onChanged?: () => void;
 };
@@ -83,6 +85,8 @@ export default function ContainerDocuments({
   containerId,
   containerNo,
   documents = [],
+  receivedWeight,
+  declaredWeight,
   canManage,
   onChanged,
 }: ContainerDocumentsProps) {
@@ -259,6 +263,8 @@ export default function ContainerDocuments({
     }
   };
 
+  const receivedShort =
+    (Number(declaredWeight) || 0) > (Number(receivedWeight) || 0);
   const files = documents.filter((file) => file._id);
   const fileFor = (slot: DocumentSlot) => {
     const named = files.find((file) => file.slot === slot);
@@ -300,7 +306,11 @@ export default function ContainerDocuments({
                   type="button"
                   variant="outline"
                   size="sm"
-                  className={`h-8 w-8 px-0 ${slotButtonClass()}`}
+                  className={`h-8 w-8 px-0 ${
+                    slot.id === "weight-sheet" && receivedShort
+                      ? "border-red-600 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-600"
+                      : slotButtonClass()
+                  }`}
                   aria-label={`View ${slotHoverLabel(slot.id)}`}
                   disabled={openingId === file._id}
                   onClick={() => openDocument(file)}
@@ -346,7 +356,11 @@ export default function ContainerDocuments({
               return (
                 <div
                   key={slot.id}
-                  className="flex items-center gap-2 rounded-md border border-border/80 px-2 py-1.5"
+                  className={`flex items-center gap-2 rounded-md border px-2 py-1.5 ${
+                    slot.id === "weight-sheet" && receivedShort
+                      ? "border-red-600 bg-red-50"
+                      : "border-border/80"
+                  }`}
                 >
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium">{slot.label}</p>
@@ -369,7 +383,11 @@ export default function ContainerDocuments({
                       type="button"
                       variant="outline"
                       size="sm"
-                      className={`h-8 w-8 shrink-0 px-0 ${slotButtonClass()}`}
+                      className={`h-8 w-8 shrink-0 px-0 ${
+                        slot.id === "weight-sheet" && receivedShort
+                          ? "border-red-600 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-600"
+                          : slotButtonClass()
+                      }`}
                       aria-label={`View ${slot.label}`}
                       disabled={openingId === file._id}
                       onClick={() => openDocument(file)}
