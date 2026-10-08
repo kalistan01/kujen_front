@@ -160,6 +160,8 @@ function Containers({
   const [savingHeldUp, setSavingHeldUp] = useState(false);
   const [payDate, setPayDate] = useState(todayDateInput());
   const [paying, setPaying] = useState(false);
+  const [isRevokeOpen, setIsRevokeOpen] = useState(false);
+  const [revoking, setRevoking] = useState(false);
   const [editingAssignment, seteditingAssignment] = useState({});
 
   const { toast } = useToast();
@@ -427,6 +429,36 @@ function Containers({
       })
       .finally(() => {
         setPaying(false);
+      });
+  };
+  const handleRevokeBalance = () => {
+    if (!id || !container?._id || revoking || toAmount(container.balancePaid) <= 0) return;
+    setRevoking(true);
+    baseUrl
+      .patch(`assignlorry/${id}/containers/${container._id}/revoke-balance`)
+      .then(() => {
+        toast({
+          title: "Balance payment revoked",
+          description: `${formatMoney(container.balancePaid)} removed from ${
+            container.containerNo || "this container"
+          }.`,
+        });
+        setIsRevokeOpen(false);
+        if (onPaid) onPaid();
+        else onChanged?.();
+      })
+      .catch((error) => {
+        toast({
+          title: "Could not revoke",
+          description: getApiErrorMessage(
+            error,
+            "Could not revoke the balance payment. Please try again."
+          ),
+          variant: "destructive",
+        });
+      })
+      .finally(() => {
+        setRevoking(false);
       });
   };
   const visibleCharges = CHARGE_FIELDS.filter((field) => canSeeField(field.key));
@@ -807,6 +839,19 @@ function Containers({
                 {formatDate(container.balanceDate)}
               </p>
             ) : null}
+            {label === "Balance Paid" &&
+            toAmount(container.balancePaid) > 0 &&
+            isAdminUser() ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="mt-1 h-6 px-1.5 text-xs text-destructive hover:text-destructive"
+                onClick={() => setIsRevokeOpen(true)}
+              >
+                Revoke
+              </Button>
+            ) : null}
           </div>
             );
           })}
@@ -886,6 +931,45 @@ function Containers({
         ) : null}
       </div>
       ) : null}
+
+      <Dialog
+        open={isRevokeOpen}
+        onOpenChange={(open) => {
+          if (!revoking) setIsRevokeOpen(open);
+        }}
+      >
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Revoke balance paid</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This removes the balance paid of {formatMoney(container.balancePaid)}
+            {container.balanceDate
+              ? ` recorded on ${formatDate(container.balanceDate)}`
+              : ""}{" "}
+            for container {container.containerNo || "this container"}. The
+            remaining hire becomes unpaid again.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsRevokeOpen(false)}
+              disabled={revoking}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleRevokeBalance}
+              disabled={revoking}
+            >
+              {revoking ? "Revoking..." : "Revoke"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isFclExtendedOpen} onOpenChange={setIsFclExtendedOpen}>
         <DialogContent className="sm:max-w-sm">

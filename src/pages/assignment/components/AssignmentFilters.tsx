@@ -7,6 +7,15 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   Popover,
@@ -21,8 +30,30 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { Check, ChevronDown, Search } from "lucide-react";
+import { Check, ChevronDown, Search, SlidersHorizontal } from "lucide-react";
 import { useState, type ReactNode } from "react";
+
+function FilterField({
+  label,
+  stacked,
+  wide,
+  children,
+}: {
+  label: string;
+  stacked: boolean;
+  wide?: boolean;
+  children: ReactNode;
+}) {
+  if (!stacked) return <>{children}</>;
+  return (
+    <div className={cn("flex min-w-0 flex-col gap-1.5", wide && "sm:col-span-2")}>
+      <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </span>
+      {children}
+    </div>
+  );
+}
 
 const DEFAULT_STATUSES = [
   { value: "all", label: "All status" },
@@ -41,6 +72,7 @@ function AssignmentFilters({
   onToDateChange,
   hasFilters,
   onClear,
+  onClearModal,
   placeholder = "Search BL, item, exporter...",
   statuses = DEFAULT_STATUSES,
   showStatus = true,
@@ -65,6 +97,8 @@ function AssignmentFilters({
   onYardFilterChange,
   datePreset,
   onDatePresetChange,
+  showDates = true,
+  filtersInModal = false,
   className,
   children,
 }: {
@@ -78,6 +112,7 @@ function AssignmentFilters({
   onToDateChange: (value: string) => void;
   hasFilters: boolean;
   onClear: () => void;
+  onClearModal?: () => void;
   placeholder?: string;
   statuses?: { value: string; label: string }[];
   showStatus?: boolean;
@@ -102,23 +137,33 @@ function AssignmentFilters({
   onYardFilterChange?: (value: string) => void;
   datePreset?: string;
   onDatePresetChange?: (value: string) => void;
+  showDates?: boolean;
+  filtersInModal?: boolean;
   className?: string;
   children?: ReactNode;
 }) {
-  return (
-    <div className={cn("flex w-full min-w-0 flex-wrap items-center gap-2", className)}>
-      <div className="relative min-w-[200px] flex-1 basis-[220px] sm:max-w-sm">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={query}
-          onChange={(e) => onQueryChange(e.target.value)}
-          placeholder={placeholder}
-          className="h-8 bg-background pl-9"
-        />
-      </div>
+  const modalFilterCount =
+    (showStatus && status !== "all" ? 1 : 0) +
+    (showDates && fromDate ? 1 : 0) +
+    (showDates && toDate ? 1 : 0) +
+    (onBalanceFilterChange && balanceFilter !== "all" ? 1 : 0) +
+    (onAdvancedFilterChange && advancedFilter !== "all" ? 1 : 0) +
+    (onOwnerChange && owner !== "all" ? 1 : 0) +
+    (onDestinationChange && destination.length ? 1 : 0) +
+    (onBuyerChange && buyer.length ? 1 : 0) +
+    (onContainerOutChange && containerOut.length ? 1 : 0) +
+    (onBillNumberChange && billNumber.trim() ? 1 : 0) +
+    (onYardFilterChange && yardFilter !== "all" ? 1 : 0);
+  const stacked = filtersInModal;
+  const selectClass = (toolbarWidth: string) =>
+    cn("bg-background", stacked ? "h-9 w-full" : cn("h-8 shrink-0", toolbarWidth));
+
+  const filterFields = (
+    <>
       {showStatus ? (
+      <FilterField label="Status" stacked={stacked}>
       <Select value={status} onValueChange={onStatusChange}>
-        <SelectTrigger className="h-8 w-[130px] shrink-0 bg-background">
+        <SelectTrigger className={selectClass("w-[130px]")}>
           <SelectValue placeholder="Status" />
         </SelectTrigger>
         <SelectContent>
@@ -129,9 +174,14 @@ function AssignmentFilters({
           ))}
         </SelectContent>
       </Select>
+      </FilterField>
       ) : null}
-      {onDatePresetChange ? (
-        <div className="inline-flex h-8 items-center rounded-md bg-muted p-1 text-muted-foreground">
+      {showDates && onDatePresetChange ? (
+        <FilterField label="Date" stacked={stacked} wide>
+        <div className={cn(
+          "inline-flex h-8 items-center rounded-md bg-muted p-1 text-muted-foreground",
+          stacked && "h-9 w-full"
+        )}>
           {(
             [
               ["all", "All"],
@@ -156,14 +206,16 @@ function AssignmentFilters({
             </button>
           ))}
         </div>
+        </FilterField>
       ) : null}
-      {!onDatePresetChange || datePreset === "range" ? (
-      <div className="flex shrink-0 items-center gap-1.5">
+      {showDates && (!onDatePresetChange || datePreset === "range") ? (
+      <FilterField label="Dates" stacked={stacked} wide>
+      <div className={cn("flex items-center gap-1.5", stacked ? "w-full" : "shrink-0")}>
         <Input
           type="date"
           value={fromDate}
           onChange={(e) => onFromDateChange(e.target.value)}
-          className="h-8 w-[140px] bg-background"
+          className={cn("bg-background", stacked ? "h-9 flex-1" : "h-8 w-[140px]")}
           aria-label="From date"
         />
         <span className="text-xs text-muted-foreground">–</span>
@@ -171,14 +223,16 @@ function AssignmentFilters({
           type="date"
           value={toDate}
           onChange={(e) => onToDateChange(e.target.value)}
-          className="h-8 w-[140px] bg-background"
+          className={cn("bg-background", stacked ? "h-9 flex-1" : "h-8 w-[140px]")}
           aria-label="To date"
         />
       </div>
+      </FilterField>
       ) : null}
       {onBalanceFilterChange ? (
+        <FilterField label="Balance" stacked={stacked}>
         <Select value={balanceFilter} onValueChange={onBalanceFilterChange}>
-          <SelectTrigger className="h-8 w-[140px] shrink-0 bg-background">
+          <SelectTrigger className={selectClass("w-[140px]")}>
             <SelectValue placeholder="Balance" />
           </SelectTrigger>
           <SelectContent>
@@ -186,10 +240,12 @@ function AssignmentFilters({
             <SelectItem value="unpaid">Balance unpaid</SelectItem>
           </SelectContent>
         </Select>
+        </FilterField>
       ) : null}
       {onAdvancedFilterChange ? (
+        <FilterField label="Advanced" stacked={stacked}>
         <Select value={advancedFilter} onValueChange={onAdvancedFilterChange}>
-          <SelectTrigger className="h-8 w-[140px] shrink-0 bg-background">
+          <SelectTrigger className={selectClass("w-[140px]")}>
             <SelectValue placeholder="Advanced" />
           </SelectTrigger>
           <SelectContent>
@@ -197,10 +253,17 @@ function AssignmentFilters({
             <SelectItem value="yes">Has advanced</SelectItem>
           </SelectContent>
         </Select>
+        </FilterField>
+      ) : null}
+      {stacked && onOwnerChange ? (
+        <p className="pt-1 text-sm font-semibold tracking-tight text-foreground sm:col-span-2">
+          Parties
+        </p>
       ) : null}
       {onOwnerChange ? (
+        <FilterField label="Lorry owner" stacked={stacked}>
         <Select value={owner} onValueChange={onOwnerChange}>
-          <SelectTrigger className="h-8 w-[160px] shrink-0 bg-background">
+          <SelectTrigger className={selectClass("w-[160px]")}>
             <SelectValue placeholder="Lorry owner" />
           </SelectTrigger>
           <SelectContent>
@@ -212,15 +275,20 @@ function AssignmentFilters({
             ))}
           </SelectContent>
         </Select>
+        </FilterField>
       ) : null}
       {onDestinationChange ? (
+        <FilterField label="Destination" stacked={stacked}>
         <DestinationFilter
           value={destination}
           onChange={onDestinationChange}
           destinations={destinations}
+          widthClass={stacked ? "h-9 w-full text-sm" : "w-[190px]"}
         />
+        </FilterField>
       ) : null}
       {onBuyerChange ? (
+        <FilterField label="Buyer" stacked={stacked}>
         <MultiFilter
           value={buyer}
           onChange={onBuyerChange}
@@ -229,10 +297,17 @@ function AssignmentFilters({
           noun="buyer"
           searchPlaceholder="Search buyer"
           emptyText="No buyer found."
-          widthClass="w-[170px]"
+          widthClass={stacked ? "h-9 w-full text-sm" : "w-[170px]"}
         />
+        </FilterField>
+      ) : null}
+      {stacked && onContainerOutChange ? (
+        <p className="pt-1 text-sm font-semibold tracking-tight text-foreground sm:col-span-2">
+          Handling
+        </p>
       ) : null}
       {onContainerOutChange ? (
+        <FilterField label="Container out" stacked={stacked}>
         <MultiFilter
           value={containerOut}
           onChange={onContainerOutChange}
@@ -247,21 +322,28 @@ function AssignmentFilters({
           plural="container out"
           searchPlaceholder="Search container out"
           emptyText="No container out found."
-          widthClass="w-[180px]"
+          widthClass={stacked ? "h-9 w-full text-sm" : "w-[180px]"}
         />
+        </FilterField>
       ) : null}
       {onBillNumberChange ? (
+        <FilterField label="Bill number" stacked={stacked}>
         <Input
           value={billNumber}
           onChange={(e) => onBillNumberChange(e.target.value)}
           placeholder="Bill number"
           aria-label="Bill number"
-          className="h-8 w-[150px] shrink-0 bg-background"
+          className={cn(
+            "bg-background",
+            stacked ? "h-9 w-full" : "h-8 w-[150px] shrink-0"
+          )}
         />
+        </FilterField>
       ) : null}
       {onYardFilterChange ? (
+        <FilterField label="Yard" stacked={stacked}>
         <Select value={yardFilter} onValueChange={onYardFilterChange}>
-          <SelectTrigger className="h-8 w-[140px] shrink-0 bg-background">
+          <SelectTrigger className={selectClass("w-[140px]")}>
             <SelectValue placeholder="To yard" />
           </SelectTrigger>
           <SelectContent>
@@ -270,7 +352,85 @@ function AssignmentFilters({
             <SelectItem value="no">Not to yard</SelectItem>
           </SelectContent>
         </Select>
+        </FilterField>
       ) : null}
+    </>
+  );
+
+  return (
+    <div className={cn(
+      "flex min-w-0 items-center gap-2",
+      filtersInModal ? "w-auto shrink-0 flex-nowrap" : "w-full flex-wrap",
+      className
+    )}>
+      <div className={cn(
+        "relative",
+        filtersInModal ? "w-[220px] shrink-0" : "min-w-[200px] flex-1 basis-[220px] sm:max-w-sm"
+      )}>
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={query}
+          onChange={(e) => onQueryChange(e.target.value)}
+          placeholder={placeholder}
+          className="h-8 bg-background pl-9"
+        />
+      </div>
+      {filtersInModal ? (
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 shrink-0"
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              Filters
+              {modalFilterCount ? ` (${modalFilterCount})` : ""}
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="gap-0 overflow-hidden border-border/80 p-0 shadow-2xl sm:max-w-[560px]">
+            <DialogHeader className="space-y-1 border-b border-border bg-muted/30 px-5 py-4 pr-12">
+              <DialogTitle>Filter containers</DialogTitle>
+              <DialogDescription>
+                Choose what to show for this assignment.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid max-h-[min(70vh,520px)] grid-cols-1 gap-x-4 gap-y-3.5 overflow-y-auto px-5 py-4 sm:grid-cols-2">
+              {filterFields}
+            </div>
+            <div className="flex items-center justify-between gap-3 border-t border-border bg-muted/40 px-5 py-3">
+              <p className="text-xs text-muted-foreground">
+                {modalFilterCount
+                  ? `${modalFilterCount} filter${modalFilterCount === 1 ? "" : "s"} selected`
+                  : "No filters selected"}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={onClearModal || onClear}
+                  disabled={!modalFilterCount}
+                >
+                  Clear
+                </Button>
+                <DialogClose asChild>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="bg-[hsl(var(--brand-navy))] text-white hover:bg-[hsl(var(--brand-navy-muted))]"
+                  >
+                    Done
+                  </Button>
+                </DialogClose>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      ) : (
+        filterFields
+      )}
       {hasFilters && (
         <Button
           variant="ghost"
@@ -397,10 +557,12 @@ function DestinationFilter({
   value,
   onChange,
   destinations,
+  widthClass = "w-[190px]",
 }: {
   value: string[];
   onChange: (value: string[]) => void;
   destinations: { value: string; label: string }[];
+  widthClass?: string;
 }) {
   return (
     <MultiFilter
@@ -411,7 +573,7 @@ function DestinationFilter({
       noun="destination"
       searchPlaceholder="Search destination"
       emptyText="No destination found."
-      widthClass="w-[190px]"
+      widthClass={widthClass}
     />
   );
 }

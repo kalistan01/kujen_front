@@ -166,6 +166,11 @@ input::-webkit-inner-spin-button {
     margin: 12mm;
   }
 
+  /* On-screen notices stay off the printed page. */
+  [aria-label^="Notifications"] {
+    display: none !important;
+  }
+
   html {
     font-size: 16px;
   }

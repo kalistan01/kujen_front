@@ -218,26 +218,29 @@ export function containerOwnerKey(container: any) {
 
 export function containerDestinationOption(container: any) {
   const dest = container?.destination;
-  if (dest && typeof dest === "object" && (dest._id || dest.location)) {
-    return {
-      value: String(dest._id || dest.location),
-      label: dest.location || dest._id,
-    };
-  }
-  const location = container?.destinationlocation;
-  if (location) return { value: String(location), label: String(location) };
-  if (typeof dest === "string" && dest) return { value: dest, label: dest };
-  return null;
+  const location = String(
+    container?.destinationlocation ||
+      (dest && typeof dest === "object" ? dest.location : "") ||
+      ""
+  ).trim();
+  if (!location || location === "—") return null;
+  const id =
+    dest && typeof dest === "object"
+      ? String(dest._id || "")
+      : typeof dest === "string"
+        ? dest
+        : "";
+  return {
+    value: id || location,
+    label: location,
+  };
 }
 
 export function containerDestinationMatches(container: any, value: string) {
   if (!value || value === "all") return true;
-  const dest = container?.destination;
-  if (dest && typeof dest === "object") {
-    return dest._id === value || dest.location === value;
-  }
-  if (typeof dest === "string") return dest === value;
-  return container?.destinationlocation === value;
+  const option = containerDestinationOption(container);
+  if (!option) return false;
+  return option.value === value || option.label === value;
 }
 
 export const CONTAINER_CHARGE_COLUMNS = [

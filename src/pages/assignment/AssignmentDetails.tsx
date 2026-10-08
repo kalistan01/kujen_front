@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +22,7 @@ import AddContainer from "./components/AddContainer";
 import { StatusBadge } from "@/components/StatusBadge";
 import AssignmentPrint from "./components/AssignmentPrint";
 import AssignmentLogs from "./components/AssignmentLogs";
+import AssignmentFilters from "./components/AssignmentFilters";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,14 +30,37 @@ import {
   containerBalance,
   formatMoney,
   todayDateInput,
+  toAmount,
   type HeldUpRateOption,
 } from "./lib/financials";
-import { containerCapacity, containerLorry, containerSourceId, containersGroupedByYardTrip, mergePopulatedAssignment } from "./lib/containerDisplay";
+import {
+  containerBuyerMatches,
+  containerBuyerOption,
+  containerCapacity,
+  containerDestinationMatches,
+  containerDestinationOption,
+  containerIsToYard,
+  containerLorry,
+  containerMatchesOwner,
+  containerOwner,
+  containerOwnerKey,
+  containerSourceId,
+  containersGroupedByYardTrip,
+  mergePopulatedAssignment,
+} from "./lib/containerDisplay";
 import { can, canEditField, canEditAssignments, canViewContainers, canAddContainers, canEditContainers, P } from "@/lib/permissions";
 import { isAdminUser } from "@/lib/auth";
 import { scopeAssignmentContainers } from "@/lib/lorryScope";
 import { useEntitySync } from "@/hooks/useEntitySync";
 import { upsertById } from "@/lib/socket";
+
+const CONTAINER_STATUSES = [
+  { value: "all", label: "All status" },
+  { value: "advanced", label: "Advanced" },
+  { value: "pending", label: "Pending" },
+  { value: "in-progress", label: "In Progress" },
+  { value: "completed", label: "Completed" },
+];
 
 const AssignmentDetails = () => {
   const { id } = useParams();
@@ -66,6 +90,15 @@ const AssignmentDetails = () => {
   const [bulkPayDate, setBulkPayDate] = useState(todayDateInput());
   const [bulkPaying, setBulkPaying] = useState<"pay" | "print" | false>(false);
   const [printOnlyIds, setPrintOnlyIds] = useState<string[] | null>(null);
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [balanceFilter, setBalanceFilter] = useState("all");
+  const [advancedFilter, setAdvancedFilter] = useState("all");
+  const [owner, setOwner] = useState("all");
+  const [destination, setDestination] = useState<string[]>([]);
+  const [buyer, setBuyer] = useState<string[]>([]);
+  const [containerOut, setContainerOut] = useState<string[]>([]);
+  const [yardFilter, setYardFilter] = useState("all");
   const canManage = canEditAssignments();
   const canSeeContainers = canViewContainers();
   const canCreateContainer = canAddContainers();
@@ -220,13 +253,120 @@ const AssignmentDetails = () => {
   const displayAssignment = assignment;
 
   const containers = displayAssignment?.containers || [];
-  const containerGroups = containersGroupedByYardTrip(containers);
+  const ownerOptions = useMemo(() => {
+    const names = new Map<string, string>();
+    containers.forEach((container: any) => {
+      const label = containerOwner(container);
+      const value =
+        container.lorryId?.owner?._id ||
+        container.lorryId?.owner ||
+        containerOwnerKey(container);
+      if (value && label && label !== "—") {
+        names.set(String(value), String(label).toUpperCase());
+      }
+    });
+    return [...names.entries()]
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([value, label]) => ({ value, label }));
+  }, [containers]);
+  const destinationOptions = useMemo(() => {
+    const items = new Map<string, string>();
+    containers.forEach((container: any) => {
+      const option = containerDestinationOption(container);
+      if (option?.value) items.set(option.value, option.label);
+    });
+    return [...items.entries()]
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([value, label]) => ({ value, label }));
+  }, [containers]);
+  const buyerOptions = useMemo(() => {
+    const items = new Map<string, string>();
+    containers.forEach((container: any) => {
+      const option = containerBuyerOption(container);
+      if (option?.value) items.set(option.value, option.label);
+    });
+    return [...items.entries()]
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([value, label]) => ({ value, label }));
+  }, [containers]);
+  const hasContainerFilters = Boolean(
+    query.trim() ||
+      statusFilter !== "all" ||
+      balanceFilter !== "all" ||
+      advancedFilter !== "all" ||
+      owner !== "all" ||
+      destination.length ||
+      buyer.length ||
+      containerOut.length ||
+      yardFilter !== "all"
+  );
+  const filteredContainers = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return containers.filter((container: any) => {
+      if (statusFilter !== "all" && (container.status || "pending") !== statusFilter) {
+        return false;
+      }
+      if (balanceFilter === "unpaid" && containerBalance(container) <= 0) return false;
+      if (advancedFilter === "yes" && toAmount(container?.advanced) <= 0) return false;
+      if (owner !== "all" && !containerMatchesOwner(container, owner)) return false;
+      if (
+        destination.length > 0 &&
+        !destination.some((value) => containerDestinationMatches(container, value))
+      ) {
+        return false;
+      }
+      if (
+        buyer.length > 0 &&
+        !buyer.some((value) => containerBuyerMatches(container, value))
+      ) {
+        return false;
+      }
+      if (
+        containerOut.length > 0 &&
+        !containerOut.includes(String(container?.containerOut || ""))
+      ) {
+        return false;
+      }
+      if (yardFilter === "yes" && !containerIsToYard(container, containers)) return false;
+      if (yardFilter === "no" && containerIsToYard(container, containers)) return false;
+      if (q && !String(container.containerNo || "").toLowerCase().includes(q)) {
+        return false;
+      }
+      return true;
+    });
+  }, [
+    containers,
+    query,
+    statusFilter,
+    balanceFilter,
+    advancedFilter,
+    owner,
+    destination,
+    buyer,
+    containerOut,
+    yardFilter,
+  ]);
+  const clearModalFilters = () => {
+    setStatusFilter("all");
+    setBalanceFilter("all");
+    setAdvancedFilter("all");
+    setOwner("all");
+    setDestination([]);
+    setBuyer([]);
+    setContainerOut([]);
+    setYardFilter("all");
+  };
+  const clearContainerFilters = () => {
+    setQuery("");
+    clearModalFilters();
+  };
+  const containerGroups = containersGroupedByYardTrip(filteredContainers);
   const onwardSourceIds = new Set(
     containers
       .map((container: any) => containerSourceId(container))
       .filter(Boolean)
   );
-  const payableContainers = containers.filter(
+  const payableContainers = filteredContainers.filter(
     (c: any) =>
       c?._id &&
       containerBalance(c) > 0 &&
@@ -398,39 +538,84 @@ const AssignmentDetails = () => {
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handlePrint}>
-            <Printer className="h-4 w-4" />
-            Print
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => downloadExport("pdf")}
-            disabled={!assignment || exporting === "pdf"}
-          >
-            <FileDown className="h-4 w-4" />
-            {exporting === "pdf" ? "PDF..." : "PDF"}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => downloadExport("excel")}
-            disabled={!assignment || exporting === "excel"}
-          >
-            <FileSpreadsheet className="h-4 w-4" />
-            {exporting === "excel" ? "Excel..." : "Excel"}
-          </Button>
-          {canManage ? (
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => setIsEditDialogOpen(true)}
-          >
-            <Trash2 className="h-4 w-4" />
-            Delete
-          </Button>
+        <div className="flex flex-nowrap items-center justify-end gap-2">
+          {canSeeContainers ? (
+            <AssignmentFilters
+              className="w-auto shrink-0 flex-nowrap"
+              query={query}
+              onQueryChange={setQuery}
+              status={statusFilter}
+              onStatusChange={setStatusFilter}
+              statuses={CONTAINER_STATUSES}
+              fromDate=""
+              onFromDateChange={() => undefined}
+              toDate=""
+              onToDateChange={() => undefined}
+              showDates={false}
+              filtersInModal
+              hasFilters={hasContainerFilters}
+              onClear={clearContainerFilters}
+              onClearModal={clearModalFilters}
+              placeholder="Search container number"
+              balanceFilter={balanceFilter}
+              onBalanceFilterChange={setBalanceFilter}
+              advancedFilter={advancedFilter}
+              onAdvancedFilterChange={setAdvancedFilter}
+              owner={owner}
+              onOwnerChange={setOwner}
+              owners={ownerOptions}
+              destination={destination}
+              onDestinationChange={setDestination}
+              destinations={destinationOptions}
+              buyer={buyer}
+              onBuyerChange={setBuyer}
+              buyers={buyerOptions}
+              containerOut={containerOut}
+              onContainerOutChange={setContainerOut}
+              yardFilter={yardFilter}
+              onYardFilterChange={setYardFilter}
+            />
           ) : null}
+          {canSeeContainers ? (
+            <span
+              aria-hidden
+              className="mx-4 h-6 w-px shrink-0 bg-border"
+            />
+          ) : null}
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handlePrint}>
+              <Printer className="h-4 w-4" />
+              Print
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => downloadExport("pdf")}
+              disabled={!assignment || exporting === "pdf"}
+            >
+              <FileDown className="h-4 w-4" />
+              {exporting === "pdf" ? "PDF..." : "PDF"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => downloadExport("excel")}
+              disabled={!assignment || exporting === "excel"}
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              {exporting === "excel" ? "Excel..." : "Excel"}
+            </Button>
+            {canManage ? (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setIsEditDialogOpen(true)}
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </Button>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -462,7 +647,9 @@ const AssignmentDetails = () => {
                 ) : null}
                 <CardTitle className="flex items-center text-base">
                   <Package className="mr-2 h-4 w-4 text-amber-600" />
-                  Containers ({assignment?.containerCount ?? assignment?.containers?.length ?? 0})
+                  Containers ({hasContainerFilters
+                    ? `${filteredContainers.length} of ${assignment?.containerCount ?? containers.length}`
+                    : assignment?.containerCount ?? containers.length})
                 </CardTitle>
               </div>
               <div className="flex items-center gap-2">
@@ -544,7 +731,9 @@ const AssignmentDetails = () => {
                 ))
               ) : (
                 <p className="py-6 text-center text-sm text-muted-foreground">
-                  No containers added yet.
+                  {hasContainerFilters
+                    ? "No containers match these filters."
+                    : "No containers added yet."}
                 </p>
               )}
             </CardContent>
