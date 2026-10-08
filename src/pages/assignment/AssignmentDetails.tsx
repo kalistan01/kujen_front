@@ -9,7 +9,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Package, Printer, Trash2, Plus, ArrowLeft, FileDown, FileSpreadsheet, Banknote, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Package, Printer, Trash2, Plus, ArrowLeft, ArrowUp, FileDown, FileSpreadsheet, Banknote, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/apiError";
 import { brand, brandFile } from "@/lib/brand";
@@ -99,6 +99,14 @@ const AssignmentDetails = () => {
   const [buyer, setBuyer] = useState<string[]>([]);
   const [containerOut, setContainerOut] = useState<string[]>([]);
   const [yardFilter, setYardFilter] = useState("all");
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setShowScrollTop(window.scrollY > 280);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
   const canManage = canEditAssignments();
   const canSeeContainers = canViewContainers();
   const canCreateContainer = canAddContainers();
@@ -516,7 +524,7 @@ const AssignmentDetails = () => {
   return (
     <>
     <div className="space-y-4 print:hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="sticky top-[calc(3rem+1px)] z-[28] -mx-3 flex flex-wrap items-center justify-between gap-3 border-b border-border bg-background/95 px-3 py-2.5 backdrop-blur-xl lg:-mx-3.5 lg:px-3.5 print:static print:mx-0 print:border-0 print:bg-transparent print:px-0 print:py-0">
         <div className="flex min-w-0 items-center gap-3">
           <Button
             variant="outline"
@@ -742,7 +750,7 @@ const AssignmentDetails = () => {
         </div>
 
         {canSeeContainers ? (
-        <div className="space-y-4 lg:sticky lg:top-20 lg:z-20 lg:self-start print:static">
+        <div className="space-y-4 lg:sticky lg:top-32 lg:z-20 lg:self-start print:static">
           <Summary assignment={displayAssignment} />
           <Record assignment={displayAssignment} />
         </div>
@@ -921,6 +929,18 @@ const AssignmentDetails = () => {
         title={printOnlyIds?.length ? "Balance payment" : undefined}
       />
     )}
+    {showScrollTop ? (
+      <Button
+        type="button"
+        size="icon"
+        className="fixed bottom-5 right-5 z-40 h-10 w-10 rounded-full shadow-lg print:hidden"
+        onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+        aria-label="Scroll to top"
+        title="Scroll to top"
+      >
+        <ArrowUp className="h-4 w-4" />
+      </Button>
+    ) : null}
     </>
   );
 };
