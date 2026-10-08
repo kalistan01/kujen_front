@@ -129,7 +129,7 @@ function RotatedImage({
 
   return (
     <div
-      className="relative mx-auto"
+      className="relative mx-auto max-w-full"
       style={
         ready
           ? { width: frameWidth, aspectRatio: `${baseW} / ${baseH}` }
@@ -513,7 +513,7 @@ export default function ContainerDocuments({
         }}
       >
         <DialogContent
-          className="sm:max-w-lg"
+          className="min-w-0 overflow-x-clip sm:max-w-xl [&>*]:min-w-0"
           onPointerDownOutside={(event) => {
             if (preview || adjust) event.preventDefault();
           }}
@@ -536,24 +536,24 @@ export default function ContainerDocuments({
             className="hidden"
             onChange={(event) => onPick(event.target.files)}
           />
-          <div className="space-y-2">
+          <div className="min-w-0 space-y-2">
             {DOCUMENT_SLOTS.map((slot) => {
               const file = fileFor(slot.id);
               return (
                 <div
                   key={slot.id}
-                  className={`flex items-center gap-2 rounded-md border px-2 py-1.5 ${
+                  className={`flex min-w-0 items-center gap-2 rounded-md border px-2 py-1.5 ${
                     slot.id === "weight-sheet" && receivedShort
                       ? "border-red-600 bg-red-50"
                       : "border-border/80"
                   }`}
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium">{slot.label}</p>
+                    <p className="truncate text-sm font-medium">{slot.label}</p>
                     {file ? (
                       <button
                         type="button"
-                        className="block max-w-full truncate text-left text-xs text-muted-foreground"
+                        className="block w-full truncate text-left text-xs text-muted-foreground"
                         onClick={() => openDocument(file, slot.id)}
                         disabled={openingId === file._id}
                       >
@@ -564,67 +564,69 @@ export default function ContainerDocuments({
                       <p className="text-xs text-muted-foreground">No file yet</p>
                     )}
                   </div>
-                  {file ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className={`h-8 w-8 shrink-0 px-0 ${
-                        slot.id === "weight-sheet" && receivedShort
-                          ? "border-red-600 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-600"
-                          : slotButtonClass()
-                      }`}
-                      aria-label={`View ${slot.label}`}
-                      disabled={openingId === file._id}
-                      onClick={() => openDocument(file, slot.id)}
-                    >
-                      {openingId === file._id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <SlotIcon slot={slot.id} className="h-5 w-5 object-contain" />
-                      )}
-                    </Button>
-                  ) : null}
-                  {canManage ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="h-8 shrink-0"
-                      disabled={uploading}
-                      onClick={() => chooseFile(slot.id)}
-                    >
-                      {uploading && slotRef.current === slot.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Upload className="h-3.5 w-3.5" />
-                      )}
-                      {file ? "Replace" : "Upload"}
-                    </Button>
-                  ) : null}
-                  {canManage && file ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 shrink-0 px-0"
-                      disabled={removingId === file._id}
-                      onClick={() => removeDocument(file)}
-                      aria-label={`Remove ${slot.label}`}
-                    >
-                      {removingId === file._id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-3.5 w-3.5" />
-                      )}
-                    </Button>
-                  ) : null}
+                  <div className="flex shrink-0 items-center gap-1">
+                    {file ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className={`h-8 w-8 px-0 ${
+                          slot.id === "weight-sheet" && receivedShort
+                            ? "border-red-600 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-600"
+                            : slotButtonClass()
+                        }`}
+                        aria-label={`View ${slot.label}`}
+                        disabled={openingId === file._id}
+                        onClick={() => openDocument(file, slot.id)}
+                      >
+                        {openingId === file._id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <SlotIcon slot={slot.id} className="h-5 w-5 object-contain" />
+                        )}
+                      </Button>
+                    ) : null}
+                    {canManage ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="h-8"
+                        disabled={uploading}
+                        onClick={() => chooseFile(slot.id)}
+                      >
+                        {uploading && slotRef.current === slot.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Upload className="h-3.5 w-3.5" />
+                        )}
+                        {file ? "Replace" : "Upload"}
+                      </Button>
+                    ) : null}
+                    {canManage && file ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 px-0"
+                        disabled={removingId === file._id}
+                        onClick={() => removeDocument(file)}
+                        aria-label={`Remove ${slot.label}`}
+                      >
+                        {removingId === file._id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
               );
             })}
             {otherFiles.map((file) => (
               <div
                 key={file._id}
-                className="flex items-center gap-2 rounded-md border border-border/80 px-2 py-1.5"
+                className="flex min-w-0 items-center gap-2 rounded-md border border-border/80 px-2 py-1.5"
               >
                 <button
                   type="button"
@@ -664,7 +666,7 @@ export default function ContainerDocuments({
           if (!next && !uploading) closeAdjust();
         }}
       >
-        <DialogContent className="max-h-[90vh] overflow-hidden sm:max-w-lg">
+        <DialogContent className="max-h-[90vh] min-w-0 overflow-hidden sm:max-w-lg [&>*]:min-w-0">
           <DialogHeader>
             <DialogTitle>
               Rotate {documentSlotLabel(adjust?.slot) || "image"}
@@ -673,7 +675,7 @@ export default function ContainerDocuments({
           <p className="text-sm text-muted-foreground">
             Turn the photo so it is upright, then upload it.
           </p>
-          <div className="flex items-center justify-center overflow-hidden rounded-md border border-border bg-muted/30 p-2">
+          <div className="flex min-w-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted/30 p-2">
             {adjust ? (
               <RotatedImage
                 src={adjust.url}
@@ -684,7 +686,7 @@ export default function ContainerDocuments({
               />
             ) : null}
           </div>
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-1">
               <Button
                 type="button"
@@ -741,7 +743,7 @@ export default function ContainerDocuments({
           if (!next && !savingRotation) closePreview();
         }}
       >
-        <DialogContent className="max-h-[90vh] overflow-hidden sm:max-w-3xl">
+        <DialogContent className="max-h-[90vh] min-w-0 overflow-hidden sm:max-w-3xl [&>*]:min-w-0">
           <DialogHeader>
             <div className="flex flex-wrap items-center justify-between gap-2 pr-6">
               <DialogTitle className="truncate">{preview?.name || "Document"}</DialogTitle>
@@ -831,7 +833,7 @@ export default function ContainerDocuments({
           </DialogHeader>
           <div
             ref={viewRef}
-            className={`max-h-[70vh] overflow-auto rounded-md border border-border bg-muted/30 ${
+            className={`min-w-0 max-h-[70vh] overflow-auto rounded-md border border-border bg-muted/30 ${
               isImage ? (grabbing ? "cursor-grabbing" : "cursor-grab") : ""
             }`}
             onPointerDown={startDrag}
