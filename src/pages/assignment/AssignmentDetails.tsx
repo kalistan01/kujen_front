@@ -53,6 +53,12 @@ import { isAdminUser } from "@/lib/auth";
 import { scopeAssignmentContainers } from "@/lib/lorryScope";
 import { useEntitySync } from "@/hooks/useEntitySync";
 import { upsertById } from "@/lib/socket";
+import {
+  containerAfterPayment,
+  nextPaint,
+  openPrintDialog,
+  whenDialogClosed,
+} from "./lib/printPage";
 
 const CONTAINER_STATUSES = [
   { value: "all", label: "All status" },
@@ -229,33 +235,13 @@ const AssignmentDetails = () => {
   };
 
   const handlePrint = (onDone?: () => void) => {
-    const previousTitle = document.title;
-    document.title = `${brand.name} - BL ${assignment?.blNo || ""}`.trim();
-    const style = document.createElement("style");
-    style.setAttribute("data-print-page", "");
-    style.textContent =
-      "@media print { @page { size: A4 landscape; margin: 8mm; } }";
-    document.head.appendChild(style);
-    let restored = false;
-    const restorePage = () => {
-      if (restored) return;
-      restored = true;
-      document.title = previousTitle;
-      style.remove();
-    };
-    let finished = false;
-    const finishPrint = () => {
-      if (finished) return;
-      finished = true;
-      restorePage();
-      window.removeEventListener("afterprint", finishPrint);
-      setPrintOnlyIds(null);
-      onDone?.();
-    };
-    window.addEventListener("afterprint", finishPrint);
-    window.print();
-    window.setTimeout(restorePage, 1500);
-    window.setTimeout(finishPrint, 120000);
+    openPrintDialog(
+      `${brand.name} - BL ${assignment?.blNo || ""}`.trim(),
+      () => {
+        setPrintOnlyIds(null);
+        onDone?.();
+      }
+    );
   };
 
   const displayAssignment = assignment;
@@ -414,27 +400,38 @@ const AssignmentDetails = () => {
         containerIds: paidIds,
         balanceDate: bulkPayDate || todayDateInput(),
       })
-      .then((response) => {
+      .then(async (response) => {
         const paidAssignment = response.data?.data;
-        if (paidAssignment) {
-          setAssignment((prev) =>
-            mergePopulatedAssignment(prev, paidAssignment)
-          );
-        }
+        const balanceDate = bulkPayDate || todayDateInput();
+        setAssignment((prev) => {
+          const merged = mergePopulatedAssignment(prev, paidAssignment);
+          if (!merged) return merged;
+          return {
+            ...merged,
+            containers: (merged.containers || []).map((container: any) => {
+              if (!paidIds.includes(String(container?._id))) return container;
+              const previous = (prev?.containers || []).find(
+                (item: any) => String(item?._id) === String(container?._id)
+              );
+              return containerAfterPayment(previous, container, balanceDate);
+            }),
+          };
+        });
         toast({
           title: "Balances paid",
           description: `${selectedContainers.length} container${
             selectedContainers.length === 1 ? "" : "s"
           } · ${formatMoney(selectedTotal)}`,
         });
-        setIsBulkPayOpen(false);
         setSelectedIds([]);
         if (andPrint) {
           setPrintOnlyIds(paidIds);
-          window.setTimeout(() => {
-            handlePrint(() => loadAssignment());
-          }, 250);
+          setIsBulkPayOpen(false);
+          await whenDialogClosed();
+          await nextPaint();
+          handlePrint(() => loadAssignment());
         } else {
+          setIsBulkPayOpen(false);
           loadAssignment();
         }
       })
@@ -591,7 +588,7 @@ const AssignmentDetails = () => {
             />
           ) : null}
           <div className="flex shrink-0 flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handlePrint}>
+            <Button variant="outline" size="sm" onClick={() => handlePrint()}>
               <Printer className="h-4 w-4" />
               Print
             </Button>

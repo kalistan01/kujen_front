@@ -85,10 +85,43 @@ async function fitJpeg(
   throw new Error("Could not compress this image under 100KB.");
 }
 
-async function compressImage(file: File): Promise<CompressedFile> {
-  const bitmap = await createImageBitmap(file);
+function quarterTurns(value: number) {
+  return ((Math.round(value) % 4) + 4) % 4;
+}
+
+function rotateSource(
+  source: CanvasImageSource,
+  sourceWidth: number,
+  sourceHeight: number,
+  turns: number
+) {
+  const quarter = quarterTurns(turns);
+  if (quarter === 0) {
+    return { source, width: sourceWidth, height: sourceHeight };
+  }
+  const swap = quarter % 2 === 1;
+  const canvas = document.createElement("canvas");
+  canvas.width = swap ? sourceHeight : sourceWidth;
+  canvas.height = swap ? sourceWidth : sourceHeight;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Could not read this image.");
+  ctx.translate(canvas.width / 2, canvas.height / 2);
+  ctx.rotate((quarter * Math.PI) / 2);
+  ctx.drawImage(
+    source,
+    -sourceWidth / 2,
+    -sourceHeight / 2,
+    sourceWidth,
+    sourceHeight
+  );
+  return { source: canvas, width: canvas.width, height: canvas.height };
+}
+
+async function compressImage(file: File, turns = 0): Promise<CompressedFile> {
+  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
   try {
-    const blob = await fitJpeg(bitmap, bitmap.width, bitmap.height);
+    const rotated = rotateSource(bitmap, bitmap.width, bitmap.height, turns);
+    const blob = await fitJpeg(rotated.source, rotated.width, rotated.height);
     return {
       name: `${stem(file.name)}.jpg`,
       mimeType: "image/jpeg",
@@ -196,7 +229,7 @@ function isPdf(file: File) {
   return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
 }
 
-export async function compressUpload(file: File) {
+export async function compressUpload(file: File, turns = 0) {
   if (!file || file.size <= 0) {
     throw new Error("Choose an image or a PDF.");
   }
@@ -205,7 +238,7 @@ export async function compressUpload(file: File) {
     throw new Error("Upload an image or a PDF.");
   }
   try {
-    return await compressImage(file);
+    return await compressImage(file, turns);
   } catch (error) {
     if (error instanceof Error && error.message.includes("100KB")) throw error;
     throw new Error("Could not read this image.");

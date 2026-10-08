@@ -52,6 +52,13 @@ import FclExtendedTable, { type FclExtendedRow } from "./components/FclExtendedT
 import DocumentListTable, { type DocumentListRow } from "./components/DocumentListTable";
 import { useEntitySync } from "@/hooks/useEntitySync";
 import { upsertById } from "@/lib/socket";
+import type { ContainerListRow } from "./components/ContainerListTable";
+import {
+  containerAfterPayment,
+  nextPaint,
+  openPrintDialog,
+  whenDialogClosed,
+} from "./lib/printPage";
 
 const CONTAINER_STATUSES = [
   { value: "all", label: "All status" },
@@ -118,6 +125,9 @@ export const AssignmentManagement = () => {
   const [bulkPaying, setBulkPaying] = useState<"pay" | "print" | false>(false);
   const [printTitle, setPrintTitle] = useState<string | undefined>();
   const [printOnlyIds, setPrintOnlyIds] = useState<string[] | null>(null);
+  const [printSnapshot, setPrintSnapshot] = useState<ContainerListRow[] | null>(
+    null
+  );
   const [fclRows, setFclRows] = useState<FclExtendedRow[]>([]);
   const [fclLoading, setFclLoading] = useState(false);
   const [fclDatePreset, setFclDatePreset] = useState<
@@ -704,7 +714,7 @@ export const AssignmentManagement = () => {
   const selectedRows = useMemo(
     () =>
       allContainerRows.filter((row) =>
-        selectedIds.includes(row.container?._id)
+        selectedIds.some((id) => String(id) === String(row.container?._id))
       ),
     [allContainerRows, selectedIds]
   );
@@ -714,10 +724,11 @@ export const AssignmentManagement = () => {
       (row.container?.status !== "completed" || isAdminUser())
   );
   const printRows = useMemo(() => {
+    if (printSnapshot?.length) return printSnapshot;
     if (!printOnlyIds?.length) return selectedRows;
     const paid = new Set(printOnlyIds.map(String));
     return selectedRows.filter((row) => paid.has(String(row.container?._id)));
-  }, [printOnlyIds, selectedRows]);
+  }, [printOnlyIds, printSnapshot, selectedRows]);
   const selectedTotal = payableSelectedRows.reduce(
     (sum, row) => sum + containerBalance(row.container),
     0
@@ -743,41 +754,19 @@ export const AssignmentManagement = () => {
   };
 
   const handlePrintSelected = (onDone?: () => void) => {
-    if (!selectedRows.length) {
+    if (!printSnapshot?.length && !selectedRows.length) {
       toast({
         title: "Select containers",
         description: "Choose one or more rows to print.",
       });
       return;
     }
-    const previousTitle = document.title;
-    document.title = brandFile("Containers");
-    const style = document.createElement("style");
-    style.setAttribute("data-print-page", "");
-    style.textContent =
-      "@media print { @page { size: A4 landscape; margin: 8mm; } }";
-    document.head.appendChild(style);
-    let restored = false;
-    const restorePage = () => {
-      if (restored) return;
-      restored = true;
-      document.title = previousTitle;
-      style.remove();
-    };
-    let finished = false;
-    const finishPrint = () => {
-      if (finished) return;
-      finished = true;
-      restorePage();
-      window.removeEventListener("afterprint", finishPrint);
+    openPrintDialog(brandFile("Containers"), () => {
       setPrintTitle(undefined);
       setPrintOnlyIds(null);
+      setPrintSnapshot(null);
       onDone?.();
-    };
-    window.addEventListener("afterprint", finishPrint);
-    window.print();
-    window.setTimeout(restorePage, 1500);
-    window.setTimeout(finishPrint, 120000);
+    });
   };
 
   const handleBulkPay = (andPrint = false) => {
@@ -787,8 +776,8 @@ export const AssignmentManagement = () => {
       .filter(Boolean);
     const groups = new Map<string, string[]>();
     payableSelectedRows.forEach((row) => {
-      const assignmentId = row.assignment?._id;
-      const containerId = row.container?._id;
+      const assignmentId = String(row.assignment?._id || "");
+      const containerId = String(row.container?._id || "");
       if (!assignmentId || !containerId) return;
       const ids = groups.get(assignmentId) || [];
       ids.push(containerId);
@@ -805,10 +794,28 @@ export const AssignmentManagement = () => {
         })
       )
     )
-      .then((responses) => {
+      .then(async (responses) => {
         const paidAssignments = responses
           .map((response) => response.data?.data)
           .filter(Boolean);
+        const balanceDate = bulkPayDate || todayDateInput();
+        const snapshot = payableSelectedRows.map((row) => {
+          const updated = paidAssignments.find(
+            (item: any) => String(item?._id) === String(row.assignment?._id)
+          );
+          const assignment = updated
+            ? mergePopulatedAssignment(row.assignment, updated)
+            : row.assignment;
+          const merged =
+            (assignment?.containers || []).find(
+              (container: any) =>
+                String(container?._id) === String(row.container?._id)
+            ) || row.container;
+          return {
+            assignment,
+            container: containerAfterPayment(row.container, merged, balanceDate),
+          };
+        });
         if (paidAssignments.length) {
           setAssignments((prev) => {
             const next = [...prev];
@@ -817,7 +824,28 @@ export const AssignmentManagement = () => {
                 (item) => String(item?._id) === String(updated?._id)
               );
               if (index >= 0) {
-                next[index] = mergePopulatedAssignment(next[index], updated);
+                const current = next[index];
+                const merged = mergePopulatedAssignment(current, updated);
+                const paidForAssignment = new Set(
+                  (groups.get(String(updated?._id)) || []).map(String)
+                );
+                next[index] = {
+                  ...merged,
+                  containers: (merged?.containers || []).map((container: any) => {
+                    if (!paidForAssignment.has(String(container?._id))) {
+                      return container;
+                    }
+                    const previous = (current?.containers || []).find(
+                      (item: any) =>
+                        String(item?._id) === String(container?._id)
+                    );
+                    return containerAfterPayment(
+                      previous,
+                      container,
+                      balanceDate
+                    );
+                  }),
+                };
               }
             });
             return next;
@@ -829,17 +857,22 @@ export const AssignmentManagement = () => {
             payableSelectedRows.length === 1 ? "" : "s"
           } · ${formatMoney(selectedTotal)}`,
         });
-        setIsBulkPayOpen(false);
         if (andPrint) {
+          setPrintSnapshot(snapshot);
           setPrintTitle("Balance payment");
           setPrintOnlyIds(paidIds);
-          window.setTimeout(() => {
-            handlePrintSelected(() => {
-              setSelectedIds([]);
-              loadAssignments();
-            });
-          }, 250);
+          setIsBulkPayOpen(false);
+          await whenDialogClosed();
+          await nextPaint();
+          openPrintDialog(brandFile("Containers"), () => {
+            setPrintTitle(undefined);
+            setPrintOnlyIds(null);
+            setPrintSnapshot(null);
+            setSelectedIds([]);
+            loadAssignments();
+          });
         } else {
+          setIsBulkPayOpen(false);
           setSelectedIds([]);
           return loadAssignments();
         }

@@ -185,6 +185,22 @@ input::-webkit-inner-spin-button {
     overflow: visible !important;
   }
 
+  /* Dialog scroll-lock is more specific than `body` and would clip the receipt. */
+  html body[data-scroll-locked] {
+    overflow: visible !important;
+    position: static !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overscroll-behavior: auto !important;
+  }
+
+  .no-print,
+  [role="dialog"] {
+    display: none !important;
+  }
+
   .min-h-screen {
     min-height: 0 !important;
     height: auto !important;
@@ -538,6 +554,15 @@ input::-webkit-inner-spin-button {
   .print-table .num {
     text-align: right;
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .print-table .print-subdate {
+    display: block;
+    margin-top: 1px;
+    font-size: 7px;
+    font-weight: 600;
+    color: #667085;
     white-space: nowrap;
   }
 

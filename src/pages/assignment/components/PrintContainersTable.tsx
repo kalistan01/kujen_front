@@ -111,6 +111,13 @@ function PrintContainersTable({
               {chargeColumns.map((field) => (
                 <td key={field.key} className="num">
                   {formatMoneyCompact(container?.[field.key])}
+                  {field.key === "balancePaid" &&
+                  canSeeField("balanceDate") &&
+                  toAmount(container?.balancePaid) > 0 ? (
+                    <div className="print-subdate">
+                      {formatDate(container?.balanceDate)}
+                    </div>
+                  ) : null}
                 </td>
               ))}
               {showTotals ? (

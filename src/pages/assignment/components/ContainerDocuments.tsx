@@ -1,5 +1,14 @@
 import { useEffect, useRef, useState, type PointerEvent } from "react";
-import { FileText, Loader2, Trash2, Upload, ZoomIn, ZoomOut } from "lucide-react";
+import {
+  FileText,
+  Loader2,
+  RotateCcw,
+  RotateCw,
+  Trash2,
+  Upload,
+  ZoomIn,
+  ZoomOut,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -80,6 +89,82 @@ function formatSize(size?: number) {
   return `${Math.max(1, Math.round(size / 1024))} KB`;
 }
 
+function knownSlot(slot?: string): DocumentSlot | undefined {
+  return DOCUMENT_SLOTS.some((item) => item.id === slot)
+    ? (slot as DocumentSlot)
+    : undefined;
+}
+
+function quarterOf(turns: number) {
+  return ((turns % 4) + 4) % 4;
+}
+
+function isPdfFile(file: File) {
+  return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+}
+
+function RotatedImage({
+  src,
+  alt,
+  turns,
+  zoom,
+  fitHeight,
+}: {
+  src: string;
+  alt: string;
+  turns: number;
+  zoom: number;
+  fitHeight?: string;
+}) {
+  const [natural, setNatural] = useState({ w: 0, h: 0 });
+  const quarter = quarterOf(turns);
+  const swapped = quarter % 2 === 1;
+  const ready = natural.w > 0 && natural.h > 0;
+  const baseW = swapped ? natural.h : natural.w;
+  const baseH = swapped ? natural.w : natural.h;
+  const frameWidth =
+    ready && fitHeight
+      ? `min(100%, calc(${fitHeight} * ${baseW} / ${baseH}))`
+      : `${zoom * 100}%`;
+
+  return (
+    <div
+      className="relative mx-auto"
+      style={
+        ready
+          ? { width: frameWidth, aspectRatio: `${baseW} / ${baseH}` }
+          : { width: frameWidth }
+      }
+    >
+      <img
+        src={src}
+        alt={alt}
+        draggable={false}
+        onLoad={(event) => {
+          const img = event.currentTarget;
+          setNatural({
+            w: img.naturalWidth || 1,
+            h: img.naturalHeight || 1,
+          });
+        }}
+        className="pointer-events-none max-w-none select-none"
+        style={
+          ready
+            ? {
+                position: "absolute",
+                left: "50%",
+                top: "50%",
+                width: swapped ? `${(baseH / baseW) * 100}%` : "100%",
+                height: swapped ? "auto" : "100%",
+                transform: `translate(-50%, -50%) rotate(${quarter * 90}deg)`,
+              }
+            : { width: "100%", height: "auto" }
+        }
+      />
+    </div>
+  );
+}
+
 export default function ContainerDocuments({
   assignmentId,
   containerId,
@@ -103,9 +188,19 @@ export default function ContainerDocuments({
     url: string;
     mimeType: string;
     name: string;
+    slot?: string;
   } | null>(null);
+  const [adjust, setAdjust] = useState<{
+    file: File;
+    slot: DocumentSlot;
+    url: string;
+    turns: number;
+  } | null>(null);
+  const adjustUrlRef = useRef("");
   const [zoom, setZoom] = useState(1);
+  const [rotation, setRotation] = useState(0);
   const [grabbing, setGrabbing] = useState(false);
+  const [savingRotation, setSavingRotation] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -113,12 +208,31 @@ export default function ContainerDocuments({
     };
   }, [preview]);
 
+  useEffect(() => {
+    return () => {
+      if (adjustUrlRef.current) URL.revokeObjectURL(adjustUrlRef.current);
+    };
+  }, []);
+
   const closePreview = () => {
     if (preview?.url) URL.revokeObjectURL(preview.url);
     setPreview(null);
     setZoom(1);
+    setRotation(0);
     setGrabbing(false);
     dragRef.current = null;
+  };
+
+  const closeAdjust = () => {
+    if (adjustUrlRef.current) URL.revokeObjectURL(adjustUrlRef.current);
+    adjustUrlRef.current = "";
+    setAdjust(null);
+  };
+
+  const turnAdjust = (direction: 1 | -1) => {
+    setAdjust((current) =>
+      current ? { ...current, turns: current.turns + direction } : current
+    );
   };
 
   const isImage = Boolean(preview && preview.mimeType !== "application/pdf");
@@ -153,14 +267,10 @@ export default function ContainerDocuments({
     }
   };
 
-  const onPick = async (list: FileList | null) => {
-    const file = list?.[0];
-    const slot = slotRef.current;
-    if (inputRef.current) inputRef.current.value = "";
-    if (!file || !slot || uploading) return;
+  const uploadFile = async (file: File, slot: DocumentSlot, turns = 0) => {
     setUploading(true);
     try {
-      const prepared = await compressUpload(file);
+      const prepared = await compressUpload(file, turns);
       await baseUrl.post(
         `assignlorry/${assignmentId}/containers/${containerId}/documents`,
         {
@@ -175,6 +285,7 @@ export default function ContainerDocuments({
         description: "The file is saved on this container.",
       });
       onChanged?.();
+      return true;
     } catch (error) {
       toast({
         title: "Upload failed",
@@ -187,12 +298,34 @@ export default function ContainerDocuments({
         variant: "destructive",
       });
       onChanged?.();
+      return false;
     } finally {
       setUploading(false);
     }
   };
 
-  const openDocument = async (doc: ContainerDocument) => {
+  const onPick = (list: FileList | null) => {
+    const file = list?.[0];
+    const slot = slotRef.current;
+    if (inputRef.current) inputRef.current.value = "";
+    if (!file || !slot || uploading) return;
+    if (!isPdfFile(file) && file.type.startsWith("image/")) {
+      if (adjustUrlRef.current) URL.revokeObjectURL(adjustUrlRef.current);
+      const url = URL.createObjectURL(file);
+      adjustUrlRef.current = url;
+      setAdjust({ file, slot, url, turns: 0 });
+      return;
+    }
+    void uploadFile(file, slot);
+  };
+
+  const confirmAdjust = async () => {
+    if (!adjust || uploading) return;
+    const saved = await uploadFile(adjust.file, adjust.slot, adjust.turns);
+    if (saved) closeAdjust();
+  };
+
+  const openDocument = async (doc: ContainerDocument, slot?: string) => {
     if (!doc._id || openingId) return;
     setOpeningId(doc._id);
     try {
@@ -206,12 +339,14 @@ export default function ContainerDocuments({
       }
       const url = URL.createObjectURL(blob);
       setZoom(1);
+      setRotation(0);
       setPreview((current) => {
         if (current?.url) URL.revokeObjectURL(current.url);
         return {
           url,
           mimeType: doc.mimeType || blob.type,
           name: doc.originalName || "Document",
+          slot: slot || doc.slot,
         };
       });
     } catch (error) {
@@ -234,6 +369,49 @@ export default function ContainerDocuments({
       });
     } finally {
       setOpeningId("");
+    }
+  };
+
+  const saveRotation = async () => {
+    if (!preview || savingRotation || uploading) return;
+    const slot = knownSlot(preview.slot);
+    const quarter = quarterOf(rotation);
+    if (!slot || quarter === 0 || preview.mimeType === "application/pdf") return;
+    setSavingRotation(true);
+    try {
+      const blob = await fetch(preview.url).then((response) => response.blob());
+      const file = new File([blob], preview.name || "image.jpg", {
+        type: blob.type || preview.mimeType || "image/jpeg",
+      });
+      const prepared = await compressUpload(file, quarter);
+      await baseUrl.post(
+        `assignlorry/${assignmentId}/containers/${containerId}/documents`,
+        {
+          slot,
+          name: prepared.name,
+          mimeType: prepared.mimeType,
+          data: prepared.data,
+        }
+      );
+      toast({
+        title: "Saved",
+        description: "The image was rotated.",
+      });
+      onChanged?.();
+      closePreview();
+    } catch (error) {
+      toast({
+        title: "Could not save rotation",
+        description: getApiErrorMessage(
+          error,
+          error instanceof Error
+            ? error.message
+            : "Could not rotate the image. Please try again."
+        ),
+        variant: "destructive",
+      });
+    } finally {
+      setSavingRotation(false);
     }
   };
 
@@ -313,7 +491,7 @@ export default function ContainerDocuments({
                   }`}
                   aria-label={`View ${slotHoverLabel(slot.id)}`}
                   disabled={openingId === file._id}
-                  onClick={() => openDocument(file)}
+                  onClick={() => openDocument(file, slot.id)}
                 >
                   {openingId === file._id ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -330,18 +508,26 @@ export default function ContainerDocuments({
       <Dialog
         open={open}
         onOpenChange={(next) => {
-          if (!next && preview) return;
+          if (!next && (preview || adjust)) return;
           setOpen(next);
         }}
       >
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent
+          className="sm:max-w-lg"
+          onPointerDownOutside={(event) => {
+            if (preview || adjust) event.preventDefault();
+          }}
+          onInteractOutside={(event) => {
+            if (preview || adjust) event.preventDefault();
+          }}
+        >
           <DialogHeader>
             <DialogTitle>
               Documents{containerNo ? ` · ${containerNo}` : ""}
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Each file is an image or PDF, compressed to under 100KB.
+            Each file is an image or PDF, compressed to under 100KB. Images can be rotated before they are saved.
           </p>
           <input
             ref={inputRef}
@@ -368,7 +554,7 @@ export default function ContainerDocuments({
                       <button
                         type="button"
                         className="block max-w-full truncate text-left text-xs text-muted-foreground"
-                        onClick={() => openDocument(file)}
+                        onClick={() => openDocument(file, slot.id)}
                         disabled={openingId === file._id}
                       >
                         {file.originalName || (file.mimeType === "application/pdf" ? "PDF" : "Image")}
@@ -390,7 +576,7 @@ export default function ContainerDocuments({
                       }`}
                       aria-label={`View ${slot.label}`}
                       disabled={openingId === file._id}
-                      onClick={() => openDocument(file)}
+                      onClick={() => openDocument(file, slot.id)}
                     >
                       {openingId === file._id ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -443,7 +629,7 @@ export default function ContainerDocuments({
                 <button
                   type="button"
                   className="flex min-w-0 flex-1 items-center gap-2 text-left"
-                  onClick={() => openDocument(file)}
+                  onClick={() => openDocument(file, file.slot)}
                 >
                   <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <span className="min-w-0 truncate text-sm">
@@ -473,16 +659,134 @@ export default function ContainerDocuments({
         </DialogContent>
       </Dialog>
       <Dialog
+        open={Boolean(adjust)}
+        onOpenChange={(next) => {
+          if (!next && !uploading) closeAdjust();
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-hidden sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              Rotate {documentSlotLabel(adjust?.slot) || "image"}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Turn the photo so it is upright, then upload it.
+          </p>
+          <div className="flex items-center justify-center overflow-hidden rounded-md border border-border bg-muted/30 p-2">
+            {adjust ? (
+              <RotatedImage
+                src={adjust.url}
+                alt={adjust.file.name}
+                turns={adjust.turns}
+                zoom={1}
+                fitHeight="46vh"
+              />
+            ) : null}
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 px-0"
+                aria-label="Rotate left"
+                disabled={uploading}
+                onClick={() => turnAdjust(-1)}
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 px-0"
+                aria-label="Rotate right"
+                disabled={uploading}
+                onClick={() => turnAdjust(1)}
+              >
+                <RotateCw className="h-3.5 w-3.5" />
+              </Button>
+              <span className="w-10 text-center text-xs tabular-nums text-muted-foreground">
+                {quarterOf(adjust?.turns || 0) * 90}°
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={uploading}
+                onClick={closeAdjust}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                disabled={uploading || !adjust}
+                onClick={() => void confirmAdjust()}
+              >
+                {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                Upload
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog
         open={Boolean(preview)}
         onOpenChange={(next) => {
-          if (!next) closePreview();
+          if (!next && !savingRotation) closePreview();
         }}
       >
         <DialogContent className="max-h-[90vh] overflow-hidden sm:max-w-3xl">
           <DialogHeader>
-            <div className="flex items-center justify-between gap-2 pr-6">
+            <div className="flex flex-wrap items-center justify-between gap-2 pr-6">
               <DialogTitle className="truncate">{preview?.name || "Document"}</DialogTitle>
               <div className="flex shrink-0 items-center gap-1">
+                {isImage ? (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 w-8 px-0"
+                      aria-label="Rotate left"
+                      disabled={savingRotation}
+                      onClick={() => {
+                        setRotation((current) => current - 1);
+                        if (viewRef.current) {
+                          viewRef.current.scrollLeft = 0;
+                          viewRef.current.scrollTop = 0;
+                        }
+                      }}
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 w-8 px-0"
+                      aria-label="Rotate right"
+                      disabled={savingRotation}
+                      onClick={() => {
+                        setRotation((current) => current + 1);
+                        if (viewRef.current) {
+                          viewRef.current.scrollLeft = 0;
+                          viewRef.current.scrollTop = 0;
+                        }
+                      }}
+                    >
+                      <RotateCw className="h-3.5 w-3.5" />
+                    </Button>
+                    <span className="w-10 text-center text-xs tabular-nums text-muted-foreground">
+                      {quarterOf(rotation) * 90}°
+                    </span>
+                  </>
+                ) : null}
                 <Button
                   type="button"
                   variant="outline"
@@ -508,6 +812,20 @@ export default function ContainerDocuments({
                 >
                   <ZoomIn className="h-3.5 w-3.5" />
                 </Button>
+                {isImage && canManage && knownSlot(preview?.slot) && quarterOf(rotation) !== 0 ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-8"
+                    disabled={savingRotation}
+                    onClick={() => void saveRotation()}
+                  >
+                    {savingRotation ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : null}
+                    Save
+                  </Button>
+                ) : null}
               </div>
             </div>
           </DialogHeader>
@@ -537,12 +855,11 @@ export default function ContainerDocuments({
                 }}
               />
             ) : preview ? (
-              <img
+              <RotatedImage
                 src={preview.url}
                 alt={preview.name}
-                draggable={false}
-                className="pointer-events-none mx-auto h-auto max-w-none select-none"
-                style={{ width: `${zoom * 100}%` }}
+                turns={rotation}
+                zoom={zoom}
               />
             ) : null}
           </div>
