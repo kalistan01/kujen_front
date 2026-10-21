@@ -16,6 +16,8 @@ import {
   BarChart3,
   MapPinned,
   Contact,
+  UserRound,
+  CalendarCheck,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { OutHireTableModal } from "@/components/OutHireTableModal";
@@ -84,6 +86,24 @@ const allMenuItems = [
     icon: Contact,
     path: "/buyers",
     permission: [P.BUYERS_VIEW, P.BUYERS_ADD, P.BUYERS_EDIT],
+  },
+  {
+    id: "staff-members",
+    label: "Staff",
+    icon: UserRound,
+    path: "/staff-members",
+    permission: [
+      P.STAFF_MEMBERS_VIEW,
+      P.STAFF_MEMBERS_ADD,
+      P.STAFF_MEMBERS_EDIT,
+    ],
+  },
+  {
+    id: "attendance",
+    label: "Attendance",
+    icon: CalendarCheck,
+    path: "/attendance",
+    permission: [P.ATTENDANCE_VIEW, P.ATTENDANCE_MARK],
   },
   {
     id: "assignments",

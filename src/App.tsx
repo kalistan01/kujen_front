@@ -15,6 +15,8 @@ import PrivateRoute from "./PrivateRoute";
 import { SettingsPage } from "./pages/settings/Settings";
 import { OutHireManagement } from "./pages/outhire/OutHireManagement";
 import { BuyerManagement } from "./pages/buyer/BuyerManagement";
+import { StaffMemberManagement } from "./pages/staff-member/StaffMemberManagement";
+import { AttendanceManagement } from "./pages/attendance/AttendanceManagement";
 import { LogsPage } from "./pages/logs/LogsPage";
 import { ReportsPage } from "./pages/reports/ReportsPage";
 import { NotePage } from "./pages/note/NotePage";
@@ -68,6 +70,28 @@ const App = () => (
                   element={
                     <RequirePermission ids={[P.BUYERS_VIEW, P.BUYERS_ADD, P.BUYERS_EDIT]}>
                       <BuyerManagement />
+                    </RequirePermission>
+                  }
+                />
+                <Route
+                  path="/staff-members"
+                  element={
+                    <RequirePermission
+                      ids={[
+                        P.STAFF_MEMBERS_VIEW,
+                        P.STAFF_MEMBERS_ADD,
+                        P.STAFF_MEMBERS_EDIT,
+                      ]}
+                    >
+                      <StaffMemberManagement />
+                    </RequirePermission>
+                  }
+                />
+                <Route
+                  path="/attendance"
+                  element={
+                    <RequirePermission ids={[P.ATTENDANCE_VIEW, P.ATTENDANCE_MARK]}>
+                      <AttendanceManagement />
                     </RequirePermission>
                   }
                 />

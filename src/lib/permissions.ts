@@ -65,6 +65,11 @@ export const P = {
   BUYERS_VIEW: 64,
   BUYERS_ADD: 65,
   BUYERS_EDIT: 66,
+  STAFF_MEMBERS_VIEW: 67,
+  STAFF_MEMBERS_ADD: 68,
+  STAFF_MEMBERS_EDIT: 69,
+  ATTENDANCE_VIEW: 70,
+  ATTENDANCE_MARK: 71,
 } as const;
 
 export type PermissionId = (typeof P)[keyof typeof P];
@@ -125,6 +130,19 @@ export const PAGE_ACCESS: PageAccessItem[] = [
     editId: P.BUYERS_EDIT,
   },
   {
+    name: "Staff",
+    description: "Team members for attendance",
+    viewId: P.STAFF_MEMBERS_VIEW,
+    addId: P.STAFF_MEMBERS_ADD,
+    editId: P.STAFF_MEMBERS_EDIT,
+  },
+  {
+    name: "Attendance",
+    description: "Daily attendance and check-in",
+    viewId: P.ATTENDANCE_VIEW,
+    editId: P.ATTENDANCE_MARK,
+  },
+  {
     name: "Assignments",
     description: "BLs and shipment records",
     viewId: P.ASSIGNMENTS_VIEW,
@@ -157,6 +175,11 @@ export const PAGE_PERMISSIONS: PermissionItem[] = [
   { id: P.BUYERS_VIEW, name: "View Buyers", description: "Open the buyers page", group: "pages" },
   { id: P.BUYERS_ADD, name: "Add Buyers", description: "Create buyers", group: "pages" },
   { id: P.BUYERS_EDIT, name: "Edit Buyers", description: "Update buyer name and address", group: "pages" },
+  { id: P.STAFF_MEMBERS_VIEW, name: "View Staff", description: "Open the staff directory", group: "pages" },
+  { id: P.STAFF_MEMBERS_ADD, name: "Add Staff", description: "Create staff members", group: "pages" },
+  { id: P.STAFF_MEMBERS_EDIT, name: "Edit Staff", description: "Update and activate staff members", group: "pages" },
+  { id: P.ATTENDANCE_VIEW, name: "View Attendance", description: "Open the attendance page", group: "pages" },
+  { id: P.ATTENDANCE_MARK, name: "Mark Attendance", description: "Save daily roster and check-in times", group: "pages" },
   { id: P.ASSIGNMENTS_VIEW, name: "View Assignments", description: "Open assignments and details", group: "pages" },
   { id: P.ASSIGNMENTS_ADD, name: "Add Assignments", description: "Create assignments", group: "pages" },
   { id: P.ASSIGNMENTS_EDIT, name: "Edit Assignments", description: "Update and delete assignments", group: "pages" },
@@ -177,6 +200,7 @@ const LEGACY_ADD_TO_EDIT: Array<[number, number]> = [
   [P.ROLES_ADD, P.ROLES_EDIT],
   [P.ASSIGNMENTS_ADD, P.ASSIGNMENTS_EDIT],
   [P.BUYERS_ADD, P.BUYERS_EDIT],
+  [P.STAFF_MEMBERS_ADD, P.STAFF_MEMBERS_EDIT],
 ];
 
 const LEGACY_FROM_PARENT: Array<[number, number[]]> = [
@@ -261,6 +285,9 @@ const MUST_GRANT = new Set<number>([
   P.LOGS_VIEW,
   P.BUYERS_ADD,
   P.BUYERS_EDIT,
+  P.STAFF_MEMBERS_ADD,
+  P.STAFF_MEMBERS_EDIT,
+  P.ATTENDANCE_MARK,
 ]);
 
 export const FIELD_KEY_TO_ID: Record<string, number> = Object.fromEntries(
