@@ -18,14 +18,17 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/PageHeader";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/apiError";
 import baseUrl from "@/api/baseUrl";
 import { can, P } from "@/lib/permissions";
+import { brand, brandFile } from "@/lib/brand";
 import { useEntitySync } from "@/hooks/useEntitySync";
 import { asList } from "@/lib/utils";
+import { openPrintDialog } from "@/pages/assignment/lib/printPage";
 import type { StaffMember } from "@/pages/staff-member/AddStaffMember";
 import {
   CalendarCheck,
@@ -33,6 +36,7 @@ import {
   Loader2,
   LogIn,
   LogOut,
+  Printer,
   Save,
 } from "lucide-react";
 
@@ -156,6 +160,7 @@ export const AttendanceManagement = () => {
   const [saving, setSaving] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [tab, setTab] = useState("attendance");
 
   const loadDay = useCallback(
     async (day: string, staffList: StaffMember[]) => {
@@ -372,337 +377,412 @@ export const AttendanceManagement = () => {
     [rows]
   );
 
+  const historyStaffLabel = useMemo(() => {
+    if (historyStaffId === "all") return "All staff";
+    const member = staff.find((item) => item._id === historyStaffId);
+    return member?.name || "Staff";
+  }, [historyStaffId, staff]);
+
+  const historyRangeLabel = useMemo(() => {
+    if (historyFrom && historyTo) return `${historyFrom} to ${historyTo}`;
+    if (historyFrom) return `From ${historyFrom}`;
+    if (historyTo) return `To ${historyTo}`;
+    return "All dates";
+  }, [historyFrom, historyTo]);
+
+  const handlePrintHistory = () => {
+    if (!history.length) {
+      toast({
+        title: "Nothing to print",
+        description: "Load attendance history first.",
+        variant: "destructive",
+      });
+      return;
+    }
+    openPrintDialog(brandFile("Attendance-History"), undefined, {
+      orientation: "portrait",
+    });
+  };
+
+  const renderHistoryRows = (records: AttendanceRecord[]) =>
+    records.map((record, index) => {
+      const member =
+        typeof record.staffMemberId === "object" ? record.staffMemberId : null;
+      return (
+        <TableRow key={record._id || index}>
+          <TableCell>{String(record.date || "").slice(0, 10)}</TableCell>
+          <TableCell className="font-medium">
+            {member?.name || staffIdOf(record.staffMemberId)}
+          </TableCell>
+          <TableCell>
+            <Badge variant="secondary">
+              {STATUS_OPTIONS.find((item) => item.value === record.status)
+                ?.label || record.status}
+            </Badge>
+          </TableCell>
+          <TableCell>{toTimeInput(record.checkIn) || "—"}</TableCell>
+          <TableCell>{toTimeInput(record.checkOut) || "—"}</TableCell>
+          <TableCell className="max-w-[220px] truncate text-sm print:max-w-none print:whitespace-normal">
+            {record.note || "—"}
+          </TableCell>
+        </TableRow>
+      );
+    });
+
   return (
     <div className="space-y-4">
-      <PageHeader
-        title="Attendance"
-        description="Mark daily status and check-in / check-out times."
-      >
-        <Input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value || todayLocal())}
-          className="h-10 w-full sm:w-44"
+      <div className="print:hidden">
+        <PageHeader
+          title="Attendance"
+          description="Mark daily status and review attendance history."
         />
-        {canMark ? (
-          <>
-            <Button variant="outline" onClick={handleMarkAllPresent}>
-              <CheckCheck className="h-4 w-4" />
-              Mark all present
-            </Button>
-            <Button
-              onClick={handleSave}
-              disabled={saving || !rows.length}
-              className="bg-[hsl(var(--brand-navy))] text-white hover:bg-[hsl(var(--brand-navy-muted))]"
-            >
-              {saving ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4" />
-              )}
-              {dirty ? "Save day*" : "Save day"}
-            </Button>
-          </>
-        ) : null}
-      </PageHeader>
+      </div>
 
-      <Card className="overflow-hidden">
-        <CardHeader className="border-b border-border/70 bg-muted/30 py-4">
-          <CardTitle className="flex items-center justify-between text-base font-semibold">
-            <span className="flex items-center gap-2">
-              <CalendarCheck className="h-4 w-4" />
-              Roster for {date}
-            </span>
-            <Badge variant="secondary">
-              {presentCount}/{rows.length} present
-            </Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="space-y-3 px-4 py-6">
-              {Array.from({ length: 4 }).map((_, index) => (
-                <Skeleton key={index} className="h-10 w-full" />
-              ))}
-            </div>
-          ) : rows.length === 0 ? (
-            <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
-              <CalendarCheck className="mb-3 h-10 w-10 text-muted-foreground/50" />
-              <p className="font-medium">No active staff</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Add active staff members on the Staff page first.
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/20 hover:bg-muted/20">
-                    <TableHead>Name</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Check in</TableHead>
-                    <TableHead>Check out</TableHead>
-                    <TableHead>Note</TableHead>
-                    {canMark ? (
-                      <TableHead className="text-right">Quick</TableHead>
-                    ) : null}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rows.map((row) => {
-                    const timesDisabled =
-                      !canMark ||
-                      row.status === "absent" ||
-                      row.status === "leave";
-                    return (
-                      <TableRow key={row.staffMemberId}>
-                        <TableCell>
-                          <div className="font-semibold">{row.name}</div>
-                          {row.linked ? (
-                            <Badge variant="secondary" className="mt-1">
-                              {row.linked}
-                            </Badge>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">
-                              Non-user
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell className="min-w-[140px]">
-                          <Select
-                            value={row.status}
-                            disabled={!canMark}
-                            onValueChange={(value) =>
-                              updateRow(row.staffMemberId, {
-                                status: value as AttendanceStatus,
-                                ...(value === "absent" || value === "leave"
-                                  ? { checkIn: "", checkOut: "" }
-                                  : {}),
-                              })
-                            }
-                          >
-                            <SelectTrigger className="h-9 text-sm">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {STATUS_OPTIONS.map((option) => (
-                                <SelectItem
-                                  key={option.value}
-                                  value={option.value}
-                                >
-                                  {option.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                        <TableCell className="min-w-[120px]">
-                          <Input
-                            type="time"
-                            value={row.checkIn}
-                            disabled={timesDisabled}
-                            onChange={(e) =>
-                              updateRow(row.staffMemberId, {
-                                checkIn: e.target.value,
-                              })
-                            }
-                            className="h-9"
-                          />
-                        </TableCell>
-                        <TableCell className="min-w-[120px]">
-                          <Input
-                            type="time"
-                            value={row.checkOut}
-                            disabled={timesDisabled}
-                            onChange={(e) =>
-                              updateRow(row.staffMemberId, {
-                                checkOut: e.target.value,
-                              })
-                            }
-                            className="h-9"
-                          />
-                        </TableCell>
-                        <TableCell className="min-w-[160px]">
-                          <Input
-                            value={row.note}
-                            disabled={!canMark}
-                            onChange={(e) =>
-                              updateRow(row.staffMemberId, {
-                                note: e.target.value,
-                              })
-                            }
-                            placeholder="Optional"
-                            className="h-9"
-                          />
-                        </TableCell>
-                        {canMark ? (
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-1">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                disabled={timesDisabled}
-                                onClick={() =>
-                                  updateRow(row.staffMemberId, {
-                                    status:
-                                      row.status === "absent" ||
-                                      row.status === "leave"
-                                        ? "present"
-                                        : row.status,
-                                    checkIn: nowTimeInput(),
-                                  })
-                                }
-                              >
-                                <LogIn className="h-3.5 w-3.5" />
-                                In
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                disabled={timesDisabled || !row.checkIn}
-                                onClick={() =>
-                                  updateRow(row.staffMemberId, {
-                                    checkOut: nowTimeInput(),
-                                  })
-                                }
-                              >
-                                <LogOut className="h-3.5 w-3.5" />
-                                Out
-                              </Button>
-                            </div>
-                          </TableCell>
-                        ) : null}
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList className="print:hidden">
+          <TabsTrigger value="attendance">Attendance</TabsTrigger>
+          <TabsTrigger value="history">History</TabsTrigger>
+        </TabsList>
 
-      <Card className="overflow-hidden">
-        <CardHeader className="border-b border-border/70 bg-muted/30 py-4">
-          <CardTitle className="text-base font-semibold">History</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4 p-4">
-          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
-            <div className="space-y-1">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                From
-              </p>
-              <Input
-                type="date"
-                value={historyFrom}
-                onChange={(e) => setHistoryFrom(e.target.value)}
-                className="h-9 w-full sm:w-40"
-              />
-            </div>
-            <div className="space-y-1">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                To
-              </p>
-              <Input
-                type="date"
-                value={historyTo}
-                onChange={(e) => setHistoryTo(e.target.value)}
-                className="h-9 w-full sm:w-40"
-              />
-            </div>
-            <div className="space-y-1">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                Staff
-              </p>
-              <Select
-                value={historyStaffId}
-                onValueChange={setHistoryStaffId}
-              >
-                <SelectTrigger className="h-9 w-full text-sm sm:w-52">
-                  <SelectValue placeholder="All staff" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All staff</SelectItem>
-                  {staff.map((member) =>
-                    member._id ? (
-                      <SelectItem key={member._id} value={member._id}>
-                        {member.name}
-                      </SelectItem>
-                    ) : null
+        <TabsContent
+          value="attendance"
+          className="mt-4 space-y-4 print:hidden"
+        >
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+            <Input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value || todayLocal())}
+              className="h-10 w-full sm:w-44"
+            />
+            {canMark ? (
+              <>
+                <Button variant="outline" onClick={handleMarkAllPresent}>
+                  <CheckCheck className="h-4 w-4" />
+                  Mark all present
+                </Button>
+                <Button
+                  onClick={handleSave}
+                  disabled={saving || !rows.length}
+                  className="bg-[hsl(var(--brand-navy))] text-white hover:bg-[hsl(var(--brand-navy-muted))]"
+                >
+                  {saving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
                   )}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button
-              variant="outline"
-              onClick={loadHistory}
-              disabled={historyLoading}
-            >
-              {historyLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : null}
-              Load history
-            </Button>
+                  {dirty ? "Save day*" : "Save day"}
+                </Button>
+              </>
+            ) : null}
           </div>
 
-          {history.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              {historyLoading
-                ? "Loading..."
-                : "Choose a range and load attendance history."}
-            </p>
-          ) : (
-            <div className="overflow-x-auto rounded-lg border border-border">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/20 hover:bg-muted/20">
-                    <TableHead>Date</TableHead>
-                    <TableHead>Staff</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Check in</TableHead>
-                    <TableHead>Check out</TableHead>
-                    <TableHead>Note</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {history.map((record, index) => {
-                    const member =
-                      typeof record.staffMemberId === "object"
-                        ? record.staffMemberId
-                        : null;
-                    return (
-                      <TableRow key={record._id || index}>
-                        <TableCell>
-                          {String(record.date || "").slice(0, 10)}
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {member?.name || staffIdOf(record.staffMemberId)}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary">
-                            {STATUS_OPTIONS.find(
-                              (item) => item.value === record.status
-                            )?.label || record.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{toTimeInput(record.checkIn) || "—"}</TableCell>
-                        <TableCell>
-                          {toTimeInput(record.checkOut) || "—"}
-                        </TableCell>
-                        <TableCell className="max-w-[220px] truncate text-sm">
-                          {record.note || "—"}
-                        </TableCell>
+          <Card className="overflow-hidden">
+            <CardHeader className="border-b border-border/70 bg-muted/30 py-4">
+              <CardTitle className="flex items-center justify-between text-base font-semibold">
+                <span className="flex items-center gap-2">
+                  <CalendarCheck className="h-4 w-4" />
+                  Roster for {date}
+                </span>
+                <Badge variant="secondary">
+                  {presentCount}/{rows.length} present
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {loading ? (
+                <div className="space-y-3 px-4 py-6">
+                  {Array.from({ length: 4 }).map((_, index) => (
+                    <Skeleton key={index} className="h-10 w-full" />
+                  ))}
+                </div>
+              ) : rows.length === 0 ? (
+                <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
+                  <CalendarCheck className="mb-3 h-10 w-10 text-muted-foreground/50" />
+                  <p className="font-medium">No active staff</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Add active staff members on the Staff page first.
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/20 hover:bg-muted/20">
+                        <TableHead>Name</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Check in</TableHead>
+                        <TableHead>Check out</TableHead>
+                        <TableHead>Note</TableHead>
+                        {canMark ? (
+                          <TableHead className="text-right">Quick</TableHead>
+                        ) : null}
                       </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {rows.map((row) => {
+                        const timesDisabled =
+                          !canMark ||
+                          row.status === "absent" ||
+                          row.status === "leave";
+                        return (
+                          <TableRow key={row.staffMemberId}>
+                            <TableCell>
+                              <div className="font-semibold">{row.name}</div>
+                              {row.linked ? (
+                                <Badge variant="secondary" className="mt-1">
+                                  {row.linked}
+                                </Badge>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">
+                                  Non-user
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell className="min-w-[140px]">
+                              <Select
+                                value={row.status}
+                                disabled={!canMark}
+                                onValueChange={(value) =>
+                                  updateRow(row.staffMemberId, {
+                                    status: value as AttendanceStatus,
+                                    ...(value === "absent" || value === "leave"
+                                      ? { checkIn: "", checkOut: "" }
+                                      : {}),
+                                  })
+                                }
+                              >
+                                <SelectTrigger className="h-9 text-sm">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {STATUS_OPTIONS.map((option) => (
+                                    <SelectItem
+                                      key={option.value}
+                                      value={option.value}
+                                    >
+                                      {option.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell className="min-w-[120px]">
+                              <Input
+                                type="time"
+                                value={row.checkIn}
+                                disabled={timesDisabled}
+                                onChange={(e) =>
+                                  updateRow(row.staffMemberId, {
+                                    checkIn: e.target.value,
+                                  })
+                                }
+                                className="h-9"
+                              />
+                            </TableCell>
+                            <TableCell className="min-w-[120px]">
+                              <Input
+                                type="time"
+                                value={row.checkOut}
+                                disabled={timesDisabled}
+                                onChange={(e) =>
+                                  updateRow(row.staffMemberId, {
+                                    checkOut: e.target.value,
+                                  })
+                                }
+                                className="h-9"
+                              />
+                            </TableCell>
+                            <TableCell className="min-w-[160px]">
+                              <Input
+                                value={row.note}
+                                disabled={!canMark}
+                                onChange={(e) =>
+                                  updateRow(row.staffMemberId, {
+                                    note: e.target.value,
+                                  })
+                                }
+                                placeholder="Optional"
+                                className="h-9"
+                              />
+                            </TableCell>
+                            {canMark ? (
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-1">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={timesDisabled}
+                                    onClick={() =>
+                                      updateRow(row.staffMemberId, {
+                                        status:
+                                          row.status === "absent" ||
+                                          row.status === "leave"
+                                            ? "present"
+                                            : row.status,
+                                        checkIn: nowTimeInput(),
+                                      })
+                                    }
+                                  >
+                                    <LogIn className="h-3.5 w-3.5" />
+                                    In
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={timesDisabled || !row.checkIn}
+                                    onClick={() =>
+                                      updateRow(row.staffMemberId, {
+                                        checkOut: nowTimeInput(),
+                                      })
+                                    }
+                                  >
+                                    <LogOut className="h-3.5 w-3.5" />
+                                    Out
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            ) : null}
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="history" className="mt-4">
+          <Card className="overflow-hidden">
+            <CardHeader className="border-b border-border/70 bg-muted/30 py-4 print:hidden">
+              <CardTitle className="text-base font-semibold">History</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 p-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end print:hidden">
+                <div className="space-y-1">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                    From
+                  </p>
+                  <Input
+                    type="date"
+                    value={historyFrom}
+                    onChange={(e) => setHistoryFrom(e.target.value)}
+                    className="h-9 w-full sm:w-40"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                    To
+                  </p>
+                  <Input
+                    type="date"
+                    value={historyTo}
+                    onChange={(e) => setHistoryTo(e.target.value)}
+                    className="h-9 w-full sm:w-40"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                    Staff
+                  </p>
+                  <Select
+                    value={historyStaffId}
+                    onValueChange={setHistoryStaffId}
+                  >
+                    <SelectTrigger className="h-9 w-full text-sm sm:w-52">
+                      <SelectValue placeholder="All staff" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All staff</SelectItem>
+                      {staff.map((member) =>
+                        member._id ? (
+                          <SelectItem key={member._id} value={member._id}>
+                            {member.name}
+                          </SelectItem>
+                        ) : null
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={loadHistory}
+                  disabled={historyLoading}
+                >
+                  {historyLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : null}
+                  Load history
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handlePrintHistory}
+                  disabled={!history.length || historyLoading}
+                >
+                  <Printer className="h-4 w-4" />
+                  Print
+                </Button>
+              </div>
+
+              <div className="mb-4 hidden print:block">
+                <div className="flex items-start justify-between gap-4 border-b border-border pb-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                      {brand.tagline}
+                    </p>
+                    <h1 className="text-xl font-bold">{brand.name}</h1>
+                    <p className="mt-1 text-base font-semibold">
+                      Attendance History
+                    </p>
+                  </div>
+                  <p className="text-right text-xs text-muted-foreground">
+                    Printed{" "}
+                    {new Date().toLocaleString("en-GB", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                </div>
+                <p className="mt-3 text-sm text-muted-foreground">
+                  {historyRangeLabel} · {historyStaffLabel} · {history.length}{" "}
+                  record{history.length === 1 ? "" : "s"}
+                </p>
+              </div>
+
+              {history.length === 0 ? (
+                <p className="py-6 text-center text-sm text-muted-foreground print:hidden">
+                  {historyLoading
+                    ? "Loading..."
+                    : "Choose a range and load attendance history."}
+                </p>
+              ) : (
+                <div className="overflow-x-auto rounded-lg border border-border print:overflow-visible print:rounded-none print:border-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/20 hover:bg-muted/20">
+                        <TableHead>Date</TableHead>
+                        <TableHead>Staff</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Check in</TableHead>
+                        <TableHead>Check out</TableHead>
+                        <TableHead>Note</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>{renderHistoryRows(history)}</TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

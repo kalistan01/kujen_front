@@ -42,13 +42,17 @@ export function nextPaint() {
   });
 }
 
-export function openPrintDialog(title: string, onFinish?: () => void) {
+export function openPrintDialog(
+  title: string,
+  onFinish?: () => void,
+  options?: { orientation?: "portrait" | "landscape" }
+) {
+  const orientation = options?.orientation === "portrait" ? "portrait" : "landscape";
   const previousTitle = document.title;
   document.title = title;
   const style = document.createElement("style");
   style.setAttribute("data-print-page", "");
-  style.textContent =
-    "@media print { @page { size: A4 landscape; margin: 8mm; } }";
+  style.textContent = `@media print { @page { size: A4 ${orientation}; margin: 8mm; } }`;
   document.head.appendChild(style);
 
   let finished = false;
