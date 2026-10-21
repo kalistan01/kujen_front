@@ -24,6 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/apiError";
 import baseUrl from "@/api/baseUrl";
+import { isAdminUser } from "@/lib/auth";
 import { can, P } from "@/lib/permissions";
 import { brand, brandFile } from "@/lib/brand";
 import { useEntitySync } from "@/hooks/useEntitySync";
@@ -149,6 +150,7 @@ function buildRows(
 export const AttendanceManagement = () => {
   const { toast } = useToast();
   const canMark = can(P.ATTENDANCE_MARK);
+  const isAdmin = isAdminUser();
   const [date, setDate] = useState(todayLocal);
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [rows, setRows] = useState<RowState[]>([]);
@@ -391,6 +393,14 @@ export const AttendanceManagement = () => {
   }, [historyFrom, historyTo]);
 
   const handlePrintHistory = () => {
+    if (!isAdmin) {
+      toast({
+        title: "Admin only",
+        description: "Only administrators can print attendance history.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (!history.length) {
       toast({
         title: "Nothing to print",
@@ -718,14 +728,16 @@ export const AttendanceManagement = () => {
                   ) : null}
                   Load history
                 </Button>
-                <Button
-                  variant="outline"
-                  onClick={handlePrintHistory}
-                  disabled={!history.length || historyLoading}
-                >
-                  <Printer className="h-4 w-4" />
-                  Print
-                </Button>
+                {isAdmin ? (
+                  <Button
+                    variant="outline"
+                    onClick={handlePrintHistory}
+                    disabled={!history.length || historyLoading}
+                  >
+                    <Printer className="h-4 w-4" />
+                    Print
+                  </Button>
+                ) : null}
               </div>
 
               <div className="mb-4 hidden print:block">
