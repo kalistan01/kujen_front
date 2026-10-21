@@ -28,7 +28,7 @@ import { isAdminUser } from "@/lib/auth";
 import { can, P } from "@/lib/permissions";
 import { brand, brandFile } from "@/lib/brand";
 import { useEntitySync } from "@/hooks/useEntitySync";
-import { asList } from "@/lib/utils";
+import { asList, cn } from "@/lib/utils";
 import { openPrintDialog } from "@/pages/assignment/lib/printPage";
 import type { StaffMember } from "@/pages/staff-member/AddStaffMember";
 import {
@@ -65,12 +65,60 @@ type RowState = {
   recordId?: string;
 };
 
-const STATUS_OPTIONS: { value: AttendanceStatus; label: string }[] = [
-  { value: "present", label: "Present" },
-  { value: "absent", label: "Absent" },
-  { value: "leave", label: "Leave" },
-  { value: "half_day", label: "Half day" },
+const STATUS_OPTIONS: {
+  value: AttendanceStatus;
+  label: string;
+  className: string;
+}[] = [
+  {
+    value: "present",
+    label: "Present",
+    className:
+      "border-0 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+  },
+  {
+    value: "absent",
+    label: "Absent",
+    className:
+      "border-0 bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",
+  },
+  {
+    value: "leave",
+    label: "Leave",
+    className:
+      "border-0 bg-amber-50 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300",
+  },
+  {
+    value: "half_day",
+    label: "Half day",
+    className:
+      "border-0 bg-sky-50 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300",
+  },
 ];
+
+function statusStyle(status: AttendanceStatus) {
+  return (
+    STATUS_OPTIONS.find((item) => item.value === status)?.className ||
+    "border-0 bg-muted text-foreground"
+  );
+}
+
+function statusLabel(status: AttendanceStatus) {
+  return (
+    STATUS_OPTIONS.find((item) => item.value === status)?.label || status
+  );
+}
+
+function StatusBadge({ status }: { status: AttendanceStatus }) {
+  return (
+    <Badge
+      variant="secondary"
+      className={cn("border-0 font-semibold shadow-none", statusStyle(status))}
+    >
+      {statusLabel(status)}
+    </Badge>
+  );
+}
 
 function todayLocal() {
   const now = new Date();
@@ -425,10 +473,7 @@ export const AttendanceManagement = () => {
             {member?.name || staffIdOf(record.staffMemberId)}
           </TableCell>
           <TableCell>
-            <Badge variant="secondary">
-              {STATUS_OPTIONS.find((item) => item.value === record.status)
-                ?.label || record.status}
-            </Badge>
+            <StatusBadge status={record.status} />
           </TableCell>
           <TableCell>{toTimeInput(record.checkIn) || "—"}</TableCell>
           <TableCell>{toTimeInput(record.checkOut) || "—"}</TableCell>
@@ -562,7 +607,12 @@ export const AttendanceManagement = () => {
                                   })
                                 }
                               >
-                                <SelectTrigger className="h-9 text-sm">
+                                <SelectTrigger
+                                  className={cn(
+                                    "h-9 border-0 text-sm font-semibold shadow-none focus:ring-0 focus:ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0 data-[state=open]:ring-0",
+                                    statusStyle(row.status)
+                                  )}
+                                >
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -571,7 +621,14 @@ export const AttendanceManagement = () => {
                                       key={option.value}
                                       value={option.value}
                                     >
-                                      {option.label}
+                                      <span
+                                        className={cn(
+                                          "inline-flex rounded-md px-2 py-0.5 text-xs font-semibold",
+                                          option.className
+                                        )}
+                                      >
+                                        {option.label}
+                                      </span>
                                     </SelectItem>
                                   ))}
                                 </SelectContent>

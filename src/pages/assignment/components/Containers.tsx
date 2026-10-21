@@ -159,6 +159,7 @@ function Containers({
   const [heldUpAmount, setHeldUpAmount] = useState("");
   const [savingHeldUp, setSavingHeldUp] = useState(false);
   const [payDate, setPayDate] = useState(todayDateInput());
+  const [fclReceivedDate, setFclReceivedDate] = useState("");
   const [paying, setPaying] = useState(false);
   const [isRevokeOpen, setIsRevokeOpen] = useState(false);
   const [revoking, setRevoking] = useState(false);
@@ -405,10 +406,12 @@ function Containers({
   const handlePayBalance = () => {
     if (!id || !container?._id || paying || balance <= 0) return;
     setPaying(true);
+    const payload: { balanceDate: string; fclReceivedDate?: string } = {
+      balanceDate: payDate || todayDateInput(),
+    };
+    if (fclReceivedDate) payload.fclReceivedDate = fclReceivedDate;
     baseUrl
-      .patch(`assignlorry/${id}/containers/${container._id}/balance`, {
-        balanceDate: payDate || todayDateInput(),
-      })
+      .patch(`assignlorry/${id}/containers/${container._id}/balance`, payload)
       .then(() => {
         toast({
           title: "Balance paid",
@@ -883,7 +886,13 @@ function Containers({
             open={isPayOpen}
             onOpenChange={(open) => {
               setIsPayOpen(open);
-              if (open) setPayDate(todayDateInput());
+              if (open) {
+                setPayDate(todayDateInput());
+                setFclReceivedDate(
+                  toDateKey(parseFcl(container?.fcl).received.date) ||
+                    todayDateInput()
+                );
+              }
             }}
           >
             <DialogTrigger asChild>
@@ -907,6 +916,14 @@ function Containers({
                     type="date"
                     value={payDate}
                     onChange={(e) => setPayDate(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label>FCL received date</Label>
+                  <Input
+                    type="date"
+                    value={fclReceivedDate}
+                    onChange={(e) => setFclReceivedDate(e.target.value)}
                   />
                 </div>
                 <div className="flex justify-end gap-2 pt-1">

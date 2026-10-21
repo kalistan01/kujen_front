@@ -122,6 +122,7 @@ export const AssignmentManagement = () => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isBulkPayOpen, setIsBulkPayOpen] = useState(false);
   const [bulkPayDate, setBulkPayDate] = useState(todayDateInput());
+  const [bulkFclReceivedDate, setBulkFclReceivedDate] = useState(todayDateInput());
   const [bulkPaying, setBulkPaying] = useState<"pay" | "print" | false>(false);
   const [printTitle, setPrintTitle] = useState<string | undefined>();
   const [printOnlyIds, setPrintOnlyIds] = useState<string[] | null>(null);
@@ -787,12 +788,23 @@ export const AssignmentManagement = () => {
 
     setBulkPaying(andPrint ? "print" : "pay");
     Promise.all(
-      [...groups.entries()].map(([assignmentId, containerIds]) =>
-        baseUrl.patch(`/assignlorry/${assignmentId}/pay-balances`, {
+      [...groups.entries()].map(([assignmentId, containerIds]) => {
+        const payPayload: {
+          containerIds: string[];
+          balanceDate: string;
+          fclReceivedDate?: string;
+        } = {
           containerIds,
           balanceDate: bulkPayDate || todayDateInput(),
-        })
-      )
+        };
+        if (bulkFclReceivedDate) {
+          payPayload.fclReceivedDate = bulkFclReceivedDate;
+        }
+        return baseUrl.patch(
+          `/assignlorry/${assignmentId}/pay-balances`,
+          payPayload
+        );
+      })
     )
       .then(async (responses) => {
         const paidAssignments = responses
@@ -1140,6 +1152,7 @@ export const AssignmentManagement = () => {
                   disabled={!payableSelectedRows.length}
                   onClick={() => {
                     setBulkPayDate(todayDateInput());
+                    setBulkFclReceivedDate(todayDateInput());
                     setIsBulkPayOpen(true);
                   }}
                 >
@@ -1320,6 +1333,14 @@ export const AssignmentManagement = () => {
                 type="date"
                 value={bulkPayDate}
                 onChange={(e) => setBulkPayDate(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label>FCL received date</Label>
+              <Input
+                type="date"
+                value={bulkFclReceivedDate}
+                onChange={(e) => setBulkFclReceivedDate(e.target.value)}
               />
             </div>
             <div className="flex flex-wrap justify-end gap-2">
