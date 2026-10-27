@@ -1,10 +1,20 @@
 import type { PDFPageProxy } from "pdfjs-dist";
 
 export const MAX_DOCUMENT_BYTES = 100 * 1024;
+export const MAX_AUDIO_BYTES = 2 * 1024 * 1024;
 
 export type CompressedFile = {
   name: string;
-  mimeType: "image/jpeg" | "application/pdf";
+  mimeType:
+    | "image/jpeg"
+    | "application/pdf"
+    | "audio/mpeg"
+    | "audio/mp4"
+    | "audio/aac"
+    | "audio/wav"
+    | "audio/ogg"
+    | "audio/webm"
+    | "video/mp4";
   data: string;
   size: number;
 };
@@ -229,9 +239,88 @@ function isPdf(file: File) {
   return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
 }
 
-export async function compressUpload(file: File, turns = 0) {
+const AUDIO_EXT: Record<string, CompressedFile["mimeType"]> = {
+  ".mp3": "audio/mpeg",
+  ".m4a": "audio/mp4",
+  ".mp4": "video/mp4",
+  ".aac": "audio/aac",
+  ".wav": "audio/wav",
+  ".ogg": "audio/ogg",
+  ".oga": "audio/ogg",
+  ".webm": "audio/webm",
+};
+
+function audioMimeFromName(name: string): CompressedFile["mimeType"] | "" {
+  const lower = String(name || "").toLowerCase();
+  const ext = Object.keys(AUDIO_EXT).find((item) => lower.endsWith(item));
+  return ext ? AUDIO_EXT[ext] : "";
+}
+
+function normalizeAudioMime(file: File): CompressedFile["mimeType"] | "" {
+  const type = String(file.type || "").toLowerCase();
+  if (type === "audio/mp3") return "audio/mpeg";
+  if (type === "audio/x-wav" || type === "audio/wave") return "audio/wav";
+  if (type === "video/mp4" || type === "audio/mp4") {
+    // Phone voice clips often arrive as .mp4 with video/mp4.
+    if (file.name.toLowerCase().endsWith(".m4a")) return "audio/mp4";
+    if (file.name.toLowerCase().endsWith(".mp4") || type === "video/mp4") {
+      return "video/mp4";
+    }
+    return "audio/mp4";
+  }
+  if (
+    type === "audio/mpeg" ||
+    type === "audio/aac" ||
+    type === "audio/wav" ||
+    type === "audio/ogg" ||
+    type === "audio/webm"
+  ) {
+    return type;
+  }
+  return audioMimeFromName(file.name);
+}
+
+export function isAudioFile(file: File) {
+  return Boolean(normalizeAudioMime(file));
+}
+
+async function prepareAudio(file: File): Promise<CompressedFile> {
   if (!file || file.size <= 0) {
-    throw new Error("Choose an image or a PDF.");
+    throw new Error("Choose an audio file.");
+  }
+  if (file.size > MAX_AUDIO_BYTES) {
+    throw new Error("Audio must be under 2MB.");
+  }
+  const mimeType = normalizeAudioMime(file);
+  if (!mimeType) {
+    throw new Error("Upload an MP3, M4A, MP4, WAV, OGG, or WebM audio file.");
+  }
+  const ext =
+    Object.entries(AUDIO_EXT).find(([, value]) => value === mimeType)?.[0] ||
+    ".mp3";
+  const name = file.name.toLowerCase().endsWith(ext)
+    ? file.name
+    : `${stem(file.name)}${ext}`;
+  return {
+    name,
+    mimeType,
+    data: await blobToBase64(file),
+    size: file.size,
+  };
+}
+
+export async function compressUpload(
+  file: File,
+  turns = 0,
+  options?: { kind?: "document" | "audio" }
+) {
+  if (!file || file.size <= 0) {
+    throw new Error(
+      options?.kind === "audio" ? "Choose an audio file." : "Choose an image or a PDF."
+    );
+  }
+  if (options?.kind === "audio" || isAudioFile(file)) {
+    return prepareAudio(file);
   }
   if (isPdf(file)) return compressPdf(file);
   if (!file.type.startsWith("image/")) {

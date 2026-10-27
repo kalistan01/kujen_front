@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState, type PointerEvent } from "react";
+import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import {
   FileText,
   Loader2,
+  Pause,
+  Play,
   RotateCcw,
   RotateCw,
   Trash2,
@@ -24,17 +26,27 @@ import {
 import baseUrl from "@/api/baseUrl";
 import { useToast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/apiError";
-import { compressUpload } from "../lib/compressFile";
+import { compressUpload, isAudioFile } from "../lib/compressFile";
 
 export const DOCUMENT_SLOTS = [
-  { id: "weight-sheet", label: "Weight sheet" },
-  { id: "gate-pass", label: "Gate pass" },
+  { id: "weight-sheet", label: "Weight sheet", kind: "document" },
+  { id: "gate-pass", label: "Gate pass", kind: "document" },
+  { id: "audio", label: "Audio", kind: "audio" },
 ] as const;
 
 export type DocumentSlot = (typeof DOCUMENT_SLOTS)[number]["id"];
 
 export function documentSlotLabel(slot?: string) {
   return DOCUMENT_SLOTS.find((item) => item.id === slot)?.label || "";
+}
+
+function slotKind(slot?: string) {
+  return DOCUMENT_SLOTS.find((item) => item.id === slot)?.kind || "document";
+}
+
+function isAudioMime(mimeType?: string) {
+  const type = String(mimeType || "").toLowerCase();
+  return type.startsWith("audio/") || type === "video/mp4";
 }
 
 export type ContainerDocument = {
@@ -66,17 +78,36 @@ function nextZoom(current: number, direction: 1 | -1) {
   return previous ?? ZOOM_STEPS[0];
 }
 
-const SLOT_ICONS: Record<DocumentSlot, string> = {
+const SLOT_IMAGE_ICONS: Partial<Record<DocumentSlot, string>> = {
   "weight-sheet": "/weightsheet.png",
   "gate-pass": "/gatepass.png",
 };
 
-function SlotIcon({ slot, className }: { slot: DocumentSlot; className?: string }) {
-  return <img src={SLOT_ICONS[slot]} alt="" className={className} />;
+function SlotIcon({
+  slot,
+  className,
+  playing,
+}: {
+  slot: DocumentSlot;
+  className?: string;
+  playing?: boolean;
+}) {
+  const image = SLOT_IMAGE_ICONS[slot];
+  if (image) return <img src={image} alt="" className={className} />;
+  if (slot === "audio") {
+    return playing ? (
+      <Pause className={className || "h-3.5 w-3.5"} />
+    ) : (
+      <Play className={className || "h-3.5 w-3.5"} />
+    );
+  }
+  return <FileText className={className || "h-3.5 w-3.5"} />;
 }
 
 function slotHoverLabel(slot: DocumentSlot) {
-  return slot === "weight-sheet" ? "Weight" : "Gate";
+  if (slot === "weight-sheet") return "Weight";
+  if (slot === "gate-pass") return "Gate";
+  return "Audio";
 }
 
 function slotButtonClass() {
@@ -86,6 +117,9 @@ function slotButtonClass() {
 function formatSize(size?: number) {
   if (!size || size < 0) return "";
   if (size < 1024) return `${size} B`;
+  if (size >= 1024 * 1024) {
+    return `${(size / (1024 * 1024)).toFixed(size >= 10 * 1024 * 1024 ? 0 : 1)} MB`;
+  }
   return `${Math.max(1, Math.round(size / 1024))} KB`;
 }
 
@@ -201,6 +235,25 @@ export default function ContainerDocuments({
   const [rotation, setRotation] = useState(0);
   const [grabbing, setGrabbing] = useState(false);
   const [savingRotation, setSavingRotation] = useState(false);
+  const [playingId, setPlayingId] = useState("");
+  const [loadingAudioId, setLoadingAudioId] = useState("");
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUrlRef = useRef("");
+
+  const stopAudio = () => {
+    const player = audioRef.current;
+    if (player) {
+      player.pause();
+      player.removeAttribute("src");
+      player.load();
+    }
+    audioRef.current = null;
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current);
+      audioUrlRef.current = "";
+    }
+    setPlayingId("");
+  };
 
   useEffect(() => {
     return () => {
@@ -211,6 +264,12 @@ export default function ContainerDocuments({
   useEffect(() => {
     return () => {
       if (adjustUrlRef.current) URL.revokeObjectURL(adjustUrlRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      stopAudio();
     };
   }, []);
 
@@ -270,7 +329,9 @@ export default function ContainerDocuments({
   const uploadFile = async (file: File, slot: DocumentSlot, turns = 0) => {
     setUploading(true);
     try {
-      const prepared = await compressUpload(file, turns);
+      const prepared = await compressUpload(file, turns, {
+        kind: slotKind(slot),
+      });
       await baseUrl.post(
         `assignlorry/${assignmentId}/containers/${containerId}/documents`,
         {
@@ -282,7 +343,10 @@ export default function ContainerDocuments({
       );
       toast({
         title: "Uploaded",
-        description: "The file is saved on this container.",
+        description:
+          slotKind(slot) === "audio"
+            ? "The audio is saved on this container."
+            : "The file is saved on this container.",
       });
       onChanged?.();
       return true;
@@ -309,6 +373,18 @@ export default function ContainerDocuments({
     const slot = slotRef.current;
     if (inputRef.current) inputRef.current.value = "";
     if (!file || !slot || uploading) return;
+    if (slotKind(slot) === "audio") {
+      if (!isAudioFile(file)) {
+        toast({
+          title: "Upload failed",
+          description: "Upload an MP3, M4A, MP4, WAV, OGG, or WebM audio file.",
+          variant: "destructive",
+        });
+        return;
+      }
+      void uploadFile(file, slot);
+      return;
+    }
     if (!isPdfFile(file) && file.type.startsWith("image/")) {
       if (adjustUrlRef.current) URL.revokeObjectURL(adjustUrlRef.current);
       const url = URL.createObjectURL(file);
@@ -325,8 +401,28 @@ export default function ContainerDocuments({
     if (saved) closeAdjust();
   };
 
+  const readBlobError = async (error: unknown, fallback: string) => {
+    let description = fallback;
+    const data = (error as { response?: { data?: Blob } })?.response?.data;
+    if (data instanceof Blob) {
+      try {
+        const parsed = JSON.parse(await data.text()) as { message?: string };
+        if (parsed.message) description = parsed.message;
+      } catch {
+        description = getApiErrorMessage(error, description);
+      }
+    } else {
+      description = getApiErrorMessage(error, description);
+    }
+    return description;
+  };
+
   const openDocument = async (doc: ContainerDocument, slot?: string) => {
     if (!doc._id || openingId) return;
+    if (slotKind(slot || doc.slot) === "audio" || isAudioMime(doc.mimeType)) {
+      void toggleAudio(doc);
+      return;
+    }
     setOpeningId(doc._id);
     try {
       const response = await baseUrl.get(
@@ -350,25 +446,65 @@ export default function ContainerDocuments({
         };
       });
     } catch (error) {
-      let description = "Could not open this file. Please try again.";
-      const data = (error as { response?: { data?: Blob } })?.response?.data;
-      if (data instanceof Blob) {
-        try {
-          const parsed = JSON.parse(await data.text()) as { message?: string };
-          if (parsed.message) description = parsed.message;
-        } catch {
-          description = getApiErrorMessage(error, description);
-        }
-      } else {
-        description = getApiErrorMessage(error, description);
-      }
       toast({
         title: "Could not open file",
-        description,
+        description: await readBlobError(
+          error,
+          "Could not open this file. Please try again."
+        ),
         variant: "destructive",
       });
     } finally {
       setOpeningId("");
+    }
+  };
+
+  const toggleAudio = async (doc: ContainerDocument) => {
+    if (!doc._id || loadingAudioId) return;
+    if (playingId === doc._id) {
+      stopAudio();
+      return;
+    }
+    stopAudio();
+    setLoadingAudioId(doc._id);
+    try {
+      const response = await baseUrl.get(
+        `assignlorry/${assignmentId}/containers/${containerId}/documents/${doc._id}`,
+        { responseType: "blob" }
+      );
+      const blob = response.data as Blob;
+      if (blob.type.includes("json") || !isAudioMime(doc.mimeType || blob.type)) {
+        throw new Error("Could not play this audio.");
+      }
+      const url = URL.createObjectURL(blob);
+      audioUrlRef.current = url;
+      const player = new Audio(url);
+      audioRef.current = player;
+      player.onended = () => {
+        stopAudio();
+      };
+      player.onerror = () => {
+        stopAudio();
+        toast({
+          title: "Could not play audio",
+          description: "This audio file could not be played.",
+          variant: "destructive",
+        });
+      };
+      await player.play();
+      setPlayingId(doc._id);
+    } catch (error) {
+      stopAudio();
+      toast({
+        title: "Could not play audio",
+        description: await readBlobError(
+          error,
+          "Could not play this audio. Please try again."
+        ),
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingAudioId("");
     }
   };
 
@@ -456,7 +592,32 @@ export default function ContainerDocuments({
   const otherFiles = files.filter((file) => file._id && !placed.has(file._id));
   const chooseFile = (slot: DocumentSlot) => {
     slotRef.current = slot;
+    if (inputRef.current) {
+      inputRef.current.accept =
+        slotKind(slot) === "audio"
+          ? "audio/mpeg,audio/mp3,audio/mp4,audio/aac,audio/wav,audio/x-wav,audio/ogg,audio/webm,video/mp4,.mp3,.m4a,.mp4,.aac,.wav,.ogg,.webm"
+          : "image/*,application/pdf";
+    }
     inputRef.current?.click();
+  };
+
+  const slotActionIcon = (
+    slot: (typeof DOCUMENT_SLOTS)[number],
+    file: ContainerDocument
+  ): ReactNode => {
+    if (openingId === file._id || loadingAudioId === file._id) {
+      return <Loader2 className="h-3.5 w-3.5 animate-spin" />;
+    }
+    if (slot.kind === "audio") {
+      return (
+        <SlotIcon
+          slot="audio"
+          className="h-3.5 w-3.5"
+          playing={playingId === file._id}
+        />
+      );
+    }
+    return <SlotIcon slot={slot.id} className="h-5 w-5 object-contain" />;
   };
 
   return (
@@ -476,6 +637,7 @@ export default function ContainerDocuments({
       {DOCUMENT_SLOTS.map((slot) => {
         const file = fileFor(slot.id);
         if (!file) return null;
+        const audioSlot = slot.kind === "audio";
         return (
           <Tooltip key={slot.id} delayDuration={200}>
             <TooltipTrigger asChild>
@@ -489,19 +651,35 @@ export default function ContainerDocuments({
                       ? "border-red-600 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-600"
                       : slotButtonClass()
                   }`}
-                  aria-label={`View ${slotHoverLabel(slot.id)}`}
-                  disabled={openingId === file._id}
-                  onClick={() => openDocument(file, slot.id)}
+                  aria-label={
+                    audioSlot
+                      ? playingId === file._id
+                        ? "Pause audio"
+                        : "Play audio"
+                      : `View ${slotHoverLabel(slot.id)}`
+                  }
+                  disabled={
+                    audioSlot
+                      ? loadingAudioId === file._id
+                      : openingId === file._id
+                  }
+                  onClick={() =>
+                    audioSlot
+                      ? void toggleAudio(file)
+                      : void openDocument(file, slot.id)
+                  }
                 >
-                  {openingId === file._id ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <SlotIcon slot={slot.id} className="h-5 w-5 object-contain" />
-                  )}
+                  {slotActionIcon(slot, file)}
                 </Button>
               </span>
             </TooltipTrigger>
-            <TooltipContent>{slotHoverLabel(slot.id)}</TooltipContent>
+            <TooltipContent>
+              {audioSlot
+                ? playingId === file._id
+                  ? "Pause"
+                  : "Play"
+                : slotHoverLabel(slot.id)}
+            </TooltipContent>
           </Tooltip>
         );
       })}
@@ -527,7 +705,8 @@ export default function ContainerDocuments({
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Each file is an image or PDF, compressed to under 100KB. Images can be rotated before they are saved.
+            Weight sheet and Gate pass accept an image or PDF under 100KB.
+            Audio accepts MP3, M4A, MP4, WAV, OGG, or WebM under 2MB and plays from the card.
           </p>
           <input
             ref={inputRef}
@@ -539,6 +718,7 @@ export default function ContainerDocuments({
           <div className="min-w-0 space-y-2">
             {DOCUMENT_SLOTS.map((slot) => {
               const file = fileFor(slot.id);
+              const audioSlot = slot.kind === "audio";
               return (
                 <div
                   key={slot.id}
@@ -554,10 +734,23 @@ export default function ContainerDocuments({
                       <button
                         type="button"
                         className="block w-full truncate text-left text-xs text-muted-foreground"
-                        onClick={() => openDocument(file, slot.id)}
-                        disabled={openingId === file._id}
+                        onClick={() =>
+                          audioSlot
+                            ? void toggleAudio(file)
+                            : void openDocument(file, slot.id)
+                        }
+                        disabled={
+                          audioSlot
+                            ? loadingAudioId === file._id
+                            : openingId === file._id
+                        }
                       >
-                        {file.originalName || (file.mimeType === "application/pdf" ? "PDF" : "Image")}
+                        {file.originalName ||
+                          (audioSlot
+                            ? "Audio"
+                            : file.mimeType === "application/pdf"
+                              ? "PDF"
+                              : "Image")}
                         {file.size ? ` · ${formatSize(file.size)}` : ""}
                       </button>
                     ) : (
@@ -575,15 +768,25 @@ export default function ContainerDocuments({
                             ? "border-red-600 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-600"
                             : slotButtonClass()
                         }`}
-                        aria-label={`View ${slot.label}`}
-                        disabled={openingId === file._id}
-                        onClick={() => openDocument(file, slot.id)}
+                        aria-label={
+                          audioSlot
+                            ? playingId === file._id
+                              ? "Pause audio"
+                              : "Play audio"
+                            : `View ${slot.label}`
+                        }
+                        disabled={
+                          audioSlot
+                            ? loadingAudioId === file._id
+                            : openingId === file._id
+                        }
+                        onClick={() =>
+                          audioSlot
+                            ? void toggleAudio(file)
+                            : void openDocument(file, slot.id)
+                        }
                       >
-                        {openingId === file._id ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <SlotIcon slot={slot.id} className="h-5 w-5 object-contain" />
-                        )}
+                        {slotActionIcon(slot, file)}
                       </Button>
                     ) : null}
                     {canManage ? (
@@ -609,7 +812,10 @@ export default function ContainerDocuments({
                         size="sm"
                         className="h-8 w-8 px-0"
                         disabled={removingId === file._id}
-                        onClick={() => removeDocument(file)}
+                        onClick={() => {
+                          if (playingId === file._id) stopAudio();
+                          void removeDocument(file);
+                        }}
                         aria-label={`Remove ${slot.label}`}
                       >
                         {removingId === file._id ? (
@@ -633,7 +839,15 @@ export default function ContainerDocuments({
                   className="flex min-w-0 flex-1 items-center gap-2 text-left"
                   onClick={() => openDocument(file, file.slot)}
                 >
-                  <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  {isAudioMime(file.mimeType) ? (
+                    playingId === file._id ? (
+                      <Pause className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    ) : (
+                      <Play className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    )
+                  ) : (
+                    <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  )}
                   <span className="min-w-0 truncate text-sm">
                     {file.originalName || "Document"}
                   </span>
@@ -645,7 +859,10 @@ export default function ContainerDocuments({
                     size="sm"
                     className="h-8 w-8 shrink-0 px-0"
                     disabled={removingId === file._id}
-                    onClick={() => removeDocument(file)}
+                    onClick={() => {
+                      if (playingId === file._id) stopAudio();
+                      void removeDocument(file);
+                    }}
                     aria-label={`Remove ${file.originalName || "document"}`}
                   >
                     {removingId === file._id ? (
