@@ -18,6 +18,7 @@ import {
   Contact,
   UserRound,
   CalendarCheck,
+  Receipt,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { OutHireTableModal } from "@/components/OutHireTableModal";
@@ -113,6 +114,13 @@ const allMenuItems = [
     permission: [P.ASSIGNMENTS_VIEW, P.ASSIGNMENTS_ADD, P.ASSIGNMENTS_EDIT],
   },
   {
+    id: "ot-paid",
+    label: "OT Paid",
+    icon: Receipt,
+    path: "/ot-paid",
+    permission: [P.OT_RECEIPTS_VIEW, P.OT_RECEIPTS_ADD, P.OT_RECEIPTS_EDIT],
+  },
+  {
     id: "reports",
     label: "Reports",
     icon: BarChart3,
@@ -194,6 +202,18 @@ export const Layout = () => {
     }
     if (location.pathname === "/assignments/documents") {
       return { label: "Documents" };
+    }
+    if (location.pathname === "/ot-paid/paid") {
+      return { label: "OT Paid · Paid" };
+    }
+    if (location.pathname.startsWith("/ot-paid")) {
+      return { label: "OT Paid · Pending" };
+    }
+    if (location.pathname === "/reports/lorry-owners") {
+      return { label: "Reports · Lorry Owners" };
+    }
+    if (location.pathname === "/reports/lorries") {
+      return { label: "Reports · Lorries" };
     }
     if (location.pathname.startsWith("/reports")) {
       return { label: "Reports" };

@@ -7,6 +7,7 @@ import {
   getAssignmentFinancials,
 } from "../lib/financials";
 import { canSeeField } from "@/lib/permissions";
+import OtReceipts from "./OtReceipts";
 
 function Row({
   label,
@@ -25,7 +26,13 @@ function Row({
   );
 }
 
-function Summary({ assignment }: any) {
+function Summary({
+  assignment,
+  onAssignmentPatch,
+}: {
+  assignment: any;
+  onAssignmentPatch?: (patch: Record<string, unknown>) => void;
+}) {
   const chargeFields = CHARGE_FIELDS.filter((field) => canSeeField(field.key));
   const commissionFields = COMMISSION_FIELDS.filter((field) =>
     canSeeField(field.key)
@@ -46,7 +53,12 @@ function Summary({ assignment }: any) {
     (canSeeField("balancePaid") ? balancePaid : 0);
 
   if (!chargeFields.length && !commissionFields.length && !showTotals) {
-    return null;
+    return (
+      <OtReceipts
+        assignment={assignment}
+        onAssignmentPatch={onAssignmentPatch}
+      />
+    );
   }
 
   return (
@@ -106,6 +118,11 @@ function Summary({ assignment }: any) {
           </CardContent>
         </Card>
       ) : null}
+
+      <OtReceipts
+        assignment={assignment}
+        onAssignmentPatch={onAssignmentPatch}
+      />
     </>
   );
 }

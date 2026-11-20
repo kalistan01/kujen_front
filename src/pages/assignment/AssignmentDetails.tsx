@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -98,6 +98,7 @@ const AssignmentDetails = () => {
   const [bulkPaying, setBulkPaying] = useState<"pay" | "print" | false>(false);
   const [printOnlyIds, setPrintOnlyIds] = useState<string[] | null>(null);
   const [query, setQuery] = useState("");
+  const [containerFilter, setContainerFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [balanceFilter, setBalanceFilter] = useState("all");
   const [advancedFilter, setAdvancedFilter] = useState("all");
@@ -107,6 +108,8 @@ const AssignmentDetails = () => {
   const [containerOut, setContainerOut] = useState<string[]>([]);
   const [yardFilter, setYardFilter] = useState("all");
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const basicInfoRef = useRef<HTMLDivElement>(null);
+  const [basicInfoHeight, setBasicInfoHeight] = useState(0);
 
   useEffect(() => {
     const onScroll = () => setShowScrollTop(window.scrollY > 280);
@@ -114,10 +117,21 @@ const AssignmentDetails = () => {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
   const canManage = canEditAssignments();
   const canSeeContainers = canViewContainers();
   const canCreateContainer = canAddContainers();
   const canChangeContainers = canEditContainers();
+
+  useEffect(() => {
+    const node = basicInfoRef.current;
+    if (!node || typeof ResizeObserver === "undefined") return;
+    const update = () => setBasicInfoHeight(node.getBoundingClientRect().height);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [assignment, canSeeContainers]);
 
   const patchLocalContainer = (containerId: string, patch: Record<string, unknown>) => {
     setAssignment((previous) => {
@@ -131,6 +145,10 @@ const AssignmentDetails = () => {
         ),
       };
     });
+  };
+
+  const patchAssignment = (patch: Record<string, unknown>) => {
+    setAssignment((previous) => (previous ? { ...previous, ...patch } : previous));
   };
 
   const loadAssignment = () => {
@@ -284,8 +302,19 @@ const AssignmentDetails = () => {
       .sort((a, b) => a[1].localeCompare(b[1]))
       .map(([value, label]) => ({ value, label }));
   }, [containers]);
+  const containerNumberOptions = useMemo(() => {
+    const items = new Map<string, string>();
+    containers.forEach((container: any) => {
+      const no = String(container?.containerNo || "").trim();
+      if (no) items.set(no, no);
+    });
+    return [...items.entries()]
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([value, label]) => ({ value, label }));
+  }, [containers]);
   const hasContainerFilters = Boolean(
     query.trim() ||
+      containerFilter !== "all" ||
       statusFilter !== "all" ||
       balanceFilter !== "all" ||
       advancedFilter !== "all" ||
@@ -298,6 +327,12 @@ const AssignmentDetails = () => {
   const filteredContainers = useMemo(() => {
     const q = query.trim().toLowerCase();
     return containers.filter((container: any) => {
+      if (
+        containerFilter !== "all" &&
+        String(container?.containerNo || "").trim() !== containerFilter
+      ) {
+        return false;
+      }
       if (statusFilter !== "all" && (container.status || "pending") !== statusFilter) {
         return false;
       }
@@ -332,6 +367,7 @@ const AssignmentDetails = () => {
   }, [
     containers,
     query,
+    containerFilter,
     statusFilter,
     balanceFilter,
     advancedFilter,
@@ -353,6 +389,7 @@ const AssignmentDetails = () => {
   };
   const clearContainerFilters = () => {
     setQuery("");
+    setContainerFilter("all");
     clearModalFilters();
   };
   const containerGroups = containersGroupedByYardTrip(filteredContainers);
@@ -558,6 +595,9 @@ const AssignmentDetails = () => {
               className="w-auto shrink-0 flex-nowrap"
               query={query}
               onQueryChange={setQuery}
+              containerFilter={containerFilter}
+              onContainerFilterChange={setContainerFilter}
+              containerOptions={containerNumberOptions}
               status={statusFilter}
               onStatusChange={setStatusFilter}
               statuses={CONTAINER_STATUSES}
@@ -635,20 +675,30 @@ const AssignmentDetails = () => {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
-          <BasicInfo
-            assignment={assignment}
-            isBasicDialogOpen={isBasicDialogOpen}
-            setIsBasicDialogOpen={setIsBasicDialogOpen}
-            onSaved={(patch: Record<string, unknown>) =>
-              setAssignment((previous: any) =>
-                previous ? { ...previous, ...patch } : previous
-              )
-            }
-          />
+          <div
+            ref={basicInfoRef}
+            className="sticky top-[calc(3rem+4rem)] z-[22] self-start print:static"
+          >
+            <BasicInfo
+              assignment={assignment}
+              isBasicDialogOpen={isBasicDialogOpen}
+              setIsBasicDialogOpen={setIsBasicDialogOpen}
+              onSaved={(patch: Record<string, unknown>) =>
+                setAssignment((previous: any) =>
+                  previous ? { ...previous, ...patch } : previous
+                )
+              }
+            />
+          </div>
 
           {canSeeContainers ? (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 py-3">
+          <Card className="overflow-visible">
+            <CardHeader
+              className="sticky z-[21] flex flex-row items-center justify-between space-y-0 border-b border-border/70 bg-card/95 py-3 backdrop-blur supports-[backdrop-filter]:bg-card/90 print:static"
+              style={{
+                top: `calc(3rem + 4rem + ${Math.max(basicInfoHeight, 0)}px + 0.5rem)`,
+              }}
+            >
               <div className="flex items-center gap-3">
                 {payableContainers.length && canChangeContainers && canEditField("balancePaid") ? (
                   <Checkbox
@@ -711,7 +761,7 @@ const AssignmentDetails = () => {
                 ) : null}
               </div>
             </CardHeader>
-            <CardContent className="space-y-3 pb-4">
+            <CardContent className="space-y-3 pb-4 pt-4">
               {containerGroups.length ? (
                 containerGroups.map((group: any[], groupIndex: number) => (
                   <div
@@ -757,8 +807,11 @@ const AssignmentDetails = () => {
         </div>
 
         {canSeeContainers ? (
-        <div className="space-y-4 lg:sticky lg:top-32 lg:z-20 lg:self-start print:static">
-          <Summary assignment={displayAssignment} />
+        <div className="space-y-4 lg:sticky lg:top-[calc(3rem+4rem)] lg:z-20 lg:max-h-[calc(100vh-3rem-4rem-1rem)] lg:self-start lg:overflow-y-auto print:static print:max-h-none print:overflow-visible">
+          <Summary
+            assignment={displayAssignment}
+            onAssignmentPatch={patchAssignment}
+          />
           <Record assignment={displayAssignment} />
         </div>
         ) : null}

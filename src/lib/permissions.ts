@@ -70,6 +70,9 @@ export const P = {
   STAFF_MEMBERS_EDIT: 69,
   ATTENDANCE_VIEW: 70,
   ATTENDANCE_MARK: 71,
+  OT_RECEIPTS_VIEW: 72,
+  OT_RECEIPTS_ADD: 73,
+  OT_RECEIPTS_EDIT: 74,
 } as const;
 
 export type PermissionId = (typeof P)[keyof typeof P];
@@ -157,6 +160,13 @@ export const PAGE_ACCESS: PageAccessItem[] = [
     editId: P.CONTAINERS_EDIT,
     requiresViewId: P.ASSIGNMENTS_VIEW,
   },
+  {
+    name: "OT Paid",
+    description: "OT receipts list and status",
+    viewId: P.OT_RECEIPTS_VIEW,
+    addId: P.OT_RECEIPTS_ADD,
+    editId: P.OT_RECEIPTS_EDIT,
+  },
 ];
 
 export const PAGE_PERMISSIONS: PermissionItem[] = [
@@ -186,6 +196,9 @@ export const PAGE_PERMISSIONS: PermissionItem[] = [
   { id: P.CONTAINERS_VIEW, name: "View Containers", description: "See containers on assignments", group: "pages" },
   { id: P.CONTAINERS_ADD, name: "Add Containers", description: "Add containers to assignments", group: "pages" },
   { id: P.CONTAINERS_EDIT, name: "Edit Containers", description: "Update, pay, and remove containers", group: "pages" },
+  { id: P.OT_RECEIPTS_VIEW, name: "View OT Paid", description: "Open OT Paid and see OT receipts", group: "pages" },
+  { id: P.OT_RECEIPTS_ADD, name: "Add OT Receipts", description: "Add OT receipts on assignment details", group: "pages" },
+  { id: P.OT_RECEIPTS_EDIT, name: "Edit OT Receipts", description: "Change OT receipt details and status", group: "pages" },
   { id: P.LOGS_VIEW, name: "View Logs", description: "Open the activity log", group: "pages" },
 ];
 
@@ -288,6 +301,8 @@ const MUST_GRANT = new Set<number>([
   P.STAFF_MEMBERS_ADD,
   P.STAFF_MEMBERS_EDIT,
   P.ATTENDANCE_MARK,
+  P.OT_RECEIPTS_ADD,
+  P.OT_RECEIPTS_EDIT,
 ]);
 
 export const FIELD_KEY_TO_ID: Record<string, number> = Object.fromEntries(

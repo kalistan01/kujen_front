@@ -238,7 +238,10 @@ function AssignmentRow({
             />
           </Button>
         </TableCell>
-        <TableCell>
+        <TableCell
+          className="cursor-default"
+          onClick={(event) => event.stopPropagation()}
+        >
           <span className="inline-flex rounded-md border border-[hsl(var(--brand-navy))]/15 bg-[hsl(var(--brand-navy))]/8 px-2 py-1 font-mono text-xs font-semibold tracking-wide text-[hsl(var(--brand-navy))] dark:border-white/10 dark:bg-white/10 dark:text-white">
             {assignment.regNo || "—"}
           </span>

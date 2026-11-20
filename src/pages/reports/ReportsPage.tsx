@@ -14,6 +14,7 @@ import { upsertById } from "@/lib/socket";
 import type { HeldUpRateOption } from "@/pages/assignment/lib/financials";
 import { AssignmentReports } from "./AssignmentReports";
 import { LorryReports } from "./LorryReports";
+import { LorryOwnerReports } from "./LorryOwnerReports";
 import { DateRangeFilters, ReportSearch } from "./shared";
 import { buildContainerRows, filterRows } from "./lib";
 import { brand } from "@/lib/brand";
@@ -25,6 +26,8 @@ export function ReportsPage() {
   const canAssignments = can(P.ASSIGNMENTS_VIEW) || can(P.ASSIGNMENTS_ADD) || can(P.ASSIGNMENTS_EDIT);
   const canLorries = can(P.LORRIES_VIEW) || can(P.LORRIES_ADD) || can(P.LORRIES_EDIT);
   const isLorryTab = location.pathname.endsWith("/lorries");
+  const isLorryOwnersTab = location.pathname.endsWith("/lorry-owners");
+  const needsLorries = isLorryTab || isLorryOwnersTab;
 
   const [assignments, setAssignments] = useState<any[]>([]);
   const [owners, setOwners] = useState<any[]>([]);
@@ -35,6 +38,7 @@ export function ReportsPage() {
   const [toDate, setToDate] = useState("");
   const [assignmentView, setAssignmentView] = useState("overview");
   const [lorryView, setLorryView] = useState("overview");
+  const [selectedOwnerIds, setSelectedOwnerIds] = useState<string[]>([]);
 
   const load = () => {
     setLoading(true);
@@ -106,12 +110,18 @@ export function ReportsPage() {
   if (!canAssignments && !canLorries) {
     return <Navigate to="/" replace />;
   }
-  if (isLorryTab && !canLorries) {
+  if (needsLorries && !canLorries) {
     return <Navigate to="/reports" replace />;
   }
-  if (!isLorryTab && !canAssignments && canLorries) {
+  if (!needsLorries && !canAssignments && canLorries) {
     return <Navigate to="/reports/lorries" replace />;
   }
+
+  const reportTitle = isLorryOwnersTab
+    ? "Lorry Owner"
+    : isLorryTab
+      ? "Lorry"
+      : "Assignment";
 
   return (
     <div className="space-y-3">
@@ -124,7 +134,7 @@ export function ReportsPage() {
       <Card className="overflow-hidden">
         <CardHeader className="space-y-2 border-b border-border/70 bg-muted/30 px-3 py-2 print:hidden">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <nav className="inline-flex h-8 items-center rounded-md bg-muted p-1 text-muted-foreground">
+            <nav className="inline-flex h-8 flex-wrap items-center rounded-md bg-muted p-1 text-muted-foreground">
               {canAssignments ? (
                 <NavLink
                   to="/reports"
@@ -156,14 +166,31 @@ export function ReportsPage() {
                   Lorries
                 </NavLink>
               ) : null}
+              {canLorries ? (
+                <NavLink
+                  to="/reports/lorry-owners"
+                  className={({ isActive }) =>
+                    cn(
+                      "inline-flex h-6 items-center rounded-sm px-2.5 text-xs font-medium transition-all",
+                      isActive
+                        ? "bg-background text-foreground shadow-sm"
+                        : "hover:text-foreground"
+                    )
+                  }
+                >
+                  Lorry Owners
+                </NavLink>
+              ) : null}
             </nav>
             <ReportSearch
               value={query}
               onChange={setQuery}
               placeholder={
-                isLorryTab
-                  ? "Search lorry, owner, company..."
-                  : "Search BL, container, lorry, owner..."
+                isLorryOwnersTab
+                  ? "Search BL, container, lorry, owner..."
+                  : isLorryTab
+                    ? "Search lorry, owner, company..."
+                    : "Search BL, container, lorry, owner..."
               }
             />
           </div>
@@ -180,7 +207,7 @@ export function ReportsPage() {
         </CardHeader>
         <CardContent className="p-3 sm:p-4">
           <h1 className="mb-4 hidden text-xl font-bold print:block">
-            {brand.name} {isLorryTab ? "Lorry" : "Assignment"} Reports
+            {brand.name} {reportTitle} Reports
           </h1>
           {loading ? (
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -188,6 +215,14 @@ export function ReportsPage() {
                 <Skeleton key={index} className="h-24" />
               ))}
             </div>
+          ) : isLorryOwnersTab ? (
+            <LorryOwnerReports
+              owners={owners}
+              rows={datedRows}
+              query={query}
+              selectedOwnerIds={selectedOwnerIds}
+              onSelectedOwnerIdsChange={setSelectedOwnerIds}
+            />
           ) : isLorryTab ? (
             <LorryReports
               owners={owners}

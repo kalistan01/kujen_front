@@ -95,6 +95,9 @@ function AssignmentFilters({
   onBillNumberChange,
   yardFilter = "all",
   onYardFilterChange,
+  containerFilter = "all",
+  onContainerFilterChange,
+  containerOptions = [],
   datePreset,
   onDatePresetChange,
   showDates = true,
@@ -135,6 +138,9 @@ function AssignmentFilters({
   onBillNumberChange?: (value: string) => void;
   yardFilter?: string;
   onYardFilterChange?: (value: string) => void;
+  containerFilter?: string;
+  onContainerFilterChange?: (value: string) => void;
+  containerOptions?: { value: string; label: string }[];
   datePreset?: string;
   onDatePresetChange?: (value: string) => void;
   showDates?: boolean;
@@ -375,6 +381,21 @@ function AssignmentFilters({
           className="h-8 bg-background pl-9"
         />
       </div>
+      {onContainerFilterChange ? (
+        <Select value={containerFilter} onValueChange={onContainerFilterChange}>
+          <SelectTrigger className="h-8 w-[180px] shrink-0 bg-background">
+            <SelectValue placeholder="Container" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All containers</SelectItem>
+            {containerOptions.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      ) : null}
       {filtersInModal ? (
         <Dialog>
           <DialogTrigger asChild>

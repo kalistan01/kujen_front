@@ -20,6 +20,7 @@ import { AttendanceManagement } from "./pages/attendance/AttendanceManagement";
 import { LogsPage } from "./pages/logs/LogsPage";
 import { ReportsPage } from "./pages/reports/ReportsPage";
 import { NotePage } from "./pages/note/NotePage";
+import { OtPaidPage } from "./pages/ot-paid/OtPaidPage";
 import RequirePermission from "./components/RequirePermission";
 import { P } from "./lib/permissions";
 
@@ -154,6 +155,7 @@ const App = () => (
                 >
                   <Route index element={null} />
                   <Route path="lorries" element={null} />
+                  <Route path="lorry-owners" element={null} />
                 </Route>
                 <Route path="/note" element={<NotePage />} />
                 <Route
@@ -164,6 +166,23 @@ const App = () => (
                     </RequirePermission>
                   }
                 />
+                <Route
+                  path="/ot-paid"
+                  element={
+                    <RequirePermission
+                      ids={[
+                        P.OT_RECEIPTS_VIEW,
+                        P.OT_RECEIPTS_ADD,
+                        P.OT_RECEIPTS_EDIT,
+                      ]}
+                    >
+                      <OtPaidPage />
+                    </RequirePermission>
+                  }
+                >
+                  <Route index element={null} />
+                  <Route path="paid" element={null} />
+                </Route>
               </Route>
            <Route path="*" element={<Navigate to="/login" />} />
           </Routes>

@@ -75,7 +75,7 @@ function BasicInfo({
   ];
 
   return (
-    <Card>
+    <Card className="border-border/80 bg-card/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/90">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 py-3">
         <CardTitle className="text-base">Basic Information</CardTitle>
         {canEditAssignments() ? (
